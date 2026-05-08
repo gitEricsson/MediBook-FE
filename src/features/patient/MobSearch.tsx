@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -13,7 +13,6 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useDoctors } from '@/hooks/useDoctors'
 import { SAMPLE_DOCS } from '@/constants/sampleData'
-import { MB as MBTokens } from '@/constants/tokens'
 
 type SearchState = 'results' | 'loading' | 'empty' | 'error'
 
@@ -47,24 +46,24 @@ function DocCardSkel() {
   )
 }
 
-function DocCard({ doc }: { doc: typeof SAMPLE_DOCS[number] }) {
+function DocCard({ doc }: { doc: any }) {
   return (
     <Card padding={12} interactive>
       <div style={{ display: 'flex', gap: 12 }}>
-        <PhotoBlock w={56} h={56} label={`DR · ${doc.name.split(' ')[1].slice(0,3).toUpperCase()}`}
-          tone={doc.tone === 'amber' || doc.tone === 'rose' ? 'slate' : doc.tone} />
+        <PhotoBlock w={56} h={56} label={`DR · ${doc.name.split(' ')[1]?.slice(0,3).toUpperCase() || 'DOC'}`}
+          tone={doc.tone === 'amber' || doc.tone === 'rose' ? 'slate' : (doc.tone || 'slate')} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>Dr. {doc.name}</div>
-          <div style={{ fontSize: 12, color: MB.text2, marginTop: 1 }}>{doc.spec} · {doc.dept}</div>
+          <div style={{ fontSize: 12, color: MB.text2, marginTop: 1 }}>{doc.spec || doc.specialization} · {doc.dept || doc.department}</div>
           <div style={{ fontSize: 11, color: MB.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="pin" size={11} color={MB.text3} /> {doc.city}
+            <Icon name="pin" size={11} color={MB.text3} /> {doc.city || 'Available'}
           </div>
         </div>
       </div>
       <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${MB.line2}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div className="mb-caption" style={{ marginBottom: 1 }}>Next available</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: MB.success }}>{doc.next}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: MB.success }}>{doc.next || 'Today'}</div>
         </div>
         <Btn size="sm">Book</Btn>
       </div>
@@ -75,8 +74,10 @@ function DocCard({ doc }: { doc: typeof SAMPLE_DOCS[number] }) {
 interface MobSearchProps { state?: SearchState }
 
 export default memo(function MobSearch({ state = 'results' }: MobSearchProps) {
-  const { data: doctors, isLoading, isError, refetch } = useDoctors()
-  const resolvedState: SearchState = isLoading ? 'loading' : isError ? 'error' : state
+  const [params, setParams] = useState({ query: '' });
+  const { data: doctors, isLoading, isError, refetch } = useDoctors(params);
+  
+  const resolvedState: SearchState = isLoading ? 'loading' : isError ? 'error' : (doctors?.length === 0 ? 'empty' : state);
 
   return (
     <MobScreen>
@@ -86,7 +87,12 @@ export default memo(function MobSearch({ state = 'results' }: MobSearchProps) {
         </button>
       } />
       <div style={{ padding: '12px 16px 8px', background: MB.bg, borderBottom: `1px solid ${MB.line2}` }}>
-        <Input value={resolvedState === 'empty' ? 'thoracic neurosurgery' : ''} placeholder="Search doctors or specialties" icon="search" />
+        <Input 
+          value={params.query} 
+          onChange={(e) => setParams({ ...params, query: e.target.value })}
+          placeholder="Search doctors or specialties" 
+          icon="search" 
+        />
         <div style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto' }}>
           <FilterChip label="Department" value="Cardiology" active />
           <FilterChip label="Specialisation" />
@@ -100,10 +106,10 @@ export default memo(function MobSearch({ state = 'results' }: MobSearchProps) {
             {[0,1,2,3].map(i => <DocCardSkel key={i} />)}
           </div>
         )}
-        {resolvedState === 'error' && <ErrorState title="Couldn't load doctors" body="Check your connection and try again." onRetry={refetch} />}
+        {resolvedState === 'error' && <ErrorState title="Couldn't load doctors" body="Check your connection and try again." onRetry={() => refetch()} />}
         {resolvedState === 'empty' && (
           <EmptyState icon="search" title="No doctors match your search" body="Try a broader term or remove a filter."
-            action={<Btn variant="secondary" size="sm" style={{ marginTop: 8 }}>Clear filters</Btn>} />
+            action={<Btn variant="secondary" size="sm" style={{ marginTop: 8 }} onClick={() => setParams({ query: '' })}>Clear filters</Btn>} />
         )}
         {resolvedState === 'results' && (
           <>
@@ -120,6 +126,3 @@ export default memo(function MobSearch({ state = 'results' }: MobSearchProps) {
     </MobScreen>
   )
 })
-
-// suppress unused import lint — MBTokens used in DocCard via closure
-void MBTokens

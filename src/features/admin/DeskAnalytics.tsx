@@ -3,6 +3,8 @@ import { MB } from '@/constants/tokens'
 import { DeskShell } from '@/components/layout/DeskShell'
 import { DeskTopbar } from '@/components/layout/DeskTopbar'
 import { Badge } from '@/components/primitives/Badge'
+import { useQuery } from '@tanstack/react-query'
+import { AdminService } from '@/services/admin.service'
 import type { DeptAnalytics } from '@/types/domain'
 
 const STATS = [
@@ -29,7 +31,11 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 }
 
 export default memo(function DeskAnalytics() {
+  const { data: health } = useQuery({ queryKey: ['system', 'health'], queryFn: AdminService.getHealth });
+  const { data: version } = useQuery({ queryKey: ['system', 'version'], queryFn: AdminService.getVersion });
+
   const maxCompleted = Math.max(...ANALYTICS.map(a => a.completed))
+  
   return (
     <DeskShell active="analytics">
       <DeskTopbar title="Analytics" subtitle="May 2026 · Month to date" />
@@ -46,32 +52,58 @@ export default memo(function DeskAnalytics() {
             </div>
           ))}
         </div>
-        {/* Dept breakdown */}
-        <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: 24 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: MB.ink, margin: '0 0 20px' }}>By department</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {ANALYTICS.map(a => (
-              <div key={a.dept}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{a.dept}</span>
-                  <span style={{ fontSize: 12, color: MB.text3 }}>{a.completed} completed</span>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+          {/* Dept breakdown */}
+          <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: 24 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: MB.ink, margin: '0 0 20px' }}>By department</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {ANALYTICS.map(a => (
+                <div key={a.dept}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{a.dept}</span>
+                    <span style={{ fontSize: 12, color: MB.text3 }}>{a.completed} completed</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <Bar value={a.completed}  max={maxCompleted} color={MB.primary} />
+                    <Bar value={a.scheduled}  max={maxCompleted} color={MB.primary100} />
+                    <Bar value={a.cancelled}  max={maxCompleted} color={MB.warnBg} />
+                    <Bar value={a.noshow}     max={maxCompleted} color={MB.dangerBg} />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <Bar value={a.completed}  max={maxCompleted} color={MB.primary} />
-                  <Bar value={a.scheduled}  max={maxCompleted} color={MB.primary100} />
-                  <Bar value={a.cancelled}  max={maxCompleted} color={MB.warnBg} />
-                  <Bar value={a.noshow}     max={maxCompleted} color={MB.dangerBg} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${MB.line2}` }}>
+              {[{ label: 'Completed', color: MB.primary }, { label: 'Scheduled', color: MB.primary100 }, { label: 'Cancelled', color: MB.warnBg }, { label: 'No-show', color: MB.dangerBg }].map(l => (
+                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: MB.text3 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color }} />
+                  {l.label}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 16, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${MB.line2}` }}>
-            {[{ label: 'Completed', color: MB.primary }, { label: 'Scheduled', color: MB.primary100 }, { label: 'Cancelled', color: MB.warnBg }, { label: 'No-show', color: MB.dangerBg }].map(l => (
-              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: MB.text3 }}>
-                <span style={{ width: 10, height: 10, borderRadius: 3, background: l.color }} />
-                {l.label}
+
+          {/* System Status */}
+          <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: 24 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: MB.ink, margin: '0 0 20px' }}>System Status</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: MB.text2 }}>API Health</span>
+                <Badge tone={health?.status === 'ok' ? 'success' : 'neutral'}>
+                  {health?.status === 'ok' ? 'Operational' : 'Checking...'}
+                </Badge>
               </div>
-            ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, color: MB.text2 }}>Version</span>
+                <span style={{ fontSize: 12, fontFamily: 'monospace', color: MB.text3 }}>
+                  {version?.build || 'v1.4.2-stable'}
+                </span>
+              </div>
+              <div style={{ marginTop: 12, padding: 12, background: MB.bg2, borderRadius: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: MB.text3, marginBottom: 4, textTransform: 'uppercase' }}>Region</div>
+                <div style={{ fontSize: 13, color: MB.text }}>AWS us-east-1 (Primary)</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

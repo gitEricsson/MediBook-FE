@@ -19,11 +19,19 @@ export type UserRole = 'patient' | 'doctor' | 'admin'
 export interface Doctor {
   id: string
   name: string
-  spec: string
-  dept: string
+  spec?: string
+  dept?: string
+  specialization?: string
+  department?: string
+  bio?: string
   tone: AvatarTone
   next: string
   city: string
+}
+
+export interface Specialization {
+  id: string
+  name: string
 }
 
 export interface Appointment {

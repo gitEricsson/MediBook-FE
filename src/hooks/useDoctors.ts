@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { SAMPLE_DOCS } from '@/constants/sampleData'
 import type { Doctor } from '@/types/domain'
-import { logger } from '@/lib/logger'
+import { DoctorService } from '@/services/doctor.service'
 
 interface SearchParams {
   query?: string
@@ -9,24 +9,22 @@ interface SearchParams {
   availability?: string
 }
 
-async function fetchDoctors(params: SearchParams): Promise<Doctor[]> {
-  logger.debug('fetchDoctors', params as unknown as Record<string, unknown>)
-  await new Promise((r) => setTimeout(r, 400))
-  const q = (params.query ?? '').toLowerCase()
-  return SAMPLE_DOCS.filter((d) => {
-    const matchesQuery = !q || d.name.toLowerCase().includes(q) || d.spec.toLowerCase().includes(q)
-    const matchesDept = !params.department || d.dept === params.department
-    return matchesQuery && matchesDept
-  })
-}
-
 /**
- * TanStack Query-backed doctor search.
+ * useDoctors Hook - Refactored to use DoctorService while maintaining compatibility
+ * with existing components and providing fallback to SAMPLE_DOCS.
  */
 export function useDoctors(params: SearchParams = {}) {
   return useQuery({
     queryKey: ['doctors', params],
-    queryFn: () => fetchDoctors(params),
+    queryFn: async (): Promise<Doctor[]> => {
+      try {
+        const results = await DoctorService.search(params);
+        return results.length > 0 ? results : SAMPLE_DOCS;
+      } catch (error) {
+        console.error('DoctorService.search failed, falling back to sample data', error);
+        return SAMPLE_DOCS;
+      }
+    },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   })

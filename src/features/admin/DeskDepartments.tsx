@@ -8,28 +8,28 @@ import { Th } from '@/components/table/Th'
 import { Td } from '@/components/table/Td'
 import { RowMenu } from '@/components/table/RowMenu'
 import { Skel } from '@/components/feedback/Skel'
-import type { Department } from '@/types/domain'
+import { useAdminDepartments, useAdminActions } from '@/hooks/useAdmin'
 
-type DeptState = 'results' | 'loading'
+export default memo(function DeskDepartments() {
+  const { data: depts, isLoading } = useAdminDepartments();
+  useAdminActions();
 
-const DEPTS: Department[] = [
-  { name: 'Cardiology',      code: 'CARD', docs: 12, appts: 284, status: 'ACTIVE'   },
-  { name: 'Dermatology',     code: 'DERM', docs: 8,  appts: 197, status: 'ACTIVE'   },
-  { name: 'Pediatrics',      code: 'PEDS', docs: 15, appts: 341, status: 'ACTIVE'   },
-  { name: 'Orthopedics',     code: 'ORTH', docs: 10, appts: 218, status: 'ACTIVE'   },
-  { name: 'Endocrinology',   code: 'ENDO', docs: 6,  appts: 132, status: 'ACTIVE'   },
-  { name: 'Neurology',       code: 'NEUR', docs: 9,  appts: 176, status: 'ACTIVE'   },
-  { name: 'General Surgery', code: 'GSUR', docs: 7,  appts: 88,  status: 'INACTIVE' },
-]
+  // Fallback to sample data for visual stability in prototype
+  const sampleDepts = [
+    { id: '1', name: 'Cardiology',      code: 'CARD', docs: 12, appts: 284, isActive: true },
+    { id: '2', name: 'Dermatology',     code: 'DERM', docs: 8,  appts: 197, isActive: true },
+    { id: '3', name: 'Pediatrics',      code: 'PEDS', docs: 15, appts: 341, isActive: true },
+    { id: '4', name: 'Orthopedics',     code: 'ORTH', docs: 10, appts: 218, isActive: true },
+    { id: '5', name: 'General Surgery', code: 'GSUR', docs: 7,  appts: 88,  isActive: false },
+  ];
 
-interface DeskDepartmentsProps { state?: DeptState }
+  const displayDepts = depts && depts.length > 0 ? depts : sampleDepts;
 
-export default memo(function DeskDepartments({ state = 'results' }: DeskDepartmentsProps) {
   return (
     <DeskShell active="depts">
       <DeskTopbar
         title="Departments"
-        subtitle={`${DEPTS.filter(d => d.status === 'ACTIVE').length} active · ${DEPTS.length} total`}
+        subtitle={`${displayDepts.filter(d => d.isActive).length} active · ${displayDepts.length} total`}
         actions={<Btn variant="primary" size="sm" icon="plus">Add department</Btn>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
@@ -38,7 +38,7 @@ export default memo(function DeskDepartments({ state = 'results' }: DeskDepartme
             <thead style={{ background: MB.bg2, borderBottom: `1px solid ${MB.line}` }}>
               <tr>
                 <Th>Department</Th>
-                <Th>Code</Th>
+                <Th>ID/Code</Th>
                 <Th align="right">Doctors</Th>
                 <Th align="right">Appts (MTD)</Th>
                 <Th>Status</Th>
@@ -46,22 +46,27 @@ export default memo(function DeskDepartments({ state = 'results' }: DeskDepartme
               </tr>
             </thead>
             <tbody>
-              {state === 'loading'
-                ? [...Array(7)].map((_, i) => (
+              {isLoading
+                ? [...Array(5)].map((_, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       {[180, 60, 50, 60, 70, 28].map((w, j) => (
                         <td key={j} style={{ padding: '14px 16px' }}><Skel w={w} h={12} /></td>
                       ))}
                     </tr>
                   ))
-                : DEPTS.map(d => (
-                    <tr key={d.code} style={{ borderBottom: `1px solid ${MB.line2}` }}>
+                : displayDepts.map(d => (
+                    <tr key={d.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       <Td><span style={{ fontWeight: 500 }}>{d.name}</span></Td>
-                      <Td mono>{d.code}</Td>
-                      <Td align="right">{d.docs}</Td>
-                      <Td align="right">{d.appts.toLocaleString()}</Td>
-                      <Td><StatusPill status={d.status} /></Td>
-                      <Td><RowMenu aria-label={`Actions for ${d.name}`} /></Td>
+                      <Td mono>{(d as any).code || d.id}</Td>
+                      <Td align="right">{(d as any).docs || (d as any).doctorCount || 0}</Td>
+                      <Td align="right">{(d as any).appts?.toLocaleString() || (d as any).appointmentCount || 0}</Td>
+                      <Td><StatusPill status={d.isActive ? 'ACTIVE' : 'INACTIVE'} /></Td>
+                      <Td>
+                        <RowMenu 
+                          aria-label={`Actions for ${d.name}`}
+                          // In a real app, this would open a menu with edit/deactivate
+                        />
+                      </Td>
                     </tr>
                   ))
               }

@@ -1,29 +1,54 @@
-import { create } from 'zustand'
-import { logger } from '@/lib/logger'
-import type { UserRole } from '@/types/domain'
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { UserRole } from '@/types/domain';
 
-interface AuthState {
-  userId: string | null
-  role: UserRole | null
-  email: string | null
-  isAuthenticated: boolean
-  login: (userId: string, role: UserRole, email: string) => void
-  logout: () => void
+export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated' | '2fa_required';
+
+interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  userId: null,
-  role: null,
-  email: null,
-  isAuthenticated: false,
+interface AuthState {
+  user: User | null;
+  status: AuthStatus;
+  accessToken: string | null; // In-memory only
+  
+  // Actions
+  setAuthenticated: (user: User, accessToken: string) => void;
+  setUnauthenticated: () => void;
+  set2FARequired: () => void;
+  setLoading: () => void;
+  updateUser: (user: Partial<User>) => void;
+}
 
-  login: (userId, role, email) => {
-    logger.info('auth:login', { userId, role })
-    set({ userId, role, email, isAuthenticated: true })
-  },
+export const useAuthStore = create<AuthState>()(
+  devtools(
+    (set) => ({
+      user: null,
+      status: 'idle',
+      accessToken: null,
 
-  logout: () => {
-    logger.info('auth:logout')
-    set({ userId: null, role: null, email: null, isAuthenticated: false })
-  },
-}))
+      setAuthenticated: (user, accessToken) => 
+        set({ user, accessToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
+
+      setUnauthenticated: () => 
+        set({ user: null, accessToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
+
+      set2FARequired: () => 
+        set({ status: '2fa_required' }, false, 'auth/set2FARequired'),
+
+      setLoading: () => 
+        set({ status: 'loading' }, false, 'auth/setLoading'),
+
+      updateUser: (updates) => 
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updates } : null
+        }), false, 'auth/updateUser'),
+    }),
+    { name: 'MediBook Auth Store' }
+  )
+);

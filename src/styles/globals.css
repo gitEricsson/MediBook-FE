@@ -85,6 +85,17 @@ body {
 .mb {
   font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (max-width: 1024px) {
+  .mb-desk-sidebar {
+    width: 76px !important;
+  }
+  .mb-desk-nav-label {
+    display: none;
+  }
 }
 
 /* ── Focus ring (accessibility) ───────────────────────────────────────────── */

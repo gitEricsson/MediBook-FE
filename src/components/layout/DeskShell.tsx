@@ -5,6 +5,7 @@ import { Avatar } from '@/components/primitives/Avatar'
 import { Logo } from './Logo'
 import type { UserRole } from '@/types/domain'
 import type { IconName } from '@/types/ui'
+import { useNavigate } from 'react-router-dom'
 
 interface NavItem { id: string; label: string; icon: IconName }
 
@@ -34,6 +35,28 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
 const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', doctor: 'Doctor', patient: 'Patient' }
 const ROLE_USER:  Record<UserRole, string> = { admin: 'Alex Reyes', doctor: 'Dr. Sarah Chen', patient: 'Sarah Patient' }
 const ROLE_SUB:   Record<UserRole, string> = { admin: 'alex@medibook.health', doctor: 'Cardiology', patient: 'Member' }
+const NAV_PATHS: Record<UserRole, Record<string, string>> = {
+  admin: {
+    home: '/admin/patients',
+    depts: '/admin/depts',
+    docs: '/admin/docs',
+    analytics: '/admin/analytics',
+    capacity: '/admin/analytics',
+    settings: '/admin/settings',
+  },
+  doctor: {
+    schedule: '/doctor/schedule',
+    patients: '/doctor/schedule',
+    hours: '/doctor/hours',
+    notes: '/doctor/schedule',
+  },
+  patient: {
+    home: '/patient/search',
+    search: '/patient/search',
+    appts: '/patient/appts',
+    profile: '/patient/profile',
+  },
+}
 
 interface DeskShellProps {
   children: React.ReactNode
@@ -42,11 +65,12 @@ interface DeskShellProps {
 }
 
 export const DeskShell = memo(function DeskShell({ children, active = 'home', role = 'admin' }: DeskShellProps) {
+  const navigate = useNavigate()
   const items = NAV_BY_ROLE[role]
   return (
     <div className="mb" style={{ width: '100%', height: '100%', display: 'flex', background: MB.bg2, overflow: 'hidden' }}>
       {/* Sidebar */}
-      <nav aria-label="Sidebar navigation" style={{ width: 240, background: MB.bg, borderRight: `1px solid ${MB.line2}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <nav className="mb-desk-sidebar" aria-label="Sidebar navigation" style={{ width: 240, background: MB.bg, borderRight: `1px solid ${MB.line2}`, display: 'flex', flexDirection: 'column', flexShrink: 0, transition: 'width 0.2s ease' }}>
         <div style={{ padding: '18px 16px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${MB.line2}` }}>
           <Logo size={28} />
           <div>
@@ -58,16 +82,21 @@ export const DeskShell = memo(function DeskShell({ children, active = 'home', ro
           {items.map((it) => {
             const isActive = active === it.id
             return (
-              <div key={it.id} aria-current={isActive ? 'page' : undefined} style={{
+              <button
+                key={it.id}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => navigate(NAV_PATHS[role][it.id] || '/')}
+                style={{
                 padding: '8px 10px', borderRadius: 8, marginBottom: 2,
                 display: 'flex', alignItems: 'center', gap: 10,
                 background: isActive ? MB.primary50 : 'transparent',
                 color: isActive ? MB.primary600 : MB.text2,
                 fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: 'pointer',
+                width: '100%', border: 'none', textAlign: 'left',
               }}>
                 <Icon name={it.icon} size={16} color={isActive ? MB.primary600 : MB.text3} />
-                {it.label}
-              </div>
+                <span className="mb-desk-nav-label">{it.label}</span>
+              </button>
             )
           })}
         </div>
