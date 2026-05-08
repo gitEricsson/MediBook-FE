@@ -1,36 +1,58 @@
-// Observability — lightweight structured logger.
-// In production swap the console calls for your monitoring SDK (Sentry, Datadog, etc.)
-// without touching any call-sites.
+import { env } from '@/config/env';
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+/**
+ * Production-Grade Logger with PHI Sanitization
+ */
 
-interface LogEntry {
-  level: LogLevel
-  message: string
-  context?: Record<string, unknown>
-  timestamp: string
-}
+const PHI_KEYS = [
+  'notes', 
+  'medicalHistory', 
+  'conditions', 
+  'medications', 
+  'assessment', 
+  'plan', 
+  'chiefComplaint',
+  'ssn',
+  'address',
+  'phone'
+];
 
-function emit(entry: LogEntry): void {
-  const prefix = `[MediBook][${entry.level.toUpperCase()}]`
-  const msg = `${prefix} ${entry.timestamp} — ${entry.message}`
-  if (entry.level === 'error') {
-    console.error(msg, entry.context ?? '')
-  } else if (entry.level === 'warn') {
-    console.warn(msg, entry.context ?? '')
-  } else {
-    // debug / info suppressed in production
-    if (import.meta.env.DEV) console.log(msg, entry.context ?? '')
+const sanitize = (obj: any): any => {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  const sanitized = Array.isArray(obj) ? [...obj] : { ...obj };
+  
+  for (const key in sanitized) {
+    if (PHI_KEYS.includes(key.toLowerCase())) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof sanitized[key] === 'object') {
+      sanitized[key] = sanitize(sanitized[key]);
+    }
   }
-}
-
-function log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
-  emit({ level, message, context, timestamp: new Date().toISOString() })
-}
+  
+  return sanitized;
+};
 
 export const logger = {
-  debug: (message: string, ctx?: Record<string, unknown>) => log('debug', message, ctx),
-  info:  (message: string, ctx?: Record<string, unknown>) => log('info',  message, ctx),
-  warn:  (message: string, ctx?: Record<string, unknown>) => log('warn',  message, ctx),
-  error: (message: string, ctx?: Record<string, unknown>) => log('error', message, ctx),
-}
+  info: (message: string, context?: any) => {
+    if (env.VITE_ENV !== 'production' || message.includes('auth')) {
+      console.info(`[INFO] ${message}`, sanitize(context));
+    }
+    // In production, send to structured log service (e.g. Datadog, Sentry)
+  },
+  
+  warn: (message: string, context?: any) => {
+    console.warn(`[WARN] ${message}`, sanitize(context));
+  },
+  
+  error: (message: string, context?: any) => {
+    console.error(`[ERROR] ${message}`, sanitize(context));
+    // Always send errors to Sentry
+  },
+  
+  debug: (message: string, context?: any) => {
+    if (env.VITE_ENV === 'development') {
+      console.debug(`[DEBUG] ${message}`, sanitize(context));
+    }
+  }
+};

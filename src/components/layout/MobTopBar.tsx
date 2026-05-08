@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { MB } from '@/constants/tokens'
+import { useNavigate } from 'react-router-dom'
 
 const MB_NAV_H = 56
 
@@ -12,6 +13,7 @@ interface MobTopBarProps {
 }
 
 export const MobTopBar = memo(function MobTopBar({ title, subtitle, back, right, transparent }: MobTopBarProps) {
+  const navigate = useNavigate()
   return (
     <header style={{
       height: MB_NAV_H, padding: '0 16px',
@@ -24,6 +26,7 @@ export const MobTopBar = memo(function MobTopBar({ title, subtitle, back, right,
         {back && (
           <button
             aria-label="Go back"
+            onClick={() => navigate(-1)}
             style={{
               width: 36, height: 36, borderRadius: 10, border: 'none',
               background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
