@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -9,50 +9,82 @@ import { Icon } from '@/components/primitives/Icon'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { useDoctorDetail, useDoctorAvailability } from '@/hooks/useDoctorData'
+import { useBooking } from '@/hooks/useBooking'
+import { useNavigate, useParams } from 'react-router-dom'
 
-type DetailState = 'default' | 'loading' | 'empty' | 'error'
+interface SlotBtnProps { 
+  time: string; 
+  ampm: string; 
+  selected?: boolean; 
+  disabled?: boolean;
+  onClick?: () => void;
+}
 
-const DAYS = [
-  { d: 'Tue', n: 6, free: true },
-  { d: 'Wed', n: 7, free: true, active: true },
-  { d: 'Thu', n: 8, free: true },
-  { d: 'Fri', n: 9, free: false },
-  { d: 'Sat', n: 10, free: true },
-  { d: 'Sun', n: 11, free: false },
-  { d: 'Mon', n: 12, free: true },
-]
-const SLOTS = ['9:00','9:30','10:00','11:00','11:30','1:30','2:00','3:00']
-
-function SlotBtn({ time, ampm, selected }: { time: string; ampm: string; selected?: boolean }) {
+function SlotBtn({ time, ampm, selected, disabled, onClick }: SlotBtnProps) {
   return (
-    <div role="button" tabIndex={0} aria-pressed={selected} style={{
-      height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 13, fontWeight: 600,
-      background: selected ? MB.primary : MB.bg,
-      color: selected ? '#fff' : MB.text,
-      border: `1px solid ${selected ? MB.primary : MB.line}`, cursor: 'pointer',
-    }}>
+    <div 
+      role="button" 
+      tabIndex={disabled ? -1 : 0} 
+      aria-pressed={selected} 
+      onClick={!disabled ? onClick : undefined}
+      style={{
+        height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 13, fontWeight: 600,
+        background: selected ? MB.primary : MB.bg,
+        color: selected ? '#fff' : disabled ? MB.text4 : MB.text,
+        border: `1px solid ${selected ? MB.primary : MB.line}`, 
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
       {time} <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.7 }}>{ampm}</span>
     </div>
   )
 }
 
-interface MobDoctorDetailProps { state?: DetailState }
+export default memo(function MobDoctorDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
-export default memo(function MobDoctorDetail({ state = 'default' }: MobDoctorDetailProps) {
+  const { data: doctor, isLoading: isDocLoading } = useDoctorDetail(id || '');
+  const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate);
+  const { holdSlot, isHolding } = useBooking();
+
+  const handleContinue = async () => {
+    if (!id || !selectedSlotId) return;
+    try {
+      const [startIso] = selectedSlotId.split('-');
+      const hold = await holdSlot({
+        doctorId: Number(id),
+        scheduledAt: startIso,
+        type: 'IN_PERSON',
+      });
+      // Navigate to review with hold information
+      navigate(`/patient/book/review`, { state: { hold, doctor, selectedDate, slotId: selectedSlotId } });
+    } catch (err) {
+      // Concurrency error handled by useBooking internally, but we could show a local toast
+    }
+  };
+
+  if (isDocLoading) return <MobScreen><MobTopBar title="Loading..." back /><div style={{ padding: 16 }}><Skel h={200} /></div></MobScreen>;
+  if (!doctor) return <MobScreen><MobTopBar title="Error" back /><EmptyState title="Doctor not found" /></MobScreen>;
+
   return (
     <MobScreen>
-      <MobTopBar title="Dr. Sarah Chen" back right={
+      <MobTopBar title={`Dr. ${doctor.name}`} back right={
         <button className="mb-icon-btn" aria-label="More options"><Icon name="moreH" size={18} color={MB.text} /></button>
       } />
       <div style={{ flex: 1, overflow: 'auto' }}>
         <div style={{ background: MB.bg, padding: '16px 16px 20px', borderBottom: `1px solid ${MB.line2}` }}>
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <PhotoBlock w={72} h={72} label="DR · CHEN" tone="primary" />
+            <PhotoBlock w={72} h={72} label={`DR · ${doctor.name.split(' ')[1]?.toUpperCase() || 'DOC'}`} tone="primary" />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 17, fontWeight: 700, color: MB.ink }}>Dr. Sarah Chen</div>
-              <div style={{ fontSize: 13, color: MB.text2, marginTop: 2 }}>Cardiology</div>
-              <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>Cardiology Dept · Bay General</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: MB.ink }}>Dr. {doctor.name}</div>
+              <div style={{ fontSize: 13, color: MB.text2, marginTop: 2 }}>{doctor.specialization || doctor.spec || 'Specialist'}</div>
+              <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{doctor.department || doctor.dept || 'General Medicine'} · {doctor.city || 'Bay General'}</div>
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <Badge tone="success" dot size="sm">Accepting new</Badge>
                 <Badge tone="neutral" size="sm">12 yrs exp.</Badge>
@@ -60,7 +92,7 @@ export default memo(function MobDoctorDetail({ state = 'default' }: MobDoctorDet
             </div>
           </div>
           <p style={{ fontSize: 13, color: MB.text2, marginTop: 14, marginBottom: 0, lineHeight: 1.5 }}>
-            Board-certified cardiologist specialising in preventive cardiology, arrhythmia management, and post-MI recovery. Speaks English, Mandarin.
+            {doctor.bio || 'Board-certified specialist dedicated to providing high-quality healthcare. Focuses on patient-centered outcomes and preventative care.'}
           </p>
         </div>
         <div style={{ padding: 16 }}>
@@ -68,46 +100,70 @@ export default memo(function MobDoctorDetail({ state = 'default' }: MobDoctorDet
             <div className="mb-h4">Available slots</div>
             <span className="mb-caption">Pacific time</span>
           </div>
+          
+          {/* Calendar Day Picker (Simplified for prototype) */}
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 14 }}>
-            {DAYS.map(day => (
-              <div key={day.n} role="button" tabIndex={0} aria-pressed={day.active} style={{
-                width: 50, padding: '8px 0', borderRadius: 10, flexShrink: 0, textAlign: 'center', cursor: 'pointer',
-                background: day.active ? MB.primary : day.free ? MB.bg : MB.bg3,
-                border: `1px solid ${day.active ? MB.primary : MB.line}`,
-                color: day.active ? '#fff' : day.free ? MB.text : MB.text4,
-                opacity: day.free ? 1 : 0.55,
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>{day.d}</div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>{day.n}</div>
-                {day.free && !day.active && <div style={{ fontSize: 9, color: MB.success, marginTop: 1 }}>● free</div>}
-                {!day.free && <div style={{ fontSize: 9, marginTop: 1 }}>—</div>}
-              </div>
-            ))}
+            {[0, 1, 2, 3, 4, 5, 6].map(i => {
+              const d = new Date();
+              d.setDate(d.getDate() + i);
+              const iso = d.toISOString().split('T')[0];
+              const isActive = selectedDate === iso;
+              return (
+                <div key={iso} role="button" tabIndex={0} onClick={() => setSelectedDate(iso)} style={{
+                  width: 50, padding: '8px 0', borderRadius: 10, flexShrink: 0, textAlign: 'center', cursor: 'pointer',
+                  background: isActive ? MB.primary : MB.bg,
+                  border: `1px solid ${isActive ? MB.primary : MB.line}`,
+                  color: isActive ? '#fff' : MB.text,
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>
+                    {d.toLocaleDateString('en-US', { weekday: 'short' })}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>{d.getDate()}</div>
+                </div>
+              );
+            })}
           </div>
-          {state === 'loading' && (
+
+          {isAvailLoading && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
               {[0,1,2,3,4,5].map(i => <Skel key={i} w="100%" h={40} r={8} />)}
             </div>
           )}
-          {state === 'empty' && <EmptyState icon="calendar" title="No slots on this day" body="Try another day this week." />}
-          {state === 'error' && <ErrorState title="Couldn't load availability" body="We'll retry automatically." />}
-          {state === 'default' && (
+          {isError && <ErrorState title="Couldn't load availability" body="We'll retry automatically." />}
+          {!isAvailLoading && (!availability || availability.length === 0) && (
+            <EmptyState icon="calendar" title="No slots on this day" body="Try another day this week." />
+          )}
+          {!isAvailLoading && availability && availability.length > 0 && (
             <>
-              <div style={{ fontSize: 12, color: MB.text3, marginBottom: 8 }}>Morning</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
-                {SLOTS.slice(0,5).map((s,i) => <SlotBtn key={s} time={s} ampm="AM" selected={i===1} />)}
-              </div>
-              <div style={{ fontSize: 12, color: MB.text3, marginBottom: 8 }}>Afternoon</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                {SLOTS.slice(5).map(s => <SlotBtn key={s} time={s} ampm="PM" />)}
+                {availability[0].slots.map((slot) => {
+                  const [h, m] = slot.startTime.split(':');
+                  const ampm = parseInt(h) >= 12 ? 'PM' : 'AM';
+                  return (
+                    <SlotBtn 
+                      key={slot.id} 
+                      time={slot.startTime} 
+                      ampm={ampm} 
+                      selected={selectedSlotId === slot.id}
+                      disabled={!slot.isAvailable}
+                      onClick={() => setSelectedSlotId(slot.id)}
+                    />
+                  )
+                })}
               </div>
             </>
           )}
         </div>
       </div>
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>
-        <Btn variant="primary" size="lg" full disabled={state !== 'default'}>
-          Continue with Wed, May 7 · 9:30 AM
+        <Btn 
+          variant="primary" 
+          size="lg" 
+          full 
+          disabled={!selectedSlotId || isHolding}
+          onClick={handleContinue}
+        >
+          {isHolding ? 'Securing slot...' : 'Continue to review'}
         </Btn>
       </div>
     </MobScreen>

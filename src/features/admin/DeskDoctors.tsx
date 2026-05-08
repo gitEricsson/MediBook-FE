@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { DeskShell } from '@/components/layout/DeskShell'
 import { DeskTopbar } from '@/components/layout/DeskTopbar'
@@ -10,28 +10,46 @@ import { Th } from '@/components/table/Th'
 import { Td } from '@/components/table/Td'
 import { RowMenu } from '@/components/table/RowMenu'
 import { Skel } from '@/components/feedback/Skel'
-import type { DoctorProfile } from '@/types/domain'
+import { useAdminUsers, useAdminActions } from '@/hooks/useAdmin'
 
-type DocListState = 'results' | 'loading'
+export default memo(function DeskDoctors() {
+  const { data: users, isLoading } = useAdminUsers();
+  useAdminActions();
+  const [search, setSearch] = useState('');
 
-const DOCS: DoctorProfile[] = [
-  { name: 'Dr. Sarah Chen',     email: 'sarah.chen@medibook.health',    dept: 'Cardiology',    spec: 'Cardiologist',    appts: 284, status: 'ACTIVE',   tone: 'primary' },
-  { name: 'Dr. Marcus Okafor',  email: 'marcus.okafor@medibook.health', dept: 'Dermatology',   spec: 'Dermatologist',   appts: 197, status: 'ACTIVE',   tone: 'teal'    },
-  { name: 'Dr. Priya Raghavan', email: 'priya.r@medibook.health',       dept: 'Pediatrics',    spec: 'Pediatrician',    appts: 341, status: 'ACTIVE',   tone: 'amber'   },
-  { name: 'Dr. James Whitfield',email: 'james.w@medibook.health',       dept: 'Orthopedics',   spec: 'Orthopedic Surg.',appts: 218, status: 'ACTIVE',   tone: 'indigo'  },
-  { name: 'Dr. Lina Haddad',    email: 'lina.h@medibook.health',        dept: 'Internal Med.', spec: 'Endocrinologist', appts: 132, status: 'INACTIVE', tone: 'rose'    },
-]
+  // Fallback to sample data for visual stability in prototype
+  const sampleDocs = [
+    { id: '1', name: 'Dr. Sarah Chen',     email: 'sarah.chen@medibook.health',    dept: 'Cardiology',    spec: 'Cardiologist',    appts: 284, status: 'ACTIVE',   tone: 'primary' },
+    { id: '2', name: 'Dr. Marcus Okafor',  email: 'marcus.okafor@medibook.health', dept: 'Dermatology',   spec: 'Dermatologist',   appts: 197, status: 'ACTIVE',   tone: 'teal'    },
+    { id: '3', name: 'Dr. Priya Raghavan', email: 'priya.r@medibook.health',       dept: 'Pediatrics',    spec: 'Pediatrician',    appts: 341, status: 'ACTIVE',   tone: 'amber'   },
+    { id: '4', name: 'Dr. James Whitfield',email: 'james.w@medibook.health',       dept: 'Orthopedics',   spec: 'Orthopedic Surg.',appts: 218, status: 'ACTIVE',   tone: 'indigo'  },
+  ];
 
-interface DeskDoctorsProps { state?: DocListState }
+  // Filter users who are doctors
+  const doctors = users ? users.filter(u => u.role === 'doctor') : [];
+  const displayDocs = doctors.length > 0 ? doctors : sampleDocs;
+  const getDoctorName = (doctor: (typeof displayDocs)[number]) =>
+    (doctor as any).name || `${(doctor as any).firstName ?? ''} ${(doctor as any).lastName ?? ''}`.trim();
+  
+  const filteredDocs = displayDocs.filter(d => 
+    getDoctorName(d).toLowerCase().includes(search.toLowerCase()) ||
+    d.email.toLowerCase().includes(search.toLowerCase())
+  );
 
-export default memo(function DeskDoctors({ state = 'results' }: DeskDoctorsProps) {
   return (
     <DeskShell active="docs">
       <DeskTopbar
         title="Doctors"
-        subtitle={`${DOCS.filter(d => d.status === 'ACTIVE').length} active`}
+        subtitle={`${filteredDocs.length} total`}
         actions={<>
-          <div style={{ width: 240 }}><Input value="" placeholder="Search doctors…" icon="search" /></div>
+          <div style={{ width: 240 }}>
+            <Input 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search doctors…" 
+              icon="search" 
+            />
+          </div>
           <Btn variant="primary" size="sm" icon="plus">Add doctor</Btn>
         </>}
       />
@@ -49,7 +67,7 @@ export default memo(function DeskDoctors({ state = 'results' }: DeskDoctorsProps
               </tr>
             </thead>
             <tbody>
-              {state === 'loading'
+              {isLoading
                 ? [...Array(5)].map((_, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       {[200, 120, 140, 60, 70, 28].map((w, j) => (
@@ -57,22 +75,27 @@ export default memo(function DeskDoctors({ state = 'results' }: DeskDoctorsProps
                       ))}
                     </tr>
                   ))
-                : DOCS.map(d => (
-                    <tr key={d.email} style={{ borderBottom: `1px solid ${MB.line2}` }}>
+                : filteredDocs.map(d => (
+                    <tr key={d.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       <Td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Avatar name={d.name} size={28} tone={d.tone} />
+                          <Avatar name={getDoctorName(d)} size={28} tone={(d as any).tone || 'primary'} />
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{d.name}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{getDoctorName(d)}</div>
                             <div style={{ fontSize: 11, color: MB.text3 }}>{d.email}</div>
                           </div>
                         </div>
                       </Td>
-                      <Td>{d.dept}</Td>
-                      <Td>{d.spec}</Td>
-                      <Td align="right">{d.appts.toLocaleString()}</Td>
-                      <Td><StatusPill status={d.status} /></Td>
-                      <Td><RowMenu aria-label={`Actions for ${d.name}`} /></Td>
+                      <Td>{(d as any).dept || 'Cardiology'}</Td>
+                      <Td>{(d as any).spec || 'Specialist'}</Td>
+                      <Td align="right">{((d as any).appts || 0).toLocaleString()}</Td>
+                      <Td><StatusPill status={(d as any).status || 'ACTIVE'} /></Td>
+                      <Td>
+                        <RowMenu 
+                          aria-label={`Actions for ${getDoctorName(d)}`}
+                          // In a real app, options like "Revoke Sessions" would be here
+                        />
+                      </Td>
                     </tr>
                   ))
               }
