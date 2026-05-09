@@ -68,6 +68,14 @@ export const AdminService = {
     await apiClient.post(`/api/v1/admin/departments/${id}/deactivate`);
   },
 
+  deactivateDepartment: async (id: string) => {
+    await apiClient.post(`/api/v1/admin/departments/${id}/deactivate`);
+  },
+
+  reactivateDepartment: async (id: string) => {
+    await apiClient.post(`/api/v1/admin/departments/${id}/reactivate`);
+  },
+
   // User Management
   getUsers: async () => {
     const response = await apiClient.get('/api/v1/users', {

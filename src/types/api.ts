@@ -95,6 +95,8 @@ export interface Appointment {
   type: 'IN_PERSON' | 'TELEHEALTH';
   reason?: string;
   confirmationCode?: string;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface DoctorAvailability {

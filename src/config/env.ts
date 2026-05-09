@@ -7,7 +7,7 @@ const envSchema = z.object({
 });
 
 const _env = envSchema.safeParse({
-  VITE_API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  VITE_API_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
   VITE_ENV: import.meta.env.VITE_ENV || 'development',
   VITE_APP_NAME: import.meta.env.VITE_APP_NAME || 'MediBook',
 });
@@ -17,7 +17,7 @@ if (!_env.success) {
 }
 
 export const env = _env.data || {
-  VITE_API_URL: 'http://localhost:3000',
+  VITE_API_URL: 'http://localhost:8080',
   VITE_ENV: 'development',
   VITE_APP_NAME: 'MediBook',
 };

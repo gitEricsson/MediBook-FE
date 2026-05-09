@@ -44,13 +44,13 @@ export function normalizeUserRole(role: string): UserRole {
   }
 }
 
-export function toPageableParams(pageable: PageableQuery): Record<string, string | number> {
-  const params: Record<string, string | number> = {
+export function toPageableParams(pageable: PageableQuery): Record<string, string | number | string[]> {
+  const params: Record<string, string | number | string[]> = {
     page: pageable.page ?? 0,
     size: pageable.size ?? 20,
   };
   if (pageable.sort && pageable.sort.length > 0) {
-    params.sort = pageable.sort.join(',');
+    params.sort = pageable.sort; // pass as string[]
   }
   return params;
 }

@@ -13,6 +13,7 @@ import {
   UserResponse,
 } from '@/types/api';
 import { normalizeUserRole } from '@/lib/api/contracts';
+import { useAuthStore } from '@/store/authStore';
 
 const mapUser = (user: UserResponse) => ({
   id: String(user.id),
@@ -54,8 +55,9 @@ export const AuthService = {
     return unwrapApiResponse<LoginResponse>(response.data);
   },
 
-  logout: async (data?: RefreshTokenRequest) => {
-    await apiClient.post('/api/v1/auth/logout', data ?? {});
+  logout: async () => {
+    const { refreshToken } = useAuthStore.getState();
+    await apiClient.post('/api/v1/auth/logout', { refreshToken });
   },
 
   forgotPassword: async (data: ForgotPasswordRequest) => {

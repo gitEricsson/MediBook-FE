@@ -15,10 +15,11 @@ interface User {
 interface AuthState {
   user: User | null;
   status: AuthStatus;
-  accessToken: string | null; // In-memory only
+  accessToken: string | null;
+  refreshToken: string | null;
   
   // Actions
-  setAuthenticated: (user: User, accessToken: string) => void;
+  setAuthenticated: (user: User, accessToken: string, refreshToken: string) => void;
   setUnauthenticated: () => void;
   set2FARequired: () => void;
   setLoading: () => void;
@@ -31,12 +32,13 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       status: 'idle',
       accessToken: null,
+      refreshToken: null,
 
-      setAuthenticated: (user, accessToken) => 
-        set({ user, accessToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
+      setAuthenticated: (user, accessToken, refreshToken) => 
+        set({ user, accessToken, refreshToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
 
       setUnauthenticated: () => 
-        set({ user: null, accessToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
+        set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
 
       set2FARequired: () => 
         set({ status: '2fa_required' }, false, 'auth/set2FARequired'),

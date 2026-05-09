@@ -31,8 +31,8 @@ export const useAuth = () => {
     onSuccess: (data) => {
       if (data.requires2FA) {
         set2FARequired();
-      } else if (data.accessToken && data.user) {
-        setAuthenticated(normalizeUserForStore(data.user), data.accessToken);
+      } else if (data.accessToken && data.refreshToken && data.user) {
+        setAuthenticated(normalizeUserForStore(data.user), data.accessToken, data.refreshToken);
         queryClient.invalidateQueries({ queryKey: ['me'] });
       }
     },
@@ -41,8 +41,8 @@ export const useAuth = () => {
   const registerMutation = useMutation({
     mutationFn: AuthService.register,
     onSuccess: (data) => {
-      if (data.accessToken && data.user) {
-        setAuthenticated(normalizeUserForStore(data.user), data.accessToken);
+      if (data.accessToken && data.refreshToken && data.user) {
+        setAuthenticated(normalizeUserForStore(data.user), data.accessToken, data.refreshToken);
         queryClient.invalidateQueries({ queryKey: ['me'] });
       }
     },
@@ -51,8 +51,8 @@ export const useAuth = () => {
   const verify2FAMutation = useMutation({
     mutationFn: AuthService.verify2FA,
     onSuccess: (data) => {
-      if (data.accessToken && data.user) {
-        setAuthenticated(normalizeUserForStore(data.user), data.accessToken);
+      if (data.accessToken && data.refreshToken && data.user) {
+        setAuthenticated(normalizeUserForStore(data.user), data.accessToken, data.refreshToken);
         queryClient.invalidateQueries({ queryKey: ['me'] });
       }
     },

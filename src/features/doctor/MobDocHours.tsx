@@ -12,7 +12,7 @@ import { DoctorPortalService, WorkingHours } from '@/services/doctor-portal.serv
 import { Skel } from '@/components/feedback/Skel'
 import type { ChangeEvent } from 'react'
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default memo(function MobDocHours() {
   const queryClient = useQueryClient();

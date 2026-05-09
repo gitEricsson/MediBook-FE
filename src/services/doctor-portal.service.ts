@@ -2,28 +2,22 @@ import { apiClient } from '@/lib/api/client';
 import { Appointment } from '@/types/api';
 import { unwrapApiResponse } from '@/lib/api/contracts';
 
-export interface WorkingHours {
-  dayOfWeek: number; // 0-6
-  startTime: string;
-  endTime: string;
-  isAvailable: boolean;
+export interface Time { hour: number; minute: number; }
+export interface FreeSlot { start: Time; end: Time; }
+
+export interface BackendScheduleResponse {
+  date: string;
+  workStart: Time;
+  workEnd: Time;
+  freeSlots: FreeSlot[];
+  appointments: Array<Appointment & { scheduledAt: string }>;
 }
 
-export interface PatientSummary {
-  id: string;
-  firstName: string;
-  lastName: string;
-  lastVisit: string;
-  conditions: string[];
-  medications: string[];
-}
-
-export interface ConsultationNoteRequest {
-  appointmentId: string;
-  diagnosis: string;
-  treatmentPlan: string;
-  prescriptions?: string;
-  followUpDate?: string;
+export interface DailyScheduleDetails {
+  appointments: Record<string, ScheduleAppt>;
+  workStart: Time;
+  workEnd: Time;
+  freeSlots: FreeSlot[];
 }
 
 export const DoctorPortalService = {
@@ -32,23 +26,28 @@ export const DoctorPortalService = {
     return unwrapApiResponse(response.data);
   },
 
-  getDailySchedule: async (date: string) => {
+  getDailySchedule: async (date: string): Promise<DailyScheduleDetails> => {
     const response = await apiClient.get(`/api/v1/me/schedule`, { params: { date } });
-    const schedule = unwrapApiResponse<{
-      appointments: Array<Appointment & { scheduledAt: string }>;
-    }>(response.data);
-    const mapped: Record<string, { name: string; reason: string; status: 'COMPLETED' | 'SCHEDULED' | 'NO_SHOW' | 'CANCELLED'; tone: string; patientId?: string }> = {};
-    schedule.appointments.forEach((appointment) => {
+    const scheduleData = unwrapApiResponse<BackendScheduleResponse>(response.data);
+    
+    const mappedAppointments: Record<string, ScheduleAppt> = {};
+    scheduleData.appointments.forEach((appointment) => {
       const time = new Date(appointment.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      mapped[time] = {
+      mappedAppointments[time] = {
         name: appointment.patientName,
         reason: appointment.reason ?? 'Consultation',
         status: appointment.status === 'CONFIRMED' ? 'SCHEDULED' : (appointment.status as 'COMPLETED' | 'SCHEDULED' | 'NO_SHOW' | 'CANCELLED'),
-        tone: 'primary',
+        tone: appointment.tone, // Use the tone from the appointment
         patientId: String(appointment.patientId),
       };
     });
-    return mapped;
+
+    return {
+      appointments: mappedAppointments,
+      workStart: scheduleData.workStart,
+      workEnd: scheduleData.workEnd,
+      freeSlots: scheduleData.freeSlots,
+    };
   },
 
   getWeeklySchedule: async (weekOf: string) => {

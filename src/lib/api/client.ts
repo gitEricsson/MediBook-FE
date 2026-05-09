@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { env } from '@/config/env';
 import { unwrapApiResponse } from './contracts';
+import { useAuthStore } from '@/store/authStore';
 
 // Types for the refresh queue
 interface FailedRequest {
@@ -28,15 +29,16 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Required for refresh token cookies if used
+  withCredentials: true,
 });
 
 // Request Interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // In a real app, we might get the token from a secure memory-only store or a cookie
-    // For this implementation, we'll assume the access token is managed securely
-    // and potentially added here if not handled by HTTP-only cookies.
+    const token = useAuthStore.getState().accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -65,31 +67,23 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Attempt to refresh the token
-        // In a production app, the refresh token would be in an HTTP-only cookie
-        // so the /auth/refresh endpoint would just work.
-        const response = await apiClient.post('/api/v1/auth/refresh', {});
+        const { refreshToken } = useAuthStore.getState();
+        const response = await apiClient.post('/api/v1/auth/refresh', { refreshToken });
         const { accessToken } = unwrapApiResponse<{ accessToken: string }>(response.data);
 
-        // Update the original request with the new token
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         
         processQueue(null, accessToken);
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        
-        // Handle logout / redirect to login
-        // This would typically trigger a state change in useAuthStore
         window.dispatchEvent(new CustomEvent('auth:logout'));
-        
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    // Handle other errors (500, 403, 404, etc.)
     return Promise.reject(error);
   }
 );

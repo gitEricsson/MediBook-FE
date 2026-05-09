@@ -1,13 +1,10 @@
 // ─── Appointment status ───────────────────────────────────────────────────
 export type AppointmentStatus =
-  | 'SCHEDULED'
-  | 'UPCOMING'
+  | 'PENDING'
+  | 'CONFIRMED'
   | 'COMPLETED'
   | 'CANCELLED'
   | 'NO_SHOW'
-  | 'PENDING'
-  | 'ACTIVE'
-  | 'INACTIVE'
 
 // ─── Avatar / badge tones ─────────────────────────────────────────────────
 export type AvatarTone = 'primary' | 'teal' | 'indigo' | 'amber' | 'rose' | 'slate'
