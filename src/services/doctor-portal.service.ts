@@ -37,7 +37,9 @@ export const DoctorPortalService = {
         name: appointment.patientName,
         reason: appointment.reason ?? 'Consultation',
         status: appointment.status === 'CONFIRMED' ? 'SCHEDULED' : (appointment.status as 'COMPLETED' | 'SCHEDULED' | 'NO_SHOW' | 'CANCELLED'),
-        tone: appointment.tone, // Use the tone from the appointment
+        tone: appointment.status === 'COMPLETED' ? 'teal'
+              : appointment.status === 'NO_SHOW' ? 'rose'
+              : 'primary', // Default tone
         patientId: String(appointment.patientId),
       };
     });

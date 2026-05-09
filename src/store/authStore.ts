@@ -28,29 +28,35 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   devtools(
-    (set) => ({
-      user: null,
-      status: 'idle',
-      accessToken: null,
-      refreshToken: null,
+    persist(
+      (set) => ({
+        user: null,
+        status: 'idle',
+        accessToken: null,
+        refreshToken: null,
 
-      setAuthenticated: (user, accessToken, refreshToken) => 
-        set({ user, accessToken, refreshToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
+        setAuthenticated: (user, accessToken, refreshToken) => 
+          set({ user, accessToken, refreshToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
 
-      setUnauthenticated: () => 
-        set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
+        setUnauthenticated: () => 
+          set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
 
-      set2FARequired: () => 
-        set({ status: '2fa_required' }, false, 'auth/set2FARequired'),
+        set2FARequired: () => 
+          set({ status: '2fa_required' }, false, 'auth/set2FARequired'),
 
-      setLoading: () => 
-        set({ status: 'loading' }, false, 'auth/setLoading'),
+        setLoading: () => 
+          set({ status: 'loading' }, false, 'auth/setLoading'),
 
-      updateUser: (updates) => 
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null
-        }), false, 'auth/updateUser'),
-    }),
+        updateUser: (updates) => 
+          set((state) => ({
+            user: state.user ? { ...state.user, ...updates } : null
+          }), false, 'auth/updateUser'),
+      }),
+      {
+        name: 'medibook-auth',
+        partialize: (state) => ({ refreshToken: state.refreshToken }), // only persist token, not user/accessToken
+      }
+    ),
     { name: 'MediBook Auth Store' }
   )
 );
