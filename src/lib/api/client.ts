@@ -26,10 +26,14 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 export const apiClient = axios.create({
   baseURL: env.VITE_API_URL,
+  timeout: env.VITE_API_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
   withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 // Request Interceptor

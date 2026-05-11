@@ -8,7 +8,7 @@ export type AppointmentStatus =
 
 export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN'
 
-export type AppointmentType = 'IN_PERSON' | 'TELEHEALTH'
+export type AppointmentType = 'IN_PERSON' | 'TELEHEALTH' | 'TELEMEDICINE'
 
 export type SlotStatus = 'OPEN' | 'HELD' | 'TAKEN'
 
@@ -34,6 +34,13 @@ export interface Doctor {
   acceptingNew?: boolean
   slotDurationMins?: number
   languages?: string
+  gender?: string
+  telemedicineEnabled?: boolean
+  yearsOfExperience?: number
+  consultationFee?: number
+  effectiveConsultationFee?: number
+  averageRating?: number
+  reviewCount?: number
   tone: AvatarTone
   next: string
   city: string

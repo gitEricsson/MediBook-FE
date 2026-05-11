@@ -1,10 +1,10 @@
 import { apiClient } from '@/lib/api/client';
 import { PageResponse, toPageableParams, unwrapApiResponse } from '@/lib/api/contracts';
-import { 
-  AppointmentHoldRequest, 
-  AppointmentHoldResponse, 
-  AppointmentConfirmRequest, 
-  Appointment 
+import {
+  AppointmentHoldRequest,
+  AppointmentHoldResponse,
+  AppointmentConfirmRequest,
+  Appointment,
 } from '@/types/api';
 
 export const BookingService = {
@@ -42,9 +42,4 @@ export const BookingService = {
     const response = await apiClient.post(`/api/v1/appointments/${id}/cancel`, { reason });
     return unwrapApiResponse<Appointment>(response.data);
   },
-
-  getCancellationPolicy: async () => {
-    const response = await apiClient.get('/api/v1/policies/cancellation');
-    return unwrapApiResponse<{ noticeHours: number; feeApplies: boolean }>(response.data);
-  }
 };

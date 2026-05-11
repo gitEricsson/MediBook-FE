@@ -6,6 +6,7 @@ import { Logo } from './Logo'
 import type { UserRole } from '@/types/domain'
 import type { IconName } from '@/types/ui'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 
 interface NavItem { id: string; label: string; icon: IconName }
 
@@ -33,15 +34,13 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
 }
 
 const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', doctor: 'Doctor', patient: 'Patient' }
-const ROLE_USER:  Record<UserRole, string> = { admin: 'Alex Reyes', doctor: 'Dr. Sarah Chen', patient: 'Sarah Patient' }
-const ROLE_SUB:   Record<UserRole, string> = { admin: 'alex@medibook.health', doctor: 'Cardiology', patient: 'Member' }
 const NAV_PATHS: Record<UserRole, Record<string, string>> = {
   admin: {
     home: '/admin/patients',
     depts: '/admin/depts',
     docs: '/admin/docs',
     analytics: '/admin/analytics',
-    capacity: '/admin/analytics',
+    capacity: '/admin/capacity',
     settings: '/admin/settings',
   },
   doctor: {
@@ -66,7 +65,10 @@ interface DeskShellProps {
 
 export const DeskShell = memo(function DeskShell({ children, active = 'home', role = 'admin' }: DeskShellProps) {
   const navigate = useNavigate()
+  const authUser = useAuthStore((s) => s.user)
   const items = NAV_BY_ROLE[role]
+  const displayName = authUser ? `${authUser.firstName} ${authUser.lastName}` : 'Account'
+  const displaySub = authUser?.email ?? ''
   return (
     <div className="mb" style={{ width: '100%', height: '100%', display: 'flex', background: MB.bg2, overflow: 'hidden' }}>
       {/* Sidebar */}
@@ -74,7 +76,7 @@ export const DeskShell = memo(function DeskShell({ children, active = 'home', ro
         <div style={{ padding: '18px 16px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${MB.line2}` }}>
           <Logo size={28} />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: MB.ink, letterSpacing: -0.01 }}>MediBook</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: MB.ink, letterSpacing: 0 }}>MediBook</div>
             <div style={{ fontSize: 10, color: MB.text3, fontWeight: 500, letterSpacing: 0.04, textTransform: 'uppercase' }}>{ROLE_LABEL[role]} console</div>
           </div>
         </div>
@@ -101,10 +103,10 @@ export const DeskShell = memo(function DeskShell({ children, active = 'home', ro
           })}
         </div>
         <div style={{ padding: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Avatar name={ROLE_USER[role]} size={32} tone="primary" />
+          <Avatar name={displayName} size={32} tone="primary" />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: MB.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ROLE_USER[role]}</div>
-            <div style={{ fontSize: 11, color: MB.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ROLE_SUB[role]}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: MB.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+            <div style={{ fontSize: 11, color: MB.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displaySub}</div>
           </div>
           <Icon name="moreV" size={16} color={MB.text3} />
         </div>

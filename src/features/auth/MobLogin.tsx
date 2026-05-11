@@ -58,7 +58,7 @@ export default memo(function MobLogin() {
       <form onSubmit={handleLogin} style={{ flex: 1, padding: '32px 24px 24px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32 }}>
           <Logo size={28} />
-          <span style={{ fontSize: 17, fontWeight: 700, color: MB.ink, letterSpacing: -0.01 }}>MediBook</span>
+          <span style={{ fontSize: 17, fontWeight: 700, color: MB.ink, letterSpacing: 0 }}>MediBook</span>
         </div>
         <h1 className="mb-h1" style={{ fontSize: 26, marginBottom: 6 }}>Welcome back</h1>
         <p className="mb-small" style={{ marginBottom: 28 }}>Sign in to manage your appointments.</p>

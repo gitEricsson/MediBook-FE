@@ -5,16 +5,14 @@ import { PageResponse, toPageableParams, unwrapApiResponse } from '@/lib/api/con
 
 export interface DoctorSearchParams {
   q?: string;
-  departmentId?: number[];
-  specialisation?: string[];
-  availability?: string;
-  visitType?: string;
+  departmentIds?: number[];
+  specialisations?: string[];
   acceptingNew?: boolean;
   page?: number;
   size?: number;
 }
 
-interface DoctorApiResponse {
+export interface DoctorApiResponse {
   id: number;
   userId?: number;
   fullName: string;
@@ -27,6 +25,13 @@ interface DoctorApiResponse {
   acceptingNew?: boolean;
   slotDurationMins?: number;
   languages?: string;
+  gender?: string;
+  telemedicineEnabled?: boolean;
+  yearsOfExperience?: number;
+  consultationFee?: number;
+  effectiveConsultationFee?: number;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 interface AvailabilityGridResponse {
@@ -40,7 +45,7 @@ interface AvailabilityGridResponse {
   }>;
 }
 
-const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
+export const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
   const specialization = doctor.specialization ?? 'General Practice';
   const department = doctor.departmentName ?? 'General Medicine';
   return {
@@ -58,6 +63,13 @@ const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
     acceptingNew: doctor.acceptingNew,
     slotDurationMins: doctor.slotDurationMins,
     languages: doctor.languages,
+    gender: doctor.gender,
+    telemedicineEnabled: doctor.telemedicineEnabled,
+    yearsOfExperience: doctor.yearsOfExperience,
+    consultationFee: doctor.consultationFee,
+    effectiveConsultationFee: doctor.effectiveConsultationFee,
+    averageRating: doctor.averageRating,
+    reviewCount: doctor.reviewCount,
     tone: 'primary',
     next: '',
     city: 'Bay General',
@@ -68,7 +80,10 @@ export const DoctorService = {
   search: async (params: DoctorSearchParams) => {
     const response = await apiClient.get('/api/v1/doctors/search', {
       params: {
-        ...params,
+        q: params.q,
+        departmentId: params.departmentIds,
+        specialisation: params.specialisations,
+        acceptingNew: params.acceptingNew,
         ...toPageableParams({ page: params.page, size: params.size }),
       },
     });
@@ -77,15 +92,15 @@ export const DoctorService = {
   },
 
   getById: async (id: string) => {
-    const response = await apiClient.get(`/api/v1/doctors/${id}/profile`);
+    const response = await apiClient.get(`/api/v1/doctors/${id}`);
     return mapDoctor(unwrapApiResponse<DoctorApiResponse>(response.data));
   },
 
-  getAvailability: async (id: string, from?: string, to?: string, tz?: string) => {
+  getAvailability: async (id: string, from?: string, to?: string) => {
     const start = from ?? new Date().toISOString().split('T')[0];
     const end = to ?? start;
     const response = await apiClient.get(`/api/v1/doctors/${id}/availability`, {
-      params: { from: start, to: end, tz },
+      params: { from: start, to: end },
     });
     const availabilityGrid = unwrapApiResponse<AvailabilityGridResponse>(response.data);
     return availabilityGrid.days.map<DoctorAvailability>((day) => ({

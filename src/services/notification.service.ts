@@ -12,29 +12,22 @@ export interface NotificationItem {
   appointmentId?: number;
 }
 
-export interface MarkReadRequest {
-  createdAt: string;
-}
-
 export const NotificationService = {
-  list: async (unread?: boolean) => {
-    const response = await apiClient.get('/api/v1/me/notifications', { params: { unread } });
+  list: async () => {
+    const response = await apiClient.get('/api/v1/notifications');
     return unwrapApiResponse<NotificationItem[]>(response.data);
   },
 
-  unreadCount: async () => {
-    const response = await apiClient.get('/api/v1/me/notifications/unread-count');
-    return unwrapApiResponse<number>(response.data);
+  listUnread: async () => {
+    const response = await apiClient.get('/api/v1/notifications/unread');
+    return unwrapApiResponse<NotificationItem[]>(response.data);
   },
 
-  markRead: async (id: string, payload: MarkReadRequest) => {
-    await apiClient.post(`/api/v1/me/notifications/${id}/read`, payload);
+  markRead: async (notificationId: string, createdAt: string) => {
+    await apiClient.post(`/api/v1/notifications/${notificationId}/read`, { createdAt });
   },
 
   markAllRead: async () => {
-    await apiClient.post('/api/v1/me/notifications/read-all');
+    await apiClient.post('/api/v1/notifications/read-all');
   },
-
-  streamUrl: (baseUrl: string) => `${baseUrl}/api/v1/me/notifications/stream`,
 };
-

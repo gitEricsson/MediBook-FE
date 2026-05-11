@@ -10,7 +10,9 @@ import { Field } from '@/components/forms/Field'
 import { Textarea } from '@/components/forms/Textarea'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBooking } from '@/hooks/useBooking'
+import { toast } from 'sonner'
 import type { Appointment } from '@/types/api'
+import { AppointmentsService } from '@/services/appointments.service'
 
 function ReviewRow({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
   return (
@@ -21,57 +23,76 @@ function ReviewRow({ label, value, mono, last }: { label: string; value: string;
   )
 }
 
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
 export default memo(function MobBookReview() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { hold, doctor, scheduledAt } = location.state || {};
-  const [reason, setReason] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
-  const [reviewHoldTimer, setReviewHoldTimer] = useState<number | null>(null);
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { hold, doctor, scheduledAt } = location.state || {}
+  const [reason, setReason] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [appointment, setAppointment] = useState<Appointment | null>(null)
+  const [holdTimer, setHoldTimer] = useState<number | null>(null)
 
-  const { confirmBooking, isConfirming, cancelHold } = useBooking();
+  const { confirmBooking, isConfirming, cancelHold } = useBooking()
 
-  // If no hold, redirect back
+  useEffect(() => { if (!hold) navigate('/patient/search') }, [hold, navigate])
+
   useEffect(() => {
-    if (!hold) {
-      navigate('/patient/search');
+    if (!hold?.expiresAt) return
+    const update = () => {
+      const remaining = Math.max(0, Math.floor((new Date(hold.expiresAt).getTime() - Date.now()) / 1000))
+      setHoldTimer(remaining)
     }
-  }, [hold, navigate]);
-
-  useEffect(() => {
-    if (!hold?.expiresAt) return;
-    const updateTimer = () => {
-      const remaining = Math.max(0, Math.floor((new Date(hold.expiresAt).getTime() - Date.now()) / 1000));
-      setReviewHoldTimer(remaining);
-    };
-    updateTimer();
-    const interval = window.setInterval(updateTimer, 1000);
-    return () => window.clearInterval(interval);
-  }, [hold?.expiresAt]);
+    update()
+    const id = window.setInterval(update, 1000)
+    return () => window.clearInterval(id)
+  }, [hold?.expiresAt])
 
   const handleConfirm = async () => {
     try {
-      const appt = await confirmBooking({ 
+      const appt = await confirmBooking({
         holdId: hold.holdId,
         doctorId: Number(doctor.id),
         scheduledAt,
         type: 'IN_PERSON',
         reason,
-      });
-      setAppointment(appt);
-      setSuccess(true);
+      })
+      setAppointment(appt)
+      setSuccess(true)
     } catch {
-      // Error handled by useBooking/QueryClient
+      toast.error('Booking failed. Please try again.')
     }
-  };
+  }
 
-  const handleBack = () => {
-    cancelHold();
-    navigate(-1);
-  };
+  const handleAddToCalendar = async () => {
+    if (!appointment) return
+    try {
+      const blob = await AppointmentsService.getCalendarIcs(String(appointment.id))
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `appointment-${appointment.id}.ics`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Could not download calendar file.')
+    }
+  }
 
-  if (!hold || !doctor) return null;
+  if (!hold || !doctor) return null
+
+  const fee = doctor.effectiveConsultationFee ?? doctor.consultationFee
+
+  const timerMins = Math.floor((holdTimer ?? 0) / 60)
+  const timerSecs = (holdTimer ?? 0) % 60
+  const timerStr = `${timerMins}:${timerSecs < 10 ? '0' : ''}${timerSecs}`
 
   return (
     <MobScreen>
@@ -84,41 +105,36 @@ export default memo(function MobBookReview() {
             </div>
             <div>
               <h2 className="mb-h2" style={{ fontSize: 20 }}>You're booked!</h2>
-              <div className="mb-small" style={{ marginTop: 4 }}>Confirmation sent to your email</div>
+              <div className="mb-small" style={{ marginTop: 4 }}>A confirmation has been sent to your email.</div>
             </div>
-            <Card padding={14} style={{ width: '100%', textAlign: 'left', background: MB.bg2 }}>
+            <Card padding={0} style={{ width: '100%', textAlign: 'left', background: MB.bg2 }}>
               <ReviewRow label="Doctor"       value={`Dr. ${doctor.name}`} />
-              <ReviewRow label="Date"         value={appointment?.scheduledAt ? new Date(appointment.scheduledAt).toLocaleDateString() : 'Upcoming'} />
-              <ReviewRow label="Time"         value={appointment?.scheduledAt ? appointment.scheduledAt.slice(11, 16) : 'Confirmed'} />
-              <ReviewRow label="Location"     value={`${doctor.department} · Bay General`} />
-              <ReviewRow label="Confirmation" value={appointment?.confirmationCode || String(appointment?.id ?? '')} mono last />
+              <ReviewRow label="Date"         value={appointment?.scheduledAt ? formatDate(appointment.scheduledAt) : '—'} />
+              <ReviewRow label="Time"         value={appointment?.scheduledAt ? formatTime(appointment.scheduledAt) : '—'} />
+              <ReviewRow label="Department"   value={doctor.department || doctor.dept || '—'} />
+              {fee && <ReviewRow label="Fee paid" value={`₦${fee.toLocaleString()}`} />}
+              <ReviewRow label="Reference"    value={appointment?.confirmationCode || `#${appointment?.id ?? ''}`} mono last />
             </Card>
             <Btn variant="primary" size="lg" full style={{ marginTop: 8 }} onClick={() => navigate('/patient/appts')}>
               View in My visits
             </Btn>
-            <Btn variant="ghost"   size="md" full>Add to calendar</Btn>
+            <Btn variant="secondary" size="md" full onClick={handleAddToCalendar}>
+              <Icon name="download" size={15} /> Add to calendar
+            </Btn>
           </div>
         ) : (
           <>
-            <div style={{ 
-              background: MB.primary50, 
-              padding: '10px 14px', 
-              borderRadius: 8, 
-              marginBottom: 16, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between' 
-            }}>
+            {/* Hold countdown */}
+            <div style={{ background: MB.primary50, padding: '10px 14px', borderRadius: 8, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: MB.primary700, fontSize: 13, fontWeight: 600 }}>
                 <Icon name="clock" size={14} color={MB.primary} />
-                <span>Slot secured temporarily</span>
+                Slot held · expires in
               </div>
-              <div style={{ color: MB.primary, fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
-                {Math.floor((reviewHoldTimer || 0) / 60)}:{(reviewHoldTimer || 0) % 60 < 10 ? '0' : ''}{(reviewHoldTimer || 0) % 60}
-              </div>
+              <div style={{ color: MB.primary, fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{timerStr}</div>
             </div>
 
-            <Card padding={14} style={{ marginBottom: 14 }}>
+            {/* Doctor summary */}
+            <Card padding={12} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <PhotoBlock w={48} h={48} label={`DR · ${doctor.name.split(' ')[1]?.toUpperCase()}`} tone="primary" />
                 <div style={{ flex: 1 }}>
@@ -127,41 +143,50 @@ export default memo(function MobBookReview() {
                 </div>
               </div>
             </Card>
-            <div className="mb-eyebrow" style={{ marginBottom: 8 }}>Appointment</div>
+
+            {/* Appointment details */}
+            <div className="mb-eyebrow" style={{ marginBottom: 8 }}>Appointment details</div>
             <Card padding={0} style={{ marginBottom: 14 }}>
-              <ReviewRow label="Type"     value="In-person consultation" last />
+              <ReviewRow label="Date"     value={scheduledAt ? formatDate(scheduledAt) : '—'} />
+              <ReviewRow label="Time"     value={scheduledAt ? formatTime(scheduledAt) : '—'} />
+              <ReviewRow label="Type"     value="In-person consultation" />
+              {fee && <ReviewRow label="Consultation fee" value={`₦${fee.toLocaleString()}`} last />}
             </Card>
+
             <div className="mb-eyebrow" style={{ marginBottom: 8 }}>Reason for visit</div>
             <Field>
-              <Textarea 
-                value={reason} 
-                onChange={(e) => setReason(e.target.value)} 
-                placeholder="Briefly describe your reason for visit..."
-                rows={3} 
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Briefly describe your reason for the visit…"
+                rows={3}
               />
             </Field>
-            <div style={{ marginTop: 14, padding: 12, background: MB.warnBg, borderRadius: 8, fontSize: 12, color: MB.warn, display: 'flex', gap: 8 }}>
+
+            <div style={{ marginTop: 14, padding: '10px 12px', background: MB.warnBg, borderRadius: 8, fontSize: 12, color: MB.warn, display: 'flex', gap: 8 }}>
               <Icon name="info" size={14} color={MB.warn} />
-              <span>Cancellations are free up to 24 hours before your visit.</span>
+              <span>Cancellations are free up to 24 hours before your appointment.</span>
             </div>
-            {!reviewHoldTimer && (
-              <div role="alert" style={{ marginTop: 14, padding: 12, background: MB.dangerBg, borderRadius: 8, fontSize: 13, color: MB.danger, display: 'flex', gap: 8 }}>
+
+            {holdTimer === 0 && (
+              <div role="alert" style={{ marginTop: 10, padding: '10px 12px', background: MB.dangerBg, borderRadius: 8, fontSize: 13, color: MB.danger, display: 'flex', gap: 8 }}>
                 <Icon name="alert" size={16} color={MB.danger} />
-                <div><strong>Hold expired.</strong> Please pick another time.</div>
+                <div><strong>Hold expired.</strong> Please go back and pick another time slot.</div>
               </div>
             )}
           </>
         )}
       </div>
+
       {!success && (
         <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0, display: 'flex', gap: 10 }}>
-          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={handleBack}>Back</Btn>
-          <Btn 
-            variant="primary"   
-            size="lg" 
-            style={{ flex: 1.6 }} 
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={() => { cancelHold(); navigate(-1) }}>Back</Btn>
+          <Btn
+            variant="primary"
+            size="lg"
+            style={{ flex: 1.6 }}
             loading={isConfirming}
-            disabled={!reviewHoldTimer}
+            disabled={!holdTimer}
             onClick={handleConfirm}
           >
             Confirm booking

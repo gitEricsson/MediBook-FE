@@ -1,13 +1,22 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { NotificationEvent } from '@/hooks/useSSENotifications';
+
+export interface StoredNotification {
+  notificationId: string;
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  appointmentId?: number;
+}
 
 interface NotificationState {
-  notifications: NotificationEvent[];
+  notifications: StoredNotification[];
   unreadCount: number;
-  addNotification: (notification: NotificationEvent) => void;
+  addNotification: (n: StoredNotification) => void;
   setUnreadCount: (count: number) => void;
-  markAsRead: (id: string) => void;
+  markAsRead: (notificationId: string) => void;
   clearAll: () => void;
 }
 
@@ -16,25 +25,35 @@ export const useNotificationStore = create<NotificationState>()(
     (set) => ({
       notifications: [],
       unreadCount: 0,
-      
-      addNotification: (notification) => 
-        set((state) => ({
-          notifications: [notification, ...state.notifications],
-          unreadCount: state.unreadCount + 1
-        }), false, 'notifications/add'),
 
-      setUnreadCount: (unreadCount) => 
+      addNotification: (notification) =>
+        set(
+          (state) => ({
+            notifications: [notification, ...state.notifications],
+            unreadCount: state.unreadCount + 1,
+          }),
+          false,
+          'notifications/add',
+        ),
+
+      setUnreadCount: (unreadCount) =>
         set({ unreadCount }, false, 'notifications/setCount'),
 
-      markAsRead: (id) => 
-        set((state) => ({
-          notifications: state.notifications.map(n => n.id === id ? { ...n, isRead: true } : n),
-          unreadCount: Math.max(0, state.unreadCount - 1)
-        }), false, 'notifications/markRead'),
+      markAsRead: (notificationId) =>
+        set(
+          (state) => ({
+            notifications: state.notifications.map((n) =>
+              n.notificationId === notificationId ? { ...n, read: true } : n,
+            ),
+            unreadCount: Math.max(0, state.unreadCount - 1),
+          }),
+          false,
+          'notifications/markRead',
+        ),
 
-      clearAll: () => 
+      clearAll: () =>
         set({ notifications: [], unreadCount: 0 }, false, 'notifications/clear'),
     }),
-    { name: 'MediBook Notification Store' }
-  )
+    { name: 'MediBook Notification Store' },
+  ),
 );

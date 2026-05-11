@@ -30,14 +30,15 @@ export const Input = memo(function Input({
   const h = size === 'sm' ? 34 : size === 'lg' ? 48 : 40
   const hasError = !!error
   return (
-    <div style={{
-      position: 'relative', display: 'flex', alignItems: 'center',
-      height: h, borderRadius: 8,
-      background: disabled ? MB.bg3 : MB.bg,
-      border: `1px solid ${hasError ? '#FCA29B' : MB.line}`,
-      width: full ? '100%' : undefined,
-      boxShadow: hasError ? '0 0 0 3px rgba(180,35,24,0.10)' : 'none',
-    }}>
+    <div
+      className="mb-input-shell"
+      data-invalid={hasError || undefined}
+      data-disabled={disabled || undefined}
+      style={{
+        '--mb-input-height': `${h}px`,
+        '--mb-input-width': full ? '100%' : undefined,
+      } as React.CSSProperties}
+    >
       {icon && (
         <span style={{ paddingLeft: 12, display: 'flex', color: MB.text3 }}>
           <Icon name={icon} size={16} />

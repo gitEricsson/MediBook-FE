@@ -2,6 +2,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AdminService, Department } from '@/services/admin.service';
 import { UserRole } from '@/types/domain';
 
+export const useAppointmentAnalytics = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['admin', 'analytics', 'appointments', from, to],
+    queryFn: () => AdminService.getAppointmentAnalytics(from, to),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useRevenueAnalytics = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['admin', 'analytics', 'revenue', from, to],
+    queryFn: () => AdminService.getRevenueAnalytics(from, to),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const useDoctorUtilization = (from: string, to: string) =>
+  useQuery({
+    queryKey: ['admin', 'analytics', 'utilization', from, to],
+    queryFn: () => AdminService.getDoctorUtilization(from, to),
+    staleTime: 5 * 60 * 1000,
+  });
+
 export const useAdminDepartments = () => {
   return useQuery({
     queryKey: ['admin', 'departments'],
