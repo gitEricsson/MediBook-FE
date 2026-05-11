@@ -10,6 +10,7 @@ import { Field } from '@/components/forms/Field'
 import { Textarea } from '@/components/forms/Textarea'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBooking } from '@/hooks/useBooking'
+import type { Appointment } from '@/types/api'
 
 function ReviewRow({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
   return (
@@ -23,12 +24,13 @@ function ReviewRow({ label, value, mono, last }: { label: string; value: string;
 export default memo(function MobBookReview() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { hold, doctor, slotId, selectedDate } = location.state || {};
-  const [reason, setReason] = useState('Annual check-up.');
+  const { hold, doctor, scheduledAt } = location.state || {};
+  const [reason, setReason] = useState('');
   const [success, setSuccess] = useState(false);
-  const [appointment, setAppointment] = useState<any>(null);
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [reviewHoldTimer, setReviewHoldTimer] = useState<number | null>(null);
 
-  const { confirmBooking, isConfirming, holdTimer, activeHold, cancelHold } = useBooking();
+  const { confirmBooking, isConfirming, cancelHold } = useBooking();
 
   // If no hold, redirect back
   useEffect(() => {
@@ -37,18 +39,29 @@ export default memo(function MobBookReview() {
     }
   }, [hold, navigate]);
 
+  useEffect(() => {
+    if (!hold?.expiresAt) return;
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.floor((new Date(hold.expiresAt).getTime() - Date.now()) / 1000));
+      setReviewHoldTimer(remaining);
+    };
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 1000);
+    return () => window.clearInterval(interval);
+  }, [hold?.expiresAt]);
+
   const handleConfirm = async () => {
     try {
       const appt = await confirmBooking({ 
         holdId: hold.holdId,
         doctorId: Number(doctor.id),
-        scheduledAt: slotId ? slotId.split('-')[0] : `${selectedDate}T09:00:00Z`,
+        scheduledAt,
         type: 'IN_PERSON',
         reason,
       });
       setAppointment(appt);
       setSuccess(true);
-    } catch (err) {
+    } catch {
       // Error handled by useBooking/QueryClient
     }
   };
@@ -75,10 +88,10 @@ export default memo(function MobBookReview() {
             </div>
             <Card padding={14} style={{ width: '100%', textAlign: 'left', background: MB.bg2 }}>
               <ReviewRow label="Doctor"       value={`Dr. ${doctor.name}`} />
-              <ReviewRow label="Date"         value="Upcoming" />
-              <ReviewRow label="Time"         value="Confirmed" />
+              <ReviewRow label="Date"         value={appointment?.scheduledAt ? new Date(appointment.scheduledAt).toLocaleDateString() : 'Upcoming'} />
+              <ReviewRow label="Time"         value={appointment?.scheduledAt ? appointment.scheduledAt.slice(11, 16) : 'Confirmed'} />
               <ReviewRow label="Location"     value={`${doctor.department} · Bay General`} />
-              <ReviewRow label="Confirmation" value={appointment?.id || 'MB-7K2QP9'} mono last />
+              <ReviewRow label="Confirmation" value={appointment?.confirmationCode || String(appointment?.id ?? '')} mono last />
             </Card>
             <Btn variant="primary" size="lg" full style={{ marginTop: 8 }} onClick={() => navigate('/patient/appts')}>
               View in My visits
@@ -101,7 +114,7 @@ export default memo(function MobBookReview() {
                 <span>Slot secured temporarily</span>
               </div>
               <div style={{ color: MB.primary, fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
-                {Math.floor((holdTimer || 0) / 60)}:{(holdTimer || 0) % 60 < 10 ? '0' : ''}{(holdTimer || 0) % 60}
+                {Math.floor((reviewHoldTimer || 0) / 60)}:{(reviewHoldTimer || 0) % 60 < 10 ? '0' : ''}{(reviewHoldTimer || 0) % 60}
               </div>
             </div>
 
@@ -131,7 +144,7 @@ export default memo(function MobBookReview() {
               <Icon name="info" size={14} color={MB.warn} />
               <span>Cancellations are free up to 24 hours before your visit.</span>
             </div>
-            {!holdTimer && (
+            {!reviewHoldTimer && (
               <div role="alert" style={{ marginTop: 14, padding: 12, background: MB.dangerBg, borderRadius: 8, fontSize: 13, color: MB.danger, display: 'flex', gap: 8 }}>
                 <Icon name="alert" size={16} color={MB.danger} />
                 <div><strong>Hold expired.</strong> Please pick another time.</div>
@@ -148,7 +161,7 @@ export default memo(function MobBookReview() {
             size="lg" 
             style={{ flex: 1.6 }} 
             loading={isConfirming}
-            disabled={!holdTimer}
+            disabled={!reviewHoldTimer}
             onClick={handleConfirm}
           >
             Confirm booking

@@ -9,12 +9,15 @@ import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { useAuth } from '@/hooks/useAuth'
+import { parseApiError } from '@/lib/api/contracts'
 
 export default memo(function MobLogin() {
   const navigate = useNavigate();
-  const { login, isLoggingIn } = useAuth();
-  const [email, setEmail] = useState('sarah.patient@email.com');
-  const [password, setPassword] = useState('password123');
+  const { login, verify2FA, isLoggingIn, isVerifying2FA } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [needs2FA, setNeeds2FA] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,13 +25,31 @@ export default memo(function MobLogin() {
     setError(null);
     try {
       const response = await login({ email, password });
+      if (response.requires2FA) {
+        setNeeds2FA(true);
+        return;
+      }
       if (response.user) {
         if (response.user.role === 'patient') navigate('/patient');
         else if (response.user.role === 'doctor') navigate('/doctor');
         else if (response.user.role === 'admin') navigate('/admin');
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'The email or password you entered is incorrect.');
+    } catch (err) {
+      setError(parseApiError(err).message || 'The email or password you entered is incorrect.');
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    setError(null);
+    try {
+      const response = await verify2FA({ email, otp });
+      if (response.user) {
+        if (response.user.role === 'patient') navigate('/patient');
+        else if (response.user.role === 'doctor') navigate('/doctor');
+        else if (response.user.role === 'admin') navigate('/admin');
+      }
+    } catch (err) {
+      setError(parseApiError(err).message || 'Invalid verification code.');
     }
   };
 
@@ -74,11 +95,33 @@ export default memo(function MobLogin() {
               autoComplete="current-password" 
             />
           </Field>
+          {needs2FA && (
+            <Field label="Verification code" htmlFor="login-otp">
+              <Input
+                id="login-otp"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                inputMode="numeric"
+                maxLength={6}
+                autoComplete="one-time-code"
+              />
+            </Field>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -2 }}>
-            <Checkbox checked label="Remember me" />
+            <Checkbox checked={false} label="Remember me" />
             <Link to="/forgot-password" style={{ fontSize: 13, color: MB.primary, fontWeight: 500 }}>Forgot password?</Link>
           </div>
-          <Btn variant="primary" size="lg" full loading={isLoggingIn} type="submit">Sign in</Btn>
+          <Btn
+            variant="primary"
+            size="lg"
+            full
+            loading={isLoggingIn || isVerifying2FA}
+            type={needs2FA ? 'button' : 'submit'}
+            onClick={needs2FA ? handleVerify2FA : undefined}
+            disabled={!email || !password || (needs2FA && otp.length !== 6)}
+          >
+            {needs2FA ? 'Verify code' : 'Sign in'}
+          </Btn>
         </div>
 
         <div style={{ marginTop: 'auto', paddingTop: 24, textAlign: 'center', fontSize: 13, color: MB.text3 }}>

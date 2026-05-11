@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { DoctorService, DoctorSearchParams } from '@/services/doctor.service';
+import { DoctorService } from '@/services/doctor.service';
 
 /**
  * useDoctorDetail Hook

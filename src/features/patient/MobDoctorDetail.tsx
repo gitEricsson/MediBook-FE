@@ -56,15 +56,16 @@ export default memo(function MobDoctorDetail() {
   const handleContinue = async () => {
     if (!id || !selectedSlotId) return;
     try {
-      const [startIso] = selectedSlotId.split('-');
+      const selectedSlot = availability?.[0]?.slots.find((slot) => slot.id === selectedSlotId);
+      if (!selectedSlot) return;
       const hold = await holdSlot({
         doctorId: Number(id),
-        scheduledAt: startIso,
+        scheduledAt: selectedSlot.start,
         type: 'IN_PERSON',
       });
       // Navigate to review with hold information
-      navigate(`/patient/book/review`, { state: { hold, doctor, selectedDate, slotId: selectedSlotId } });
-    } catch (err) {
+      navigate(`/patient/book/review`, { state: { hold, doctor, selectedDate, slotId: selectedSlotId, scheduledAt: selectedSlot.start } });
+    } catch {
       // Concurrency error handled by useBooking internally, but we could show a local toast
     }
   };
@@ -137,7 +138,7 @@ export default memo(function MobDoctorDetail() {
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
                 {availability[0].slots.map((slot) => {
-                  const [h, m] = slot.startTime.split(':');
+                  const [h] = slot.startTime.split(':');
                   const ampm = parseInt(h) >= 12 ? 'PM' : 'AM';
                   return (
                     <SlotBtn 

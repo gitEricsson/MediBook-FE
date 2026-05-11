@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -82,9 +82,9 @@ export default memo(function MobDocApptDetail() {
               <Skel h={120} r={10} />
             ) : (
               <Card padding={0}>
-                <ProfileRow label="Last visit"   value={summary?.lastVisit || 'Not available'} />
-                <ProfileRow label="Conditions"   value={summary?.conditions?.join(', ') || 'None reported'} />
-                <ProfileRow label="Active meds"  value={summary?.medications?.join(', ') || 'None reported'} last />
+                <ProfileRow label="Last visit"   value={summary?.lastVisitDate || 'Not available'} />
+                <ProfileRow label="Blood group"   value={summary?.bloodGroup || 'Not provided'} />
+                <ProfileRow label="Allergies"  value={summary?.allergies || 'None reported'} last />
               </Card>
             )}
           </Section>

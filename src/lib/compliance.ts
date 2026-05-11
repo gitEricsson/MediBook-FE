@@ -21,12 +21,12 @@
  *    should be kept short to prevent stale data remaining in memory.
  */
 
-export const sanitizePHI = (data: any): any => {
+export const sanitizePHI = <T extends Record<string, unknown>>(data: T): T => {
   // Logic to strip PII/PHI from objects before logging
   const sensitiveKeys = ['notes', 'assessment', 'plan', 'chiefComplaint'];
-  const sanitized = { ...data };
+  const sanitized: Record<string, unknown> = { ...data };
   sensitiveKeys.forEach(key => {
     if (key in sanitized) sanitized[key] = '[REDACTED]';
   });
-  return sanitized;
+  return sanitized as T;
 };

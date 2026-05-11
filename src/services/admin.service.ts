@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api/client';
 import { UserRole } from '@/types/domain';
 import { PageResponse, normalizeUserRole, toPageableParams, unwrapApiResponse } from '@/lib/api/contracts';
+import type { DoctorResponse } from '@/types/api';
 
 export interface Department {
   id: string;
@@ -19,6 +20,7 @@ export interface AdminUser {
   lastName: string;
   role: UserRole;
   lastLogin?: string;
+  enabled?: boolean;
 }
 
 export const AdminService = {
@@ -44,28 +46,25 @@ export const AdminService = {
       code: data.code,
       description: data.description,
     });
-    const dept = unwrapApiResponse<{ id: number; name: string; code: string; active: boolean }>(response.data);
+    const dept = unwrapApiResponse<{ id: number; name: string; code: string; isActive?: boolean; active?: boolean }>(response.data);
     return {
       id: String(dept.id),
       name: dept.name,
       code: dept.code,
-      isActive: dept.active,
+      isActive: dept.isActive ?? dept.active ?? true,
     };
   },
 
   updateDepartment: async (id: string, data: Partial<Department>) => {
     const response = await apiClient.patch(`/api/v1/admin/departments/${id}`, data);
-    const dept = unwrapApiResponse<{ id: number; name: string; code: string; active: boolean }>(response.data);
+    const dept = unwrapApiResponse<{ id: number; name: string; code: string; isActive?: boolean; active?: boolean }>(response.data);
     return {
       id: String(dept.id),
       name: dept.name,
       code: dept.code,
-      isActive: dept.active,
+      isActive: dept.isActive ?? dept.active ?? true,
+      description: data.description,
     };
-  },
-
-  deactivateDepartment: async (id: string) => {
-    await apiClient.post(`/api/v1/admin/departments/${id}/deactivate`);
   },
 
   deactivateDepartment: async (id: string) => {
@@ -81,14 +80,23 @@ export const AdminService = {
     const response = await apiClient.get('/api/v1/users', {
       params: toPageableParams({ page: 0, size: 100 }),
     });
-    const page = unwrapApiResponse<PageResponse<{ id: number; email: string; firstName: string; lastName: string; role: string }>>(response.data);
+    const page = unwrapApiResponse<PageResponse<{ id: number; email: string; firstName: string; lastName: string; role: string; enabled: boolean }>>(response.data);
     return page.content.map((user): AdminUser => ({
       id: String(user.id),
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       role: normalizeUserRole(user.role),
+      enabled: user.enabled,
     }));
+  },
+
+  getDoctors: async (page = 0, size = 50) => {
+    const response = await apiClient.get('/api/v1/doctors', {
+      params: toPageableParams({ page, size }),
+    });
+    const pageData = unwrapApiResponse<PageResponse<DoctorResponse>>(response.data);
+    return pageData.content;
   },
 
   updateUserRole: async (id: string, role: UserRole) => {

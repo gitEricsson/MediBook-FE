@@ -16,10 +16,17 @@ export interface DoctorSearchParams {
 
 interface DoctorApiResponse {
   id: number;
+  userId?: number;
   fullName: string;
+  email?: string;
   specialization?: string;
   bio?: string;
+  licenseNumber?: string;
+  departmentId?: number;
   departmentName?: string;
+  acceptingNew?: boolean;
+  slotDurationMins?: number;
+  languages?: string;
 }
 
 interface AvailabilityGridResponse {
@@ -38,12 +45,19 @@ const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
   const department = doctor.departmentName ?? 'General Medicine';
   return {
     id: String(doctor.id),
+    userId: doctor.userId ? String(doctor.userId) : undefined,
     name: doctor.fullName,
+    email: doctor.email,
     spec: specialization,
     specialization,
     dept: department,
     department,
+    departmentId: doctor.departmentId ? String(doctor.departmentId) : undefined,
     bio: doctor.bio,
+    licenseNumber: doctor.licenseNumber,
+    acceptingNew: doctor.acceptingNew,
+    slotDurationMins: doctor.slotDurationMins,
+    languages: doctor.languages,
     tone: 'primary',
     next: '',
     city: 'Bay General',
@@ -63,7 +77,7 @@ export const DoctorService = {
   },
 
   getById: async (id: string) => {
-    const response = await apiClient.get(`/api/v1/doctors/${id}`);
+    const response = await apiClient.get(`/api/v1/doctors/${id}/profile`);
     return mapDoctor(unwrapApiResponse<DoctorApiResponse>(response.data));
   },
 
@@ -78,15 +92,18 @@ export const DoctorService = {
       date: day.date,
       slots: day.slots.map((slot) => ({
         id: `${slot.start}-${slot.end}`,
-        startTime: new Date(slot.start).toISOString().slice(11, 16),
-        endTime: new Date(slot.end).toISOString().slice(11, 16),
-        isAvailable: slot.status === 'AVAILABLE',
+        start: slot.start,
+        end: slot.end,
+        startTime: slot.start.slice(11, 16),
+        endTime: slot.end.slice(11, 16),
+        status: slot.status as 'OPEN' | 'HELD' | 'TAKEN',
+        isAvailable: slot.status === 'OPEN',
       })),
     }));
   },
 
   getSpecializations: async () => {
-    const response = await apiClient.get('/api/v1/specialisations');
+    const response = await apiClient.get('/api/v1/metadata/specialisations');
     const specializations = unwrapApiResponse<string[]>(response.data);
     return specializations.map<Specialization>((name, index) => ({
       id: String(index + 1),

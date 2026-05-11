@@ -13,13 +13,13 @@ export const SAMPLE_APPOINTMENTS: Appointment[] = [
     id: 'a1', doctorId: 'd1', patientName: 'Sarah Patient',
     doctorName: 'Dr. Sarah Chen', spec: 'Cardiology',
     date: 'Wed, May 7', time: '9:30 AM', location: 'Bay General · Rm 412',
-    status: 'SCHEDULED', tone: 'primary', cancelable: true, soon: true,
+    status: 'CONFIRMED', tone: 'primary', cancelable: true, soon: true,
   },
   {
     id: 'a2', doctorId: 'd2', patientName: 'Sarah Patient',
     doctorName: 'Dr. Marcus Okafor', spec: 'Dermatology',
     date: 'Mon, May 19', time: '3:00 PM', location: 'Mission Health Clinic',
-    status: 'SCHEDULED', tone: 'teal', cancelable: true, soon: false,
+    status: 'CONFIRMED', tone: 'teal', cancelable: true, soon: false,
   },
 ]
 

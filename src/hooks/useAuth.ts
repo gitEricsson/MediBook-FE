@@ -1,8 +1,16 @@
 import { useAuthStore } from '@/store/authStore';
 import { AuthService } from '@/services/auth.service';
-import { LoginRequest, RegisterRequest, Verify2FARequest } from '@/types/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { normalizeUserRole } from '@/lib/api/contracts';
+import type { UserRole } from '@/types/domain';
+
+interface AuthUserLike {
+  id: string | number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole | `ROLE_${string}`;
+}
 
 export const useAuth = () => {
   const { 
@@ -10,21 +18,23 @@ export const useAuth = () => {
     status, 
     setAuthenticated, 
     setUnauthenticated, 
-    set2FARequired, 
-    setLoading 
+    set2FARequired,
   } = useAuthStore();
   
   const queryClient = useQueryClient();
 
-  const normalizeUserForStore = (rawUser: any) => ({
-    id: String(rawUser.id),
-    email: rawUser.email,
-    firstName: rawUser.firstName,
-    lastName: rawUser.lastName,
-    role: typeof rawUser.role === 'string' && rawUser.role.startsWith('ROLE_')
+  const normalizeUserForStore = (rawUser: AuthUserLike) => {
+    const role: UserRole = typeof rawUser.role === 'string' && rawUser.role.startsWith('ROLE_')
       ? normalizeUserRole(rawUser.role)
-      : rawUser.role,
-  });
+      : rawUser.role as UserRole;
+    return {
+      id: String(rawUser.id),
+      email: rawUser.email,
+      firstName: rawUser.firstName,
+      lastName: rawUser.lastName,
+      role,
+    };
+  };
 
   const loginMutation = useMutation({
     mutationFn: AuthService.login,

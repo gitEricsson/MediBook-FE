@@ -1,22 +1,60 @@
 import { apiClient } from '@/lib/api/client';
 import { Appointment } from '@/types/api';
 import { unwrapApiResponse } from '@/lib/api/contracts';
+import type { AppointmentStatus } from '@/types/domain';
 
-export interface Time { hour: number; minute: number; }
-export interface FreeSlot { start: Time; end: Time; }
+export interface WorkingHours {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+}
+
+export interface FreeSlot { start: string; end: string; }
+
+export interface ScheduleAppt {
+  id: string;
+  name: string;
+  reason: string;
+  status: AppointmentStatus;
+  tone: string;
+  dur?: number;
+  next?: boolean;
+  patientId?: string;
+  scheduledAt?: string;
+}
+
+export interface PatientSummary {
+  patientId: number;
+  fullName: string;
+  dateOfBirth?: string;
+  bloodGroup?: string;
+  allergies?: string;
+  medicalHistory?: string;
+  lastVisitDate?: string;
+  lastVisitDiagnosis?: string;
+}
+
+export interface ConsultationNoteRequest {
+  appointmentId: string;
+  diagnosis: string;
+  treatmentPlan: string;
+  prescriptions?: string;
+  followUpDate?: string;
+}
 
 export interface BackendScheduleResponse {
   date: string;
-  workStart: Time;
-  workEnd: Time;
+  workStart: string;
+  workEnd: string;
   freeSlots: FreeSlot[];
   appointments: Array<Appointment & { scheduledAt: string }>;
 }
 
 export interface DailyScheduleDetails {
   appointments: Record<string, ScheduleAppt>;
-  workStart: Time;
-  workEnd: Time;
+  workStart: string;
+  workEnd: string;
   freeSlots: FreeSlot[];
 }
 
@@ -31,16 +69,20 @@ export const DoctorPortalService = {
     const scheduleData = unwrapApiResponse<BackendScheduleResponse>(response.data);
     
     const mappedAppointments: Record<string, ScheduleAppt> = {};
-    scheduleData.appointments.forEach((appointment) => {
-      const time = new Date(appointment.scheduledAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    scheduleData.appointments.forEach((appointment, index) => {
+      const time = appointment.scheduledAt.slice(11, 16);
       mappedAppointments[time] = {
+        id: String(appointment.id),
         name: appointment.patientName,
         reason: appointment.reason ?? 'Consultation',
-        status: appointment.status === 'CONFIRMED' ? 'SCHEDULED' : (appointment.status as 'COMPLETED' | 'SCHEDULED' | 'NO_SHOW' | 'CANCELLED'),
+        status: appointment.status,
         tone: appointment.status === 'COMPLETED' ? 'teal'
               : appointment.status === 'NO_SHOW' ? 'rose'
               : 'primary', // Default tone
         patientId: String(appointment.patientId),
+        scheduledAt: appointment.scheduledAt,
+        dur: Math.max(1, Math.ceil((appointment.durationMins || 30) / 30)),
+        next: index === 0 && appointment.status === 'CONFIRMED',
       };
     });
 
@@ -64,11 +106,11 @@ export const DoctorPortalService = {
 
   getWorkingHours: async () => {
     const response = await apiClient.get('/api/v1/me/schedule/hours');
-    const hours = unwrapApiResponse<Array<{ dayOfWeek: number; startTime: { hour: number; minute: number }; endTime: { hour: number; minute: number } }>>(response.data);
+    const hours = unwrapApiResponse<Array<{ dayOfWeek: number; startTime: string; endTime: string }>>(response.data);
     return hours.map((hour) => ({
       dayOfWeek: hour.dayOfWeek,
-      startTime: `${String(hour.startTime.hour).padStart(2, '0')}:${String(hour.startTime.minute).padStart(2, '0')}`,
-      endTime: `${String(hour.endTime.hour).padStart(2, '0')}:${String(hour.endTime.minute).padStart(2, '0')}`,
+      startTime: hour.startTime.slice(0, 5),
+      endTime: hour.endTime.slice(0, 5),
       isAvailable: true,
     }));
   },
@@ -76,15 +118,11 @@ export const DoctorPortalService = {
   updateWorkingHours: async (hours: WorkingHours[]) => {
     const schedule = hours
       .filter((hour) => hour.isAvailable !== false)
-      .map((hour) => {
-        const [startHour, startMinute] = hour.startTime.split(':').map(Number);
-        const [endHour, endMinute] = hour.endTime.split(':').map(Number);
-        return {
-          dayOfWeek: hour.dayOfWeek,
-          startTime: { hour: startHour, minute: startMinute, second: 0, nano: 0 },
-          endTime: { hour: endHour, minute: endMinute, second: 0, nano: 0 },
-        };
-      });
+      .map((hour) => ({
+        dayOfWeek: hour.dayOfWeek,
+        startTime: hour.startTime.length === 5 ? `${hour.startTime}:00` : hour.startTime,
+        endTime: hour.endTime.length === 5 ? `${hour.endTime}:00` : hour.endTime,
+      }));
     const response = await apiClient.put('/api/v1/me/schedule/hours', { schedule });
     return unwrapApiResponse(response.data);
   },

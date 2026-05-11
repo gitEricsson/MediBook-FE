@@ -3,7 +3,7 @@ import { unwrapApiResponse } from '@/lib/api/contracts';
 
 export const LookupsService = {
   getSpecialisations: async () => {
-    const response = await apiClient.get('/api/v1/specialisations');
+    const response = await apiClient.get('/api/v1/metadata/specialisations');
     return unwrapApiResponse<string[]>(response.data);
   },
 
@@ -17,4 +17,3 @@ export const LookupsService = {
     return unwrapApiResponse<string[]>(response.data);
   },
 };
-

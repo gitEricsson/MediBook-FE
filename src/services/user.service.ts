@@ -41,6 +41,21 @@ export interface AuditLogEntry {
   correlationId?: string;
 }
 
+type UserApiResponse = {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  fullName?: string;
+  phone?: string;
+  role: string;
+  enabled: boolean;
+  twoFactorEnabled?: boolean;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+  locale?: string;
+};
+
 const mapUser = (user: {
   id: number;
   email: string;
@@ -85,7 +100,7 @@ export const UserService = {
   },
 
   updateLocale: async (locale: string) => {
-    const response = await apiClient.patch('/api/v1/me/locale', { locale });
+    const response = await apiClient.patch('/api/v1/me/locale', { language: locale });
     return mapUser(unwrapApiResponse(response.data));
   },
 
@@ -102,7 +117,7 @@ export const UserService = {
     const response = await apiClient.get('/api/v1/users', {
       params: toPageableParams({ page, size }),
     });
-    const pageData = unwrapApiResponse<PageResponse<any>>(response.data);
+    const pageData = unwrapApiResponse<PageResponse<UserApiResponse>>(response.data);
     return pageData.content.map(mapUser);
   },
 
@@ -144,4 +159,3 @@ export const UserService = {
     await apiClient.post(`/api/v1/users/${id}/revoke-sessions`);
   },
 };
-

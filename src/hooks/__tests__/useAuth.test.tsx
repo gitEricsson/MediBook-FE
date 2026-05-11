@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useAuth } from '../useAuth';
 import { useAuthStore } from '@/store/authStore';
@@ -35,7 +35,7 @@ describe('useAuth', () => {
     });
 
     expect(result.current.isAuthenticated).toBe(true);
-    expect(result.current.user?.id).toBe('user-1');
+    expect(result.current.user?.id).toBe('1');
   });
 
   it('should handle logout', async () => {

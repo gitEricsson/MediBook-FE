@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { AuthService } from '../auth.service';
 
 describe('AuthService', () => {
@@ -6,7 +6,7 @@ describe('AuthService', () => {
     const data = await AuthService.login({ email: 'test@example.com', password: 'password' });
     
     expect(data.accessToken).toBe('mock-access-token');
-    expect(data.user?.id).toBe('user-1');
+    expect(data.user?.id).toBe('1');
   });
 
   it('should handle refresh token correctly', async () => {

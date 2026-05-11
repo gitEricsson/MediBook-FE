@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -13,6 +13,7 @@ import { useSchedule, ScheduleAppt } from '@/hooks/useSchedule'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
+import type { AvatarTone } from '@/types/domain'
 
 type ScheduleState = 'default' | 'loading' | 'empty' | 'error'
 
@@ -38,7 +39,7 @@ function DocApptRow({ time, dur, appt, onClick }: ApptRowProps) {
       <div style={{ width: 1, background: MB.line2 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar name={appt.name} size={24} tone={appt.tone as any} />
+          <Avatar name={appt.name} size={24} tone={(appt.tone || 'primary') as AvatarTone} />
           <div style={{ fontSize: 14, fontWeight: 600, color: MB.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.name}</div>
           <StatusPill status={appt.status} />
         </div>
@@ -61,11 +62,11 @@ export default memo(function MobDocSchedule() {
   const unreadCount = useNotificationStore(state => state.unreadCount);
   
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const { data: appts, isLoading, isError, refetch } = useSchedule(user?.id || 'dr-chen', selectedDate);
+  const { data: schedule, isLoading, isError, refetch } = useSchedule(user?.id || 'current', selectedDate);
 
-  const apptEntries = appts ? Object.entries(appts).sort((a, b) => a[0].localeCompare(b[0])) : [];
-  const completedCount = apptEntries.filter(([_, a]) => a.status === 'COMPLETED').length;
-  const nextApptTime = apptEntries.find(([_, a]) => a.next)?.[0];
+  const apptEntries = schedule ? Object.entries(schedule.appointments).sort((a, b) => a[0].localeCompare(b[0])) : [];
+  const completedCount = apptEntries.filter(([, a]) => a.status === 'COMPLETED').length;
+  const nextApptTime = apptEntries.find(([, a]) => a.next)?.[0];
 
   const resolvedState: ScheduleState = isLoading ? 'loading' : isError ? 'error' : (apptEntries.length === 0 ? 'empty' : 'default');
 

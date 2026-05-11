@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -12,8 +12,9 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useMyAppointments } from '@/hooks/useAppointments'
 import { BookingService } from '@/services/booking.service'
-import { SAMPLE_APPOINTMENTS } from '@/constants/sampleData'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import type { Appointment } from '@/types/api'
 
 function ApptSkel() {
   return (
@@ -28,34 +29,31 @@ function ApptSkel() {
   )
 }
 
-function ApptCard({ appt }: { appt: any }) {
+function ApptCard({ appt }: { appt: Appointment }) {
   const queryClient = useQueryClient();
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const cancelMutation = useMutation({
     mutationFn: (appointmentId: string) => BookingService.cancel(appointmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appointments', 'my'] });
+      toast.success('Appointment cancelled');
     }
   });
 
   const isCancelable = appt.status === 'CONFIRMED' || appt.status === 'PENDING';
+  const scheduled = new Date(appt.scheduledAt);
 
   return (
     <Card padding={14}>
-      {appt.soon && (
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11, color: MB.success, fontWeight: 600, marginBottom: 8 }}>
-          <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: MB.success }} />
-          UPCOMING VISIT
-        </div>
-      )}
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ width: 48, padding: '8px 0', textAlign: 'center', borderRadius: 8, background: MB.primary50, color: MB.primary600, flexShrink: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8 }}>DATE</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{new Date(appt.scheduledAt || Date.now()).getDate()}</div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{scheduled.getDate()}</div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>{new Date(appt.scheduledAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            <StatusPill status={appt.status || 'CONFIRMED'} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>{scheduled.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <StatusPill status={appt.status} />
           </div>
           <div style={{ fontSize: 13, color: MB.text2 }}>{appt.doctorName || 'Dr. Specialist'}</div>
           <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{appt.departmentName || 'Cardiology'} · Bay General</div>
@@ -69,10 +67,19 @@ function ApptCard({ appt }: { appt: any }) {
             size="sm" 
             style={{ flex: 1, color: MB.danger }}
             loading={cancelMutation.isPending}
-            onClick={() => cancelMutation.mutate(String(appt.id))}
+            onClick={() => setConfirmCancel(true)}
           >
             Cancel
           </Btn>
+        </div>
+      )}
+      {confirmCancel && (
+        <div role="dialog" aria-modal="true" style={{ marginTop: 12, padding: 12, background: MB.dangerBg, borderRadius: 8 }}>
+          <div style={{ fontSize: 13, color: MB.danger, fontWeight: 600 }}>Cancel this appointment?</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => setConfirmCancel(false)}>Keep</Btn>
+            <Btn variant="primary" danger size="sm" style={{ flex: 1 }} loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate(String(appt.id))}>Cancel</Btn>
+          </div>
         </div>
       )}
     </Card>
@@ -80,7 +87,8 @@ function ApptCard({ appt }: { appt: any }) {
 }
 
 export default memo(function MobMyAppts() {
-  const { data, isLoading, isError, refetch } = useMyAppointments();
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const { data, isLoading, isError, refetch } = useMyAppointments(tab);
 
   return (
     <MobScreen>
@@ -89,14 +97,15 @@ export default memo(function MobMyAppts() {
       } />
       <div style={{ background: MB.bg, padding: '0 16px', borderBottom: `1px solid ${MB.line2}` }}>
         <div style={{ display: 'flex', gap: 24 }} role="tablist">
-          {[{ l: 'Upcoming', active: true, count: data?.length || 0 }, { l: 'Past', count: 0 }].map(t => (
-            <div key={t.l} role="tab" aria-selected={t.active} style={{
-              padding: '12px 0', borderBottom: `2px solid ${t.active ? MB.primary : 'transparent'}`,
-              fontSize: 14, fontWeight: 600, color: t.active ? MB.primary : MB.text3,
+          {[{ l: 'Upcoming', id: 'upcoming' as const }, { l: 'Past', id: 'past' as const }].map(t => (
+            <button key={t.l} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} style={{
+              padding: '12px 0', borderBottom: `2px solid ${tab === t.id ? MB.primary : 'transparent'}`,
+              fontSize: 14, fontWeight: 600, color: tab === t.id ? MB.primary : MB.text3,
               display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+              background: 'transparent', borderLeft: 0, borderRight: 0, borderTop: 0, fontFamily: 'inherit',
             }}>
-              {t.l} <span style={{ fontSize: 11, fontWeight: 500, color: MB.text3 }}>{t.count}</span>
-            </div>
+              {t.l}
+            </button>
           ))}
         </div>
       </div>
@@ -107,14 +116,14 @@ export default memo(function MobMyAppts() {
           </div>
         )}
         {!isLoading && (!data || data.length === 0) && (
-          <EmptyState icon="calendar" title="No upcoming visits"
+          <EmptyState icon="calendar" title={tab === 'upcoming' ? 'No upcoming visits' : 'No past visits'}
             body="When you book a doctor, your appointments will appear here."
             action={<Btn size="sm" icon="search" style={{ marginTop: 8 }}>Find a doctor</Btn>} />
         )}
         {isError && <ErrorState title="Couldn't load your visits" onRetry={() => refetch()} />}
         {!isLoading && data && data.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {data.map((a: any) => <ApptCard key={a.id} appt={a} />)}
+            {data.map((a) => <ApptCard key={a.id} appt={a} />)}
           </div>
         )}
       </div>

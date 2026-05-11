@@ -25,7 +25,13 @@ export default memo(function MobDocHours() {
 
   useEffect(() => {
     if (serverHours) {
-      setHours(serverHours);
+      const byDay = new Map(serverHours.map((hour) => [hour.dayOfWeek, hour]));
+      setHours([1,2,3,4,5,6,7].map((dayOfWeek) => byDay.get(dayOfWeek) ?? {
+        dayOfWeek,
+        startTime: '09:00',
+        endTime: '17:00',
+        isAvailable: false,
+      }));
     }
   }, [serverHours]);
 

@@ -1,4 +1,4 @@
-import { UserRole } from './domain';
+import type { AppointmentStatus, AppointmentType, BackendRole, SlotStatus, UserRole } from './domain';
 
 export interface User {
   id: string;
@@ -6,6 +6,20 @@ export interface User {
   role: UserRole;
   firstName: string;
   lastName: string;
+}
+
+export interface BackendFieldError {
+  field: string;
+  message: string;
+}
+
+export interface BackendErrorResponse {
+  status?: number;
+  errorCode?: string;
+  message: string;
+  timestamp?: string;
+  errors?: BackendFieldError[];
+  success?: false;
 }
 
 export interface LoginRequest {
@@ -56,14 +70,14 @@ export interface VerifyEmailRequest {
 export interface ApiError {
   message: string;
   code?: string;
-  errors?: Record<string, string[]>;
+  errors?: Record<string, string>;
 }
 
 // Booking & Discovery Types
 export interface AppointmentHoldRequest {
   doctorId: number;
   scheduledAt: string;
-  type: 'IN_PERSON' | 'TELEHEALTH';
+  type?: AppointmentType;
   durationMins?: number;
   reason?: string;
 }
@@ -74,10 +88,10 @@ export interface AppointmentHoldResponse {
 }
 
 export interface AppointmentConfirmRequest {
-  holdId: string;
+  holdId?: string;
   doctorId: number;
   scheduledAt: string;
-  type: 'IN_PERSON' | 'TELEHEALTH';
+  type: AppointmentType;
   durationMins?: number;
   reason?: string;
 }
@@ -91,8 +105,8 @@ export interface Appointment {
   departmentName?: string;
   scheduledAt: string;
   durationMins: number;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
-  type: 'IN_PERSON' | 'TELEHEALTH';
+  status: AppointmentStatus;
+  type: AppointmentType;
   reason?: string;
   confirmationCode?: string;
   notes?: string;
@@ -103,8 +117,11 @@ export interface DoctorAvailability {
   date: string;
   slots: {
     id: string;
+    start: string;
+    end: string;
     startTime: string;
     endTime: string;
+    status: SlotStatus;
     isAvailable: boolean;
   }[];
 }
@@ -131,10 +148,58 @@ export interface UserResponse {
   lastName: string;
   fullName?: string;
   phone?: string;
-  role: 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN';
+  role: BackendRole;
   enabled: boolean;
   twoFactorEnabled?: boolean;
   emailNotifications?: boolean;
   smsNotifications?: boolean;
   locale?: string;
+  createdAt?: string;
+}
+
+export interface PageResponse<T> {
+  totalPages: number;
+  totalElements: number;
+  numberOfElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+  content: T[];
+}
+
+export interface DoctorResponse {
+  id: number;
+  userId: number;
+  fullName: string;
+  email: string;
+  specialization?: string;
+  licenseNumber?: string;
+  bio?: string;
+  departmentId: number;
+  departmentName: string;
+  languages?: string;
+  acceptingNew: boolean;
+  slotDurationMins: number;
+  createdAt?: string;
+}
+
+export interface DepartmentResponse {
+  id: number;
+  name: string;
+  code: string;
+  description?: string;
+  isActive?: boolean;
+  active?: boolean;
+  createdAt?: string;
+}
+
+export interface DepartmentAdminResponse {
+  id: number;
+  name: string;
+  code: string;
+  doctorsCount: number;
+  apptCount90d: number;
+  status: boolean;
 }
