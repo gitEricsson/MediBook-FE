@@ -1,4 +1,5 @@
 import type { UserRole } from '@/types/domain';
+import type { BackendErrorResponse } from '@/types/api';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -44,6 +45,36 @@ export function normalizeUserRole(role: string): UserRole {
   }
 }
 
+export function toBackendRole(role: UserRole): 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN' {
+  switch (role) {
+    case 'admin':
+      return 'ROLE_ADMIN';
+    case 'doctor':
+      return 'ROLE_DOCTOR';
+    case 'patient':
+    default:
+      return 'ROLE_PATIENT';
+  }
+}
+
+export function parseApiError(error: unknown): { message: string; code?: string; fieldErrors: Record<string, string> } {
+  const maybeAxios = error as { response?: { data?: BackendErrorResponse; status?: number } };
+  const data = maybeAxios.response?.data;
+  const fieldErrors: Record<string, string> = {};
+
+  if (Array.isArray(data?.errors)) {
+    for (const item of data.errors) {
+      if (item.field) fieldErrors[item.field] = item.message;
+    }
+  }
+
+  return {
+    message: data?.message || (error instanceof Error ? error.message : 'Something went wrong'),
+    code: data?.errorCode,
+    fieldErrors,
+  };
+}
+
 export function toPageableParams(pageable: PageableQuery): Record<string, string | number | string[]> {
   const params: Record<string, string | number | string[]> = {
     page: pageable.page ?? 0,
@@ -54,4 +85,3 @@ export function toPageableParams(pageable: PageableQuery): Record<string, string
   }
   return params;
 }
-

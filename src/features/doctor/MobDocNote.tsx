@@ -9,14 +9,14 @@ import { Field } from '@/components/forms/Field'
 import { Textarea } from '@/components/forms/Textarea'
 import { Checkbox } from '@/components/forms/Checkbox'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { DoctorPortalService } from '@/services/doctor-portal.service'
+import type { AvatarTone } from '@/types/domain'
 
 export default memo(function MobDocNote() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { appt } = location.state || {};
 
   const [notes, setNotes] = useState({
@@ -65,7 +65,7 @@ export default memo(function MobDocNote() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <Card padding={12} style={{ margin: 16, background: MB.bg2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Avatar name={appt.name} tone={appt.tone as any} size={36} />
+            <Avatar name={appt.name} tone={(appt.tone || 'primary') as AvatarTone} size={36} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{appt.name}</div>
               <div style={{ fontSize: 11, color: MB.text3 }}>{appt.reason}</div>

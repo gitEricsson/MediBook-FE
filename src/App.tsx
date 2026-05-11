@@ -20,6 +20,7 @@ const MobDoctorDetail = lazy(() => import('@/features/patient/MobDoctorDetail'))
 const MobBookReview = lazy(() => import('@/features/patient/MobBookReview'))
 const MobMyAppts = lazy(() => import('@/features/patient/MobMyAppts'))
 const MobProfile = lazy(() => import('@/features/patient/MobProfile'))
+const MobNotifications = lazy(() => import('@/features/patient/MobNotifications'))
 
 // Doctor
 const MobDocSchedule = lazy(() => import('@/features/doctor/MobDocSchedule'))
@@ -37,7 +38,7 @@ const DeskSettings = lazy(() => import('@/features/admin/DeskSettings'))
 // ── Root Component ──────────────────────────────────────────────────────
 
 export default function App() {
-  useAuthStore()
+  const authStatus = useAuthStore((state) => state.status)
   
   // Enable healthcare-grade session idle timeout (15 mins)
   useIdleTimeout(15 * 60 * 1000);
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/patient/doctor/:id" element={<ProtectedRoute allowedRoles={['patient']}><MobDoctorDetail /></ProtectedRoute>} />
             <Route path="/patient/book/review" element={<ProtectedRoute allowedRoles={['patient']}><MobBookReview /></ProtectedRoute>} />
             <Route path="/patient/appts" element={<ProtectedRoute allowedRoles={['patient']}><MobMyAppts /></ProtectedRoute>} />
+            <Route path="/patient/notifications" element={<ProtectedRoute allowedRoles={['patient']}><MobNotifications /></ProtectedRoute>} />
             <Route path="/patient/profile" element={<ProtectedRoute allowedRoles={['patient']}><MobProfile /></ProtectedRoute>} />
 
             {/* Doctor Routes */}
@@ -87,7 +89,7 @@ export default function App() {
         </Suspense>
 
         {/* Global Overlays */}
-        {/* <TourOverlay /> */}
+        {authStatus === 'authenticated' && <TourOverlay />}
       </div>
     </BrowserRouter>
   )

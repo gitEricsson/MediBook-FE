@@ -7,6 +7,7 @@ export interface DepartmentResponse {
   code: string;
   description?: string;
   createdAt?: string;
+  isActive?: boolean;
   active?: boolean;
 }
 
@@ -78,4 +79,3 @@ export const DepartmentsService = {
     return response.data;
   },
 };
-

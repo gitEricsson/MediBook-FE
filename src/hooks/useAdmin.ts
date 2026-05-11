@@ -16,6 +16,13 @@ export const useAdminUsers = () => {
   });
 };
 
+export const useAdminDoctors = () => {
+  return useQuery({
+    queryKey: ['admin', 'doctors'],
+    queryFn: () => AdminService.getDoctors(),
+  });
+};
+
 export const useAdminActions = () => {
   const queryClient = useQueryClient();
 

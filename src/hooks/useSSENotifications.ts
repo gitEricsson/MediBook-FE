@@ -15,7 +15,7 @@ export interface NotificationEvent {
  * Manages the Server-Sent Events (SSE) lifecycle for real-time notifications.
  * Handles reconnection, heartbeat, and stale recovery.
  */
-export const useSSENotifications = (onNotification: (event: NotificationEvent) => void) => {
+export const useSSENotifications = (onNotification: (event: NotificationEvent) => void, enabled = false) => {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -23,6 +23,7 @@ export const useSSENotifications = (onNotification: (event: NotificationEvent) =
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
+    if (!enabled) return;
 
     const es = new EventSource(`${env.VITE_API_URL}/api/v1/me/notifications/stream`, {
       withCredentials: true,
@@ -40,31 +41,27 @@ export const useSSENotifications = (onNotification: (event: NotificationEvent) =
     es.onerror = (error) => {
       console.error('SSE Connection Error:', error);
       es.close();
-      
-      // Exponential backoff or simple reconnect logic
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, 5000);
     };
 
     eventSourceRef.current = es;
-  }, [onNotification]);
+  }, [enabled, onNotification]);
 
   useEffect(() => {
-    connect();
+    if (enabled) connect();
+    const reconnectTimeout = reconnectTimeoutRef.current;
     
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
       }
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   return {
-    status: eventSourceRef.current?.readyState,
+    status: enabled ? 'enabled' : 'disabled',
     reconnect: connect,
   };
 };

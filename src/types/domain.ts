@@ -6,6 +6,12 @@ export type AppointmentStatus =
   | 'CANCELLED'
   | 'NO_SHOW'
 
+export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN'
+
+export type AppointmentType = 'IN_PERSON' | 'TELEHEALTH'
+
+export type SlotStatus = 'OPEN' | 'HELD' | 'TAKEN'
+
 // ─── Avatar / badge tones ─────────────────────────────────────────────────
 export type AvatarTone = 'primary' | 'teal' | 'indigo' | 'amber' | 'rose' | 'slate'
 
@@ -15,12 +21,19 @@ export type UserRole = 'patient' | 'doctor' | 'admin'
 // ─── Domain entities ──────────────────────────────────────────────────────
 export interface Doctor {
   id: string
+  userId?: string
   name: string
+  email?: string
   spec?: string
   dept?: string
   specialization?: string
   department?: string
+  departmentId?: string
   bio?: string
+  licenseNumber?: string
+  acceptingNew?: boolean
+  slotDurationMins?: number
+  languages?: string
   tone: AvatarTone
   next: string
   city: string

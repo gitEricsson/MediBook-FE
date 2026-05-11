@@ -8,22 +8,14 @@ import { Th } from '@/components/table/Th'
 import { Td } from '@/components/table/Td'
 import { RowMenu } from '@/components/table/RowMenu'
 import { Skel } from '@/components/feedback/Skel'
+import { EmptyState } from '@/components/feedback/EmptyState'
 import { useAdminDepartments, useAdminActions } from '@/hooks/useAdmin'
 
 export default memo(function DeskDepartments() {
   const { data: depts, isLoading } = useAdminDepartments();
   useAdminActions();
 
-  // Fallback to sample data for visual stability in prototype
-  const sampleDepts = [
-    { id: '1', name: 'Cardiology',      code: 'CARD', docs: 12, appts: 284, isActive: true },
-    { id: '2', name: 'Dermatology',     code: 'DERM', docs: 8,  appts: 197, isActive: true },
-    { id: '3', name: 'Pediatrics',      code: 'PEDS', docs: 15, appts: 341, isActive: true },
-    { id: '4', name: 'Orthopedics',     code: 'ORTH', docs: 10, appts: 218, isActive: true },
-    { id: '5', name: 'General Surgery', code: 'GSUR', docs: 7,  appts: 88,  isActive: false },
-  ];
-
-  const displayDepts = depts && depts.length > 0 ? depts : sampleDepts;
+  const displayDepts = depts ?? [];
 
   return (
     <DeskShell active="depts">
@@ -54,12 +46,15 @@ export default memo(function DeskDepartments() {
                       ))}
                     </tr>
                   ))
+                : displayDepts.length === 0 ? (
+                    <tr><td colSpan={6}><EmptyState icon="building" title="No departments found" body="Create departments in the backend to start organizing doctors." /></td></tr>
+                  )
                 : displayDepts.map(d => (
                     <tr key={d.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       <Td><span style={{ fontWeight: 500 }}>{d.name}</span></Td>
-                      <Td mono>{(d as any).code || d.id}</Td>
-                      <Td align="right">{(d as any).docs || (d as any).doctorCount || 0}</Td>
-                      <Td align="right">{(d as any).appts?.toLocaleString() || (d as any).appointmentCount || 0}</Td>
+                      <Td mono>{d.code || d.id}</Td>
+                      <Td align="right">{d.doctorCount || 0}</Td>
+                      <Td align="right">{(d.appointmentCount || 0).toLocaleString()}</Td>
                       <Td><StatusPill status={d.isActive ? 'ACTIVE' : 'INACTIVE'} /></Td>
                       <Td>
                         <RowMenu 

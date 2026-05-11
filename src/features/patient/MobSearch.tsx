@@ -12,7 +12,8 @@ import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useDoctors } from '@/hooks/useDoctors'
-import { SAMPLE_DOCS } from '@/constants/sampleData'
+import { useNavigate } from 'react-router-dom'
+import type { Doctor } from '@/types/domain'
 
 type SearchState = 'results' | 'loading' | 'empty' | 'error'
 
@@ -46,9 +47,10 @@ function DocCardSkel() {
   )
 }
 
-function DocCard({ doc }: { doc: any }) {
+function DocCard({ doc }: { doc: Doctor }) {
+  const navigate = useNavigate()
   return (
-    <Card padding={12} interactive>
+    <Card padding={12} interactive onClick={() => navigate(`/patient/doctor/${doc.id}`)}>
       <div style={{ display: 'flex', gap: 12 }}>
         <PhotoBlock w={56} h={56} label={`DR · ${doc.name.split(' ')[1]?.slice(0,3).toUpperCase() || 'DOC'}`}
           tone={doc.tone === 'amber' || doc.tone === 'rose' ? 'slate' : (doc.tone || 'slate')} />
@@ -65,7 +67,7 @@ function DocCard({ doc }: { doc: any }) {
           <div className="mb-caption" style={{ marginBottom: 1 }}>Next available</div>
           <div style={{ fontSize: 13, fontWeight: 600, color: MB.success }}>{doc.next || 'Today'}</div>
         </div>
-        <Btn size="sm">Book</Btn>
+        <Btn size="sm" onClick={() => navigate(`/patient/doctor/${doc.id}`)}>Book</Btn>
       </div>
     </Card>
   )
@@ -114,10 +116,10 @@ export default memo(function MobSearch({ state = 'results' }: MobSearchProps) {
         {resolvedState === 'results' && (
           <>
             <div className="mb-caption" style={{ marginBottom: 8 }}>
-              {(doctors ?? SAMPLE_DOCS).length} doctors · sorted by next available
+              {(doctors ?? []).length} doctors · sorted by next available
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {(doctors ?? SAMPLE_DOCS).map(d => <DocCard key={d.id} doc={d} />)}
+              {(doctors ?? []).map(d => <DocCard key={d.id} doc={d} />)}
             </div>
           </>
         )}

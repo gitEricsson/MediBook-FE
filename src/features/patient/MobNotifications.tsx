@@ -5,8 +5,11 @@ import { MobTopBar } from '@/components/layout/MobTopBar'
 import { Icon } from '@/components/primitives/Icon'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { ErrorState } from '@/components/feedback/ErrorState'
 import type { IconName } from '@/types/ui'
 import type { BadgeTone } from '@/types/ui'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { NotificationService, NotificationItem } from '@/services/notification.service'
 
 type NotifState = 'default' | 'loading' | 'empty'
 
@@ -14,13 +17,6 @@ interface NotifItem {
   type: string; icon: IconName; tone: BadgeTone
   title: string; body: string; time: string; unread?: boolean
 }
-
-const ITEMS: NotifItem[] = [
-  { type: 'reminder',    icon: 'clock',    tone: 'primary', title: 'Tomorrow: Dr. Sarah Chen',  body: 'Your visit is at 9:30 AM. Tap to add to calendar.', time: '2h ago', unread: true },
-  { type: 'confirmed',   icon: 'check',    tone: 'success', title: 'Appointment confirmed',      body: 'Mon, May 19 · 3:00 PM with Dr. Marcus Okafor',     time: '1d ago', unread: true },
-  { type: 'rescheduled', icon: 'calendar', tone: 'warn',    title: 'Doctor rescheduled',         body: 'Dr. Whitfield moved your visit from Apr 28 to May 9, 2:15 PM.', time: '5d ago' },
-  { type: 'note',        icon: 'inbox',    tone: 'neutral', title: 'New consultation note',      body: 'Dr. Chen added notes from your Apr 12 visit.',     time: '3w ago' },
-]
 
 const TONE_BG: Record<BadgeTone, string> = {
   primary: MB.primary50, success: MB.successBg, warn: MB.warnBg,
@@ -31,19 +27,60 @@ const TONE_COLOR: Record<BadgeTone, string> = {
   danger: MB.danger,   neutral: MB.text2,
 }
 
+const iconForType = (type: string): { icon: IconName; tone: BadgeTone } => {
+  if (type.includes('CANCEL')) return { icon: 'alert', tone: 'danger' }
+  if (type.includes('BOOK') || type.includes('CONFIRM')) return { icon: 'check', tone: 'success' }
+  if (type.includes('REMIND')) return { icon: 'clock', tone: 'primary' }
+  return { icon: 'inbox', tone: 'neutral' }
+}
+
+function toRelativeTime(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.max(1, Math.floor(diffMs / 60000))
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 interface MobNotificationsProps { state?: NotifState }
 
 export default memo(function MobNotifications({ state = 'default' }: MobNotificationsProps) {
+  const queryClient = useQueryClient()
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => NotificationService.list(),
+  })
+  const markAll = useMutation({
+    mutationFn: NotificationService.markAllRead,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+
+  const items: NotifItem[] = (data ?? []).map((n: NotificationItem) => {
+    const { icon, tone } = iconForType(n.type)
+    return {
+      type: n.type,
+      icon,
+      tone,
+      title: n.title,
+      body: n.message,
+      time: toRelativeTime(n.createdAt),
+      unread: !n.read,
+    }
+  })
+  const resolvedState: NotifState | 'error' = isLoading ? 'loading' : isError ? 'error' : items.length === 0 ? 'empty' : state
+
   return (
     <MobScreen>
       <MobTopBar title="Notifications" right={
-        <button className="mb-icon-btn" aria-label="Mark all as read">
+        <button className="mb-icon-btn" aria-label="Mark all as read" onClick={() => markAll.mutate()} disabled={markAll.isPending}>
           <Icon name="check" size={18} color={MB.text2} />
         </button>
       } />
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {state === 'empty' && <EmptyState icon="bell" title="You're all caught up" body="Reminders and updates about your visits will show here." />}
-        {state === 'loading' && (
+        {resolvedState === 'empty' && <EmptyState icon="bell" title="You're all caught up" body="Reminders and updates about your visits will show here." />}
+        {resolvedState === 'error' && <ErrorState title="Couldn't load notifications" onRetry={() => refetch()} />}
+        {resolvedState === 'loading' && (
           <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[0,1,2,3].map(i => (
               <div key={i} style={{ display: 'flex', gap: 12 }}>
@@ -55,9 +92,9 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
             ))}
           </div>
         )}
-        {state === 'default' && (
+        {resolvedState === 'default' && (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {ITEMS.map((n, i) => (
+            {items.map((n, i) => (
               <li key={i} style={{
                 padding: '14px 16px', display: 'flex', gap: 12,
                 borderBottom: `1px solid ${MB.line2}`,

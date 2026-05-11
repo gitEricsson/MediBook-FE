@@ -73,8 +73,8 @@ export const AuthService = {
     await apiClient.post('/api/v1/auth/email/verify', data);
   },
 
-  resendVerification: async () => {
-    await apiClient.post('/api/v1/auth/email/resend');
+  resendVerification: async (email: string) => {
+    await apiClient.post('/api/v1/auth/email/resend', { email });
   },
 
   getCurrentUser: async () => {

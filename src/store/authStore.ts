@@ -20,6 +20,7 @@ interface AuthState {
   
   // Actions
   setAuthenticated: (user: User, accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken: string) => void;
   setUnauthenticated: () => void;
   set2FARequired: () => void;
   setLoading: () => void;
@@ -37,6 +38,9 @@ export const useAuthStore = create<AuthState>()(
 
         setAuthenticated: (user, accessToken, refreshToken) => 
           set({ user, accessToken, refreshToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
+
+        setTokens: (accessToken, refreshToken) =>
+          set({ accessToken, refreshToken }, false, 'auth/setTokens'),
 
         setUnauthenticated: () => 
           set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),

@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookingService } from '@/services/booking.service';
-import { AppointmentHoldResponse } from '@/types/api';
+import { AppointmentsService } from '@/services/appointments.service';
+import { AppointmentHoldRequest, AppointmentHoldResponse } from '@/types/api';
 
 /**
  * useBooking Hook
@@ -45,21 +46,21 @@ export const useBooking = () => {
     };
   }, [activeHold]);
 
+  const [activeHoldContext, setActiveHoldContext] = useState<AppointmentHoldRequest | null>(null);
+
   const holdMutation = useMutation({
     mutationFn: BookingService.holdSlot,
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       setActiveHold(data);
+      setActiveHoldContext(variables);
     },
-    onError: (error: any) => {
-      // Production-grade logging and error handling
-      console.error('Concurrency/Hold Error:', error?.response?.data?.message);
-    }
   });
 
   const confirmMutation = useMutation({
     mutationFn: BookingService.confirmBooking,
     onSuccess: () => {
       setActiveHold(null);
+      setActiveHoldContext(null);
       setHoldTimer(null);
       queryClient.invalidateQueries({ queryKey: ['appointments', 'my'] });
       // Invalidate doctor availability as a slot is now taken
@@ -67,10 +68,14 @@ export const useBooking = () => {
     }
   });
 
-  const cancelHold = useCallback(() => {
+  const cancelHold = useCallback(async () => {
+    if (activeHold && activeHoldContext) {
+      await AppointmentsService.releaseHold(activeHold.holdId, activeHoldContext.doctorId, activeHoldContext.scheduledAt).catch(() => undefined);
+    }
     setActiveHold(null);
     setHoldTimer(null);
-  }, []);
+    setActiveHoldContext(null);
+  }, [activeHold, activeHoldContext]);
 
   return {
     holdSlot: holdMutation.mutateAsync,

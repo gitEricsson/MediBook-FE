@@ -16,13 +16,15 @@ interface InputProps {
   full?: boolean
   size?: Size
   autoComplete?: string
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
+  maxLength?: number
   'aria-label'?: string
   'aria-describedby'?: string
 }
 
 export const Input = memo(function Input({
   id, value, placeholder, icon, type = 'text', error, disabled, suffix,
-  onChange, full = true, size = 'md', autoComplete, 'aria-label': ariaLabel,
+  onChange, full = true, size = 'md', autoComplete, inputMode, maxLength, 'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedby,
 }: InputProps) {
   const h = size === 'sm' ? 34 : size === 'lg' ? 48 : 40
@@ -45,6 +47,8 @@ export const Input = memo(function Input({
         id={id} type={type} value={value} placeholder={placeholder}
         disabled={disabled} onChange={onChange}
         autoComplete={autoComplete}
+        inputMode={inputMode}
+        maxLength={maxLength}
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedby}
         aria-invalid={hasError || undefined}

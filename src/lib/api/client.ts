@@ -6,13 +6,13 @@ import { useAuthStore } from '@/store/authStore';
 // Types for the refresh queue
 interface FailedRequest {
   resolve: (token: string) => void;
-  reject: (error: any) => void;
+  reject: (error: unknown) => void;
 }
 
 let isRefreshing = false;
 let failedQueue: FailedRequest[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -51,7 +51,8 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Handle 401 Unauthorized (Expired Access Token)
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const isRefreshRequest = originalRequest.url?.includes('/api/v1/auth/refresh');
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -67,9 +68,13 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { refreshToken } = useAuthStore.getState();
+        const { refreshToken, setTokens } = useAuthStore.getState();
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
         const response = await apiClient.post('/api/v1/auth/refresh', { refreshToken });
-        const { accessToken } = unwrapApiResponse<{ accessToken: string }>(response.data);
+        const { accessToken, refreshToken: rotatedRefreshToken } = unwrapApiResponse<{ accessToken: string; refreshToken: string }>(response.data);
+        setTokens(accessToken, rotatedRefreshToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         

@@ -17,14 +17,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [setUnauthenticated, queryClient]);
 
   const initAuth = useCallback(async () => {
+    const refreshToken = useAuthStore.getState().refreshToken;
+    if (!refreshToken) {
+      setUnauthenticated();
+      return;
+    }
+
     setLoading();
     try {
       // Attempt to refresh the session on boot
-      const data = await AuthService.refresh();
+      const data = await AuthService.refresh({ refreshToken });
       const userData = await AuthService.getCurrentUser();
-      // Fix 3: Pass the refreshToken from the refresh response
       setAuthenticated(userData, data.accessToken, data.refreshToken ?? '');
-    } catch (error) {
+    } catch {
       setUnauthenticated();
     }
   }, [setAuthenticated, setUnauthenticated, setLoading]);

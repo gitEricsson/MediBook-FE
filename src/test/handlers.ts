@@ -4,19 +4,29 @@ export const handlers = [
   // Auth Handlers
   http.post('*/api/v1/auth/login', () => {
     return HttpResponse.json({
-      accessToken: 'mock-access-token',
-      user: {
-        id: 'user-1',
-        email: 'test@example.com',
-        role: 'patient',
-        firstName: 'Test',
-        lastName: 'User'
+      success: true,
+      data: {
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        tokenType: 'Bearer',
+        expiresIn: 900,
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          role: 'ROLE_PATIENT',
+          firstName: 'Test',
+          lastName: 'User',
+          enabled: true,
+        }
       }
     });
   }),
 
   http.post('*/api/v1/auth/refresh', () => {
-    return HttpResponse.json({ accessToken: 'new-mock-token' });
+    return HttpResponse.json({
+      success: true,
+      data: { accessToken: 'new-mock-token', refreshToken: 'new-refresh-token', tokenType: 'Bearer', expiresIn: 900 },
+    });
   }),
 
   http.post('*/api/v1/auth/logout', () => {

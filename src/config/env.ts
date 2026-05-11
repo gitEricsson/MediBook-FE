@@ -12,10 +12,6 @@ const _env = envSchema.safeParse({
   VITE_APP_NAME: import.meta.env.VITE_APP_NAME || 'MediBook',
 });
 
-if (!_env.success) {
-  console.warn('⚠️ Some environment variables are invalid, using defaults:', _env.error.format());
-}
-
 export const env = _env.data || {
   VITE_API_URL: 'http://localhost:8080',
   VITE_ENV: 'development',

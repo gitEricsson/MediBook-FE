@@ -6,10 +6,10 @@ import { BookingService } from '@/services/booking.service';
  * 
  * Production-grade patient appointment list.
  */
-export const useMyAppointments = () => {
+export const useMyAppointments = (tab: 'upcoming' | 'past' = 'upcoming') => {
   return useQuery({
-    queryKey: ['appointments', 'my'],
-    queryFn: () => BookingService.getMyAppointments('upcoming'),
+    queryKey: ['appointments', 'my', tab],
+    queryFn: () => BookingService.getMyAppointments(tab),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };

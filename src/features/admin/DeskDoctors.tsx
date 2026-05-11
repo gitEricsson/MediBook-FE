@@ -10,26 +10,16 @@ import { Th } from '@/components/table/Th'
 import { Td } from '@/components/table/Td'
 import { RowMenu } from '@/components/table/RowMenu'
 import { Skel } from '@/components/feedback/Skel'
-import { useAdminUsers, useAdminActions } from '@/hooks/useAdmin'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { useAdminActions, useAdminDoctors } from '@/hooks/useAdmin'
 
 export default memo(function DeskDoctors() {
-  const { data: users, isLoading } = useAdminUsers();
+  const { data: doctors, isLoading } = useAdminDoctors();
   useAdminActions();
   const [search, setSearch] = useState('');
 
-  // Fallback to sample data for visual stability in prototype
-  const sampleDocs = [
-    { id: '1', name: 'Dr. Sarah Chen',     email: 'sarah.chen@medibook.health',    dept: 'Cardiology',    spec: 'Cardiologist',    appts: 284, status: 'ACTIVE',   tone: 'primary' },
-    { id: '2', name: 'Dr. Marcus Okafor',  email: 'marcus.okafor@medibook.health', dept: 'Dermatology',   spec: 'Dermatologist',   appts: 197, status: 'ACTIVE',   tone: 'teal'    },
-    { id: '3', name: 'Dr. Priya Raghavan', email: 'priya.r@medibook.health',       dept: 'Pediatrics',    spec: 'Pediatrician',    appts: 341, status: 'ACTIVE',   tone: 'amber'   },
-    { id: '4', name: 'Dr. James Whitfield',email: 'james.w@medibook.health',       dept: 'Orthopedics',   spec: 'Orthopedic Surg.',appts: 218, status: 'ACTIVE',   tone: 'indigo'  },
-  ];
-
-  // Filter users who are doctors
-  const doctors = users ? users.filter(u => u.role === 'doctor') : [];
-  const displayDocs = doctors.length > 0 ? doctors : sampleDocs;
-  const getDoctorName = (doctor: (typeof displayDocs)[number]) =>
-    (doctor as any).name || `${(doctor as any).firstName ?? ''} ${(doctor as any).lastName ?? ''}`.trim();
+  const displayDocs = doctors ?? [];
+  const getDoctorName = (doctor: (typeof displayDocs)[number]) => doctor.fullName;
   
   const filteredDocs = displayDocs.filter(d => 
     getDoctorName(d).toLowerCase().includes(search.toLowerCase()) ||
@@ -75,21 +65,24 @@ export default memo(function DeskDoctors() {
                       ))}
                     </tr>
                   ))
+                : filteredDocs.length === 0 ? (
+                    <tr><td colSpan={6}><EmptyState icon="stethoscope" title="No doctors found" body="Create a doctor profile after assigning a user the doctor role." /></td></tr>
+                  )
                 : filteredDocs.map(d => (
                     <tr key={d.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                       <Td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <Avatar name={getDoctorName(d)} size={28} tone={(d as any).tone || 'primary'} />
+                          <Avatar name={getDoctorName(d)} size={28} tone="primary" />
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{getDoctorName(d)}</div>
                             <div style={{ fontSize: 11, color: MB.text3 }}>{d.email}</div>
                           </div>
                         </div>
                       </Td>
-                      <Td>{(d as any).dept || 'Cardiology'}</Td>
-                      <Td>{(d as any).spec || 'Specialist'}</Td>
-                      <Td align="right">{((d as any).appts || 0).toLocaleString()}</Td>
-                      <Td><StatusPill status={(d as any).status || 'ACTIVE'} /></Td>
+                      <Td>{d.departmentName}</Td>
+                      <Td>{d.specialization || 'Specialist'}</Td>
+                      <Td align="right">-</Td>
+                      <Td><StatusPill status={d.acceptingNew ? 'ACTIVE' : 'INACTIVE'} /></Td>
                       <Td>
                         <RowMenu 
                           aria-label={`Actions for ${getDoctorName(d)}`}
