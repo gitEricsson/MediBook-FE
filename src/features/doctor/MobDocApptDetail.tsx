@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -13,6 +13,8 @@ import { DoctorPortalService } from '@/services/doctor-portal.service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Skel } from '@/components/feedback/Skel'
 import { SafeHtml } from '@/components/feedback/SafeHtml'
+import { toast } from 'sonner'
+import type { IconName } from '@/types/ui'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><div className="mb-eyebrow" style={{ marginBottom: 8 }}>{title}</div>{children}</div>
@@ -27,20 +29,103 @@ function ProfileRow({ label, value, last }: { label: string; value: string; last
   )
 }
 
+type ConfirmAction = 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | null
+
+const ACTION_CFG: Record<'COMPLETED' | 'CANCELLED' | 'NO_SHOW', {
+  title: string; body: string; cta: string; danger: boolean; icon: IconName; iconColor: string; iconBg: string
+}> = {
+  COMPLETED: {
+    title: 'Mark as completed?',
+    body: 'This appointment will be moved to your completed list, and you can add a consultation note.',
+    cta: 'Yes, mark completed',
+    danger: false,
+    icon: 'check',
+    iconColor: MB.success,
+    iconBg: '#E6F6EE',
+  },
+  CANCELLED: {
+    title: 'Cancel this appointment?',
+    body: 'The patient will be notified by email and SMS. The slot will be returned to your availability.',
+    cta: 'Yes, cancel',
+    danger: true,
+    icon: 'x',
+    iconColor: MB.danger,
+    iconBg: '#FEE4E2',
+  },
+  NO_SHOW: {
+    title: 'Mark as no-show?',
+    body: "This indicates the patient did not attend. They'll be notified and may be subject to your no-show policy.",
+    cta: 'Yes, mark no-show',
+    danger: true,
+    icon: 'alert',
+    iconColor: MB.danger,
+    iconBg: '#FEE4E2',
+  },
+}
+
+function StatusConfirmSheet({ action, apptName, time, onConfirm, onClose, loading }: {
+  action: 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+  apptName: string; time: string
+  onConfirm: () => void; onClose: () => void; loading: boolean
+}) {
+  const cfg = ACTION_CFG[action]
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={cfg.title}
+      style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}
+    >
+      <div style={{ background: MB.bg, width: '100%', borderRadius: '20px 20px 0 0', padding: '20px 20px 32px', boxShadow: '0 -8px 24px rgba(0,0,0,0.12)' }}>
+        <div style={{ width: 36, height: 4, background: MB.line, borderRadius: 2, margin: '0 auto 16px' }} aria-hidden="true" />
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: cfg.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <Icon name={cfg.icon} size={22} color={cfg.iconColor} />
+        </div>
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: MB.ink, margin: '0 0 8px' }}>{cfg.title}</h3>
+        <p style={{ fontSize: 13, color: MB.text2, margin: '0 0 14px', lineHeight: 1.5 }}>{cfg.body}</p>
+        <Card padding={12} style={{ background: MB.bg2 }}>
+          <div style={{ fontSize: 12, color: MB.text3 }}>{time}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>{apptName}</div>
+        </Card>
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose} disabled={loading}>Keep as-is</Btn>
+          <Btn variant="primary" danger={cfg.danger} size="lg" style={{ flex: 1.4 }} loading={loading} onClick={onConfirm}>{cfg.cta}</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default memo(function MobDocApptDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { appt, time } = location.state || {};
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
 
   const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(appt?.patientId || 'pt-1');
 
   const transitionMutation = useMutation({
-    mutationFn: (status: 'COMPLETED' | 'NO_SHOW') => DoctorPortalService.transitionAppointment(id || '1', status),
-    onSuccess: () => {
+    mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
+      DoctorPortalService.transitionAppointment(id || '1', status as 'COMPLETED' | 'NO_SHOW'),
+    onSuccess: (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ['schedule'] });
-      navigate(-1);
+      toast.success(
+        status === 'COMPLETED' ? 'Appointment marked completed'
+          : status === 'NO_SHOW' ? 'Marked as no-show'
+          : 'Appointment cancelled'
+      )
+      setConfirmAction(null)
+      if (status === 'COMPLETED') {
+        navigate(`/doctor/appt/${id}/note`, { state: { appt } })
+      } else {
+        navigate(-1)
+      }
+    },
+    onError: () => {
+      toast.error('Could not update appointment status')
+      setConfirmAction(null)
     }
   });
 
@@ -102,29 +187,48 @@ export default memo(function MobDocApptDetail() {
         </div>
       </div>
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <Btn 
-          variant="primary" 
-          size="lg" 
-          full 
+        <Btn
+          variant="primary"
+          size="lg"
+          full
           icon="check"
-          loading={transitionMutation.isPending}
-          disabled={appt.status === 'COMPLETED'}
-          onClick={() => transitionMutation.mutate('COMPLETED')}
+          disabled={appt.status === 'COMPLETED' || appt.status === 'CANCELLED'}
+          onClick={() => setConfirmAction('COMPLETED')}
         >
           {appt.status === 'COMPLETED' ? 'Visit Completed' : 'Mark completed'}
         </Btn>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="secondary" size="md" style={{ flex: 1 }}>Reschedule</Btn>
-          <Btn 
-            variant="secondary" 
-            size="md" 
+          <Btn
+            variant="secondary"
+            size="md"
             style={{ flex: 1, color: MB.danger }}
-            onClick={() => transitionMutation.mutate('NO_SHOW')}
+            disabled={appt.status === 'COMPLETED' || appt.status === 'CANCELLED'}
+            onClick={() => setConfirmAction('CANCELLED')}
+          >
+            Cancel
+          </Btn>
+          <Btn
+            variant="secondary"
+            size="md"
+            style={{ flex: 1, color: MB.danger }}
+            disabled={appt.status === 'COMPLETED' || appt.status === 'CANCELLED' || appt.status === 'NO_SHOW'}
+            onClick={() => setConfirmAction('NO_SHOW')}
           >
             No-show
           </Btn>
         </div>
       </div>
+
+      {confirmAction && (
+        <StatusConfirmSheet
+          action={confirmAction}
+          apptName={appt.name}
+          time={time || ''}
+          onConfirm={() => transitionMutation.mutate(confirmAction)}
+          onClose={() => setConfirmAction(null)}
+          loading={transitionMutation.isPending}
+        />
+      )}
     </MobScreen>
   )
 })

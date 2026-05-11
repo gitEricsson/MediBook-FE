@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { MB } from '@/constants/tokens'
 import { DeskShell } from '@/components/layout/DeskShell'
 import { DeskTopbar } from '@/components/layout/DeskTopbar'
@@ -6,6 +6,29 @@ import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { Badge } from '@/components/primitives/Badge'
 import { useDoctorUtilization } from '@/hooks/useAdmin'
+
+interface KpiBoxProps { label: string; value: string; sub?: string; loading?: boolean }
+
+function KpiBox({ label, value, sub, loading }: KpiBoxProps) {
+  return (
+    <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: '18px 20px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: MB.text3, textTransform: 'uppercase', letterSpacing: 0.05, marginBottom: 10 }}>
+        {label}
+      </div>
+      {loading ? (
+        <>
+          <Skel h={26} w="55%" r={6} />
+          <Skel h={11} w="40%" r={3} style={{ marginTop: 8 }} />
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: 26, fontWeight: 700, color: MB.ink, lineHeight: 1 }}>{value}</div>
+          {sub && <div style={{ fontSize: 12, color: MB.text3, marginTop: 6 }}>{sub}</div>}
+        </>
+      )}
+    </div>
+  )
+}
 
 function CapacityBar({ rate }: { rate: number }) {
   const pct = rate * 100
@@ -37,10 +60,41 @@ export default memo(function DeskCapacity() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 
+  const kpi = useMemo(() => {
+    if (!utilization) return null
+    const totalBooked = utilization.reduce((s, d) => s + d.bookedSlots, 0)
+    const totalSlots = utilization.reduce((s, d) => s + d.totalSlots, 0)
+    const atCapacity = utilization.filter((d) => d.utilizationRate >= 1).length
+    const freeSlots = totalSlots - totalBooked
+    return { totalBooked, totalSlots, atCapacity, freeSlots, doctorCount: utilization.length }
+  }, [utilization])
+
   return (
     <DeskShell active="capacity">
       <DeskTopbar title="Capacity" subtitle={`Today · ${today}`} />
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+
+        {/* KPI summary row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+          <KpiBox
+            label="Slots booked"
+            value={isLoading ? '—' : `${kpi?.totalBooked ?? 0}`}
+            sub={kpi ? `of ${kpi.totalSlots} total` : undefined}
+            loading={isLoading}
+          />
+          <KpiBox
+            label="Doctors at capacity"
+            value={isLoading ? '—' : `${kpi?.atCapacity ?? 0}`}
+            sub={kpi ? `of ${kpi.doctorCount} doctors` : undefined}
+            loading={isLoading}
+          />
+          <KpiBox
+            label="Free slots"
+            value={isLoading ? '—' : `${kpi?.freeSlots ?? 0}`}
+            sub={kpi ? `across ${kpi.doctorCount - (kpi.atCapacity ?? 0)} doctors` : undefined}
+            loading={isLoading}
+          />
+        </div>
         <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
           <div style={{
             padding: '14px 24px', borderBottom: `1px solid ${MB.line}`,

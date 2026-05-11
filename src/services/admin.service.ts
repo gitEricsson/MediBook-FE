@@ -127,6 +127,20 @@ export const AdminService = {
     return pageData.content;
   },
 
+  createDoctor: async (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    departmentId: string;
+    specialization?: string;
+    licenseNumber?: string;
+    defaultStartTime?: string;
+    defaultEndTime?: string;
+  }) => {
+    const response = await apiClient.post('/api/v1/admin/doctors', data);
+    return unwrapApiResponse<DoctorResponse>(response.data);
+  },
+
   updateUserRole: async (id: string, role: UserRole) => {
     const roleMap: Record<UserRole, string> = {
       patient: 'ROLE_PATIENT',

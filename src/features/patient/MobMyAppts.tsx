@@ -138,6 +138,8 @@ function ApptCard({ appt }: { appt: Appointment }) {
 export default memo(function MobMyAppts() {
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
   const { data, isLoading, isError, refetch } = useMyAppointments(tab)
+  const { data: upcomingData } = useMyAppointments('upcoming')
+  const { data: pastData } = useMyAppointments('past')
   const navigate = useNavigate()
 
   return (
@@ -150,7 +152,10 @@ export default memo(function MobMyAppts() {
 
       <div style={{ background: MB.bg, padding: '0 16px', borderBottom: `1px solid ${MB.line2}` }}>
         <div style={{ display: 'flex', gap: 24 }} role="tablist">
-          {([['Upcoming', 'upcoming'], ['Past', 'past']] as const).map(([label, id]) => (
+          {([
+            ['Upcoming', 'upcoming', upcomingData?.length],
+            ['Past', 'past', pastData?.length],
+          ] as const).map(([label, id, count]) => (
             <button
               key={id}
               role="tab"
@@ -163,9 +168,13 @@ export default memo(function MobMyAppts() {
                 fontSize: 14, fontWeight: 600, color: tab === id ? MB.primary : MB.text3,
                 background: 'transparent',
                 cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 6,
               }}
             >
               {label}
+              {count != null && (
+                <span style={{ fontSize: 11, fontWeight: 500, color: MB.text3 }}>{count}</span>
+              )}
             </button>
           ))}
         </div>

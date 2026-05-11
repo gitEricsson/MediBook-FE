@@ -22,12 +22,12 @@ export interface ConsultationNoteResponse {
 
 export const ConsultationNotesService = {
   getByAppointment: async (appointmentId: string) => {
-    const response = await apiClient.get(`/api/v1/consultation-notes/appointment/${appointmentId}`);
+    const response = await apiClient.get(`/api/v1/consultations/${appointmentId}/notes`);
     return unwrapApiResponse<ConsultationNoteResponse>(response.data);
   },
 
   createForAppointment: async (appointmentId: string, payload: ConsultationNoteRequest) => {
-    const response = await apiClient.post(`/api/v1/consultation-notes/appointment/${appointmentId}`, payload);
+    const response = await apiClient.post(`/api/v1/consultations/${appointmentId}/notes`, payload);
     return unwrapApiResponse<ConsultationNoteResponse>(response.data);
   },
 

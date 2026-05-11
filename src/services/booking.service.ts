@@ -9,7 +9,7 @@ import {
 
 export const BookingService = {
   holdSlot: async (data: AppointmentHoldRequest) => {
-    const response = await apiClient.post('/api/v1/appointments/holds', data);
+    const response = await apiClient.post('/api/v1/appointments/hold', data);
     return unwrapApiResponse<AppointmentHoldResponse>(response.data);
   },
 
@@ -19,18 +19,18 @@ export const BookingService = {
   },
 
   getMyAppointments: async (tab: 'upcoming' | 'past' = 'upcoming') => {
-    const response = await apiClient.get('/api/v1/me/appointments', {
-      params: {
-        tab,
-        ...toPageableParams({ page: 0, size: 20 }),
-      },
+    const endpoint = tab === 'upcoming'
+      ? '/api/v1/appointments/my/upcoming'
+      : '/api/v1/appointments/my/past';
+    const response = await apiClient.get(endpoint, {
+      params: toPageableParams({ page: 0, size: 20 }),
     });
     const page = unwrapApiResponse<PageResponse<Appointment>>(response.data);
     return page.content;
   },
 
   reschedule: async (id: string, newStart: string, newEnd: string, holdId?: string) => {
-    const response = await apiClient.post(`/api/v1/appointments/${id}/reschedule`, {
+    const response = await apiClient.put(`/api/v1/appointments/${id}/reschedule`, {
       newStart,
       newEnd,
       holdId,
