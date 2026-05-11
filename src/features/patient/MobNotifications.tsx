@@ -9,7 +9,8 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import type { IconName } from '@/types/ui'
 import type { BadgeTone } from '@/types/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { NotificationService, NotificationItem } from '@/services/notification.service'
+import { NotificationService } from '@/services/notification.service'
+import type { NotificationItem } from '@/services/notification.service'
 
 type NotifState = 'default' | 'loading' | 'empty'
 

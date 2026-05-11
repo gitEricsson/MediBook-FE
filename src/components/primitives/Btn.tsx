@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { MB } from '@/constants/tokens'
 import { Icon } from './Icon'
+import { cn } from '@/lib/cn'
 import type { BtnVariant, IconName, Size } from '@/types/ui'
 
 interface BtnProps {
@@ -16,6 +17,7 @@ interface BtnProps {
   onClick?: () => void
   type?: 'button' | 'submit' | 'reset'
   style?: React.CSSProperties
+  className?: string
   'aria-label'?: string
 }
 
@@ -36,7 +38,7 @@ const VARIANT_MAP: Record<BtnVariant, { bg: string; color: string; border: strin
 
 export const Btn = memo(function Btn({
   children, variant = 'primary', size = 'md', icon, iconRight,
-  full, loading, disabled, danger, onClick, type = 'button', style,
+  full, loading, disabled, danger, onClick, type = 'button', style, className,
   'aria-label': ariaLabel,
 }: BtnProps) {
   const sz = SIZE_MAP[size]
@@ -52,21 +54,24 @@ export const Btn = memo(function Btn({
   return (
     <button
       type={type} onClick={onClick}
-      disabled={disabled ?? loading}
+      disabled={disabled || loading}
       aria-label={ariaLabel}
       aria-busy={loading}
+      className={cn('mb-btn', className)}
       style={{
-        height: sz.h, padding: `0 ${sz.px}px`, fontSize: sz.fs, fontWeight: 600,
-        background: v.bg, color: v.color, border: `1px solid ${v.border}`,
-        borderRadius: 8, display: 'inline-flex', alignItems: 'center',
-        justifyContent: 'center', gap: sz.gap,
-        cursor: disabled ?? loading ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1, width: full ? '100%' : undefined,
-        boxShadow: isPrimary ? '0 1px 2px rgba(16,24,40,0.05)' : 'none',
-        transition: 'background .12s, box-shadow .12s', whiteSpace: 'nowrap',
-        fontFamily: 'inherit',
+        '--mb-btn-height': `${sz.h}px`,
+        '--mb-btn-px': `${sz.px}px`,
+        '--mb-btn-font-size': `${sz.fs}px`,
+        '--mb-btn-gap': `${sz.gap}px`,
+        '--mb-btn-width': full ? '100%' : undefined,
+        '--mb-btn-bg': v.bg,
+        '--mb-btn-color': v.color,
+        '--mb-btn-border': v.border,
+        '--mb-btn-hover-bg': isPrimary ? (danger ? '#912018' : MB.primary600) : variant === 'ghost' || variant === 'link' ? MB.bg3 : MB.bg3,
+        '--mb-btn-hover-border': variant === 'secondary' || variant === 'dangerOutline' ? '#D6DAE1' : v.border,
+        '--mb-btn-shadow': isPrimary ? '0 1px 2px rgba(16,24,40,0.05)' : 'none',
         ...style,
-      }}
+      } as React.CSSProperties}
     >
       {loading
         ? <span className="mb-spinner" style={spinnerStyle} />

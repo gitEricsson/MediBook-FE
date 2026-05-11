@@ -23,6 +23,34 @@ export interface AdminUser {
   enabled?: boolean;
 }
 
+export interface AppointmentAnalytics {
+  totalAppointments: number;
+  completedAppointments: number;
+  cancelledAppointments: number;
+  cancellationRatePercent: number;
+  noShowRatePercent: number;
+  appointmentsByDepartment: Record<string, number>;
+  appointmentsByType: Record<string, number>;
+}
+
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  totalRefunds: number;
+  netRevenue: number;
+  successfulPayments: number;
+  failedPayments: number;
+  refundedPayments: number;
+}
+
+export interface DoctorUtilizationEntry {
+  doctorId: number;
+  doctorName: string;
+  department: string;
+  totalSlots: number;
+  bookedSlots: number;
+  utilizationRate: number;
+}
+
 export const AdminService = {
   // Department Management
   getDepartments: async () => {
@@ -111,6 +139,23 @@ export const AdminService = {
 
   revokeUserSessions: async (id: string) => {
     await apiClient.post(`/api/v1/users/${id}/revoke-sessions`);
+  },
+
+  // Analytics
+  getAppointmentAnalytics: async (from: string, to: string): Promise<AppointmentAnalytics> => {
+    const response = await apiClient.get('/api/v1/admin/analytics/appointments', { params: { from, to } });
+    return unwrapApiResponse<AppointmentAnalytics>(response.data);
+  },
+
+  getRevenueAnalytics: async (from: string, to: string): Promise<RevenueAnalytics> => {
+    const response = await apiClient.get('/api/v1/admin/analytics/revenue', { params: { from, to } });
+    return unwrapApiResponse<RevenueAnalytics>(response.data);
+  },
+
+  getDoctorUtilization: async (from: string, to: string): Promise<DoctorUtilizationEntry[]> => {
+    const response = await apiClient.get('/api/v1/admin/analytics/doctor-utilization', { params: { from, to } });
+    const raw = unwrapApiResponse<DoctorUtilizationEntry[] | { content: DoctorUtilizationEntry[] }>(response.data);
+    return Array.isArray(raw) ? raw : (raw as { content: DoctorUtilizationEntry[] }).content ?? [];
   },
 
   // System Health

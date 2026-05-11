@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Attempt to refresh the session on boot
       const data = await AuthService.refresh({ refreshToken });
       const userData = await AuthService.getCurrentUser();
-      setAuthenticated(userData, data.accessToken, data.refreshToken ?? '');
+      setAuthenticated(userData, data.accessToken, data.refreshToken || refreshToken);
     } catch {
       setUnauthenticated();
     }

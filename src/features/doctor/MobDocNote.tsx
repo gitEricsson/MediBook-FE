@@ -7,40 +7,43 @@ import { StatusPill } from '@/components/primitives/StatusPill'
 import { Card } from '@/components/primitives/Card'
 import { Field } from '@/components/forms/Field'
 import { Textarea } from '@/components/forms/Textarea'
-import { Checkbox } from '@/components/forms/Checkbox'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
-import { DoctorPortalService } from '@/services/doctor-portal.service'
+import { ConsultationNotesService } from '@/services/consultation-notes.service'
+import { toast } from 'sonner'
+import { parseApiError } from '@/lib/api/contracts'
 import type { AvatarTone } from '@/types/domain'
 
 export default memo(function MobDocNote() {
-  const { id } = useParams<{ id: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { appt } = location.state || {};
+  const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { appt } = location.state || {}
 
   const [notes, setNotes] = useState({
     subjective: '',
     objective: '',
     assessment: '',
     plan: '',
-    isDraft: true,
-  });
+  })
 
   const saveMutation = useMutation({
-    mutationFn: () => DoctorPortalService.saveConsultationNote({
-      appointmentId: id || '1',
-      diagnosis: notes.assessment || notes.subjective,
-      treatmentPlan: notes.plan,
-      prescriptions: notes.objective,
-    }),
+    mutationFn: () =>
+      ConsultationNotesService.createForAppointment(id || '', {
+        diagnosis: [notes.assessment, notes.subjective].filter(Boolean).join('\n') || 'See notes',
+        treatmentPlan: notes.plan,
+        prescriptions: notes.objective || undefined,
+      }),
     onSuccess: () => {
-      // Potentially invalidate notes query
-      navigate(-1);
-    }
-  });
+      toast.success('Consultation note saved')
+      navigate(-1)
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to save note'),
+  })
 
-  if (!appt) return null;
+  if (!appt) return null
+
+  const canSave = !!(notes.assessment || notes.plan || notes.subjective)
 
   return (
     <MobScreen>
@@ -48,20 +51,25 @@ export default memo(function MobDocNote() {
         title="Consultation note"
         back
         right={
-          <span 
-            onClick={() => saveMutation.mutate()}
-            style={{ 
-              fontSize: 13, 
-              color: saveMutation.isPending ? MB.text4 : MB.primary, 
-              fontWeight: 600, 
-              padding: '0 6px', 
-              cursor: saveMutation.isPending ? 'default' : 'pointer' 
+          <button
+            onClick={() => canSave && saveMutation.mutate()}
+            disabled={!canSave || saveMutation.isPending}
+            style={{
+              fontSize: 13,
+              color: !canSave || saveMutation.isPending ? MB.text4 : MB.primary,
+              fontWeight: 600,
+              padding: '0 6px',
+              cursor: !canSave || saveMutation.isPending ? 'default' : 'pointer',
+              background: 'transparent',
+              border: 'none',
+              fontFamily: 'inherit',
             }}
           >
-            {saveMutation.isPending ? 'Saving...' : 'Save'}
-          </span>
+            {saveMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
         }
       />
+
       <div style={{ flex: 1, overflow: 'auto' }}>
         <Card padding={12} style={{ margin: 16, background: MB.bg2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -73,42 +81,43 @@ export default memo(function MobDocNote() {
             <StatusPill status={appt.status} />
           </div>
         </Card>
+
         <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="Subjective" htmlFor="note-subj">
-            <Textarea 
-              id="note-subj" 
-              rows={3} 
-              value={notes.subjective} 
+          <div style={{ padding: '10px 12px', background: MB.primary50, borderRadius: 8, fontSize: 12, color: MB.primary600, display: 'flex', gap: 8 }}>
+            Using SOAP format — fill in the relevant sections.
+          </div>
+
+          <Field label="Subjective" htmlFor="note-subj" hint="What the patient reports">
+            <Textarea
+              id="note-subj" rows={3}
+              value={notes.subjective}
               onChange={(e) => setNotes({ ...notes, subjective: e.target.value })}
-              placeholder="Patient reports..." 
+              placeholder="Patient reports chest pain on exertion…"
             />
           </Field>
-          <Field label="Objective" htmlFor="note-obj">
-            <Textarea 
-              id="note-obj" 
-              rows={3} 
-              value={notes.objective} 
+          <Field label="Objective" htmlFor="note-obj" hint="Vital signs, physical exam findings, test results">
+            <Textarea
+              id="note-obj" rows={3}
+              value={notes.objective}
               onChange={(e) => setNotes({ ...notes, objective: e.target.value })}
-              placeholder="Vital signs, physical exam..." 
+              placeholder="BP 140/90, HR 82, afebrile…"
             />
           </Field>
-          <Field label="Assessment & plan" htmlFor="note-plan">
-            <Textarea 
-              id="note-plan" 
-              rows={4} 
-              value={notes.plan} 
+          <Field label="Assessment" htmlFor="note-assess" hint="Diagnosis or differential">
+            <Textarea
+              id="note-assess" rows={2}
+              value={notes.assessment}
+              onChange={(e) => setNotes({ ...notes, assessment: e.target.value })}
+              placeholder="Essential hypertension, controlled…"
+            />
+          </Field>
+          <Field label="Plan" htmlFor="note-plan" hint="Treatment, prescriptions, follow-up">
+            <Textarea
+              id="note-plan" rows={3}
+              value={notes.plan}
               onChange={(e) => setNotes({ ...notes, plan: e.target.value })}
-              placeholder="Diagnosis and next steps..." 
+              placeholder="Continue Amlodipine 5mg · Follow up in 4 weeks…"
             />
-          </Field>
-          <Field label="Status" hint="Mark as final to release to patient portal." htmlFor="note-share">
-            <div style={{ display: 'flex', gap: 8, padding: '4px 0' }}>
-              <Checkbox 
-                checked={!notes.isDraft} 
-                onChange={() => setNotes({ ...notes, isDraft: !notes.isDraft })}
-                label="Finalize and share with patient" 
-              />
-            </div>
           </Field>
         </div>
       </div>

@@ -6,7 +6,6 @@ export interface PatientProfileRequest {
   allergies?: string;
   medicalHistory?: string;
   emergencyContact?: string;
-  ssn?: string;
 }
 
 export interface PatientProfileResponse {
@@ -16,7 +15,6 @@ export interface PatientProfileResponse {
   allergies?: string;
   medicalHistory?: string;
   emergencyContact?: string;
-  ssnMasked?: string;
 }
 
 export const PatientProfileService = {
@@ -30,4 +28,3 @@ export const PatientProfileService = {
     return unwrapApiResponse<PatientProfileResponse>(response.data);
   },
 };
-

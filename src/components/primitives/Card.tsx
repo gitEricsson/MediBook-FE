@@ -1,5 +1,4 @@
 import { memo } from 'react'
-import { MB } from '@/constants/tokens'
 
 interface CardProps {
   children: React.ReactNode
@@ -16,10 +15,10 @@ export const Card = memo(function Card({ children, padding = 16, style, onClick,
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={interactive && onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick() } : undefined}
+      className="mb-card"
+      data-interactive={interactive || undefined}
       style={{
-        background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`,
-        padding, cursor: interactive ? 'pointer' : undefined,
-        boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+        padding,
         ...style,
       }}
     >

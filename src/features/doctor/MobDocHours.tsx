@@ -1,4 +1,5 @@
 import { memo, useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -39,7 +40,9 @@ export default memo(function MobDocHours() {
     mutationFn: DoctorPortalService.updateWorkingHours,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor', 'hours'] });
-    }
+      toast.success('Working hours saved');
+    },
+    onError: () => toast.error('Failed to save working hours'),
   });
 
   const handleToggle = (dayIndex: number) => {
