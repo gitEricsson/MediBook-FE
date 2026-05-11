@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { DoctorPortalService, WorkingHours } from '@/services/doctor-portal.service'; // Import WorkingHours for potential use
+import { DoctorPortalService } from '@/services/doctor-portal.service'
 
 // Define Time and FreeSlot interfaces to match the service's expected structure
 export interface Time { hour: number; minute: number; }
