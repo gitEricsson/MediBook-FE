@@ -21,9 +21,8 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   ],
   doctor: [
     { id: 'schedule', label: 'Schedule',      icon: 'calendar' },
-    { id: 'patients', label: 'Patients',      icon: 'users'    },
     { id: 'hours',    label: 'Working hours', icon: 'clock'    },
-    { id: 'notes',    label: 'Notes',         icon: 'edit'     },
+    { id: 'profile',  label: 'Profile',       icon: 'user'     },
   ],
   patient: [
     { id: 'home',   label: 'Home',          icon: 'home'   },
@@ -45,9 +44,8 @@ const NAV_PATHS: Record<UserRole, Record<string, string>> = {
   },
   doctor: {
     schedule: '/doctor/schedule',
-    patients: '/doctor/schedule',
     hours: '/doctor/hours',
-    notes: '/doctor/schedule',
+    profile: '/doctor/profile',
   },
   patient: {
     home: '/patient/search',

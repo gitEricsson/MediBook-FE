@@ -91,12 +91,12 @@ export const UserService = {
   },
 
   updateMe: async (payload: UpdateProfileRequest) => {
-    const response = await apiClient.patch('/api/v1/me', payload);
+    const response = await apiClient.put('/api/v1/me', payload);
     return mapUser(unwrapApiResponse(response.data));
   },
 
   changePassword: async (payload: ChangePasswordRequest) => {
-    await apiClient.post('/api/v1/me/password', payload);
+    await apiClient.post('/api/v1/me/change-password', payload);
   },
 
   updateLocale: async (locale: string) => {
@@ -110,7 +110,7 @@ export const UserService = {
   },
 
   enable2FA: async () => {
-    await apiClient.post('/api/v1/users/me/2fa/enable');
+    await apiClient.post('/api/v1/me/2fa/enable');
   },
 
   listUsers: async (page = 0, size = 50) => {

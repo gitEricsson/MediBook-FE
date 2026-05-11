@@ -34,7 +34,7 @@ export const AppointmentsService = {
   },
 
   reschedule: async (id: string, payload: RescheduleRequest) => {
-    const response = await apiClient.post(`/api/v1/appointments/${id}/reschedule`, payload);
+    const response = await apiClient.put(`/api/v1/appointments/${id}/reschedule`, payload);
     return unwrapApiResponse<Appointment>(response.data);
   },
 
@@ -49,7 +49,7 @@ export const AppointmentsService = {
   },
 
   getCalendarIcs: async (id: string) => {
-    const response = await apiClient.post(`/api/v1/appointments/${id}/calendar.ics`, undefined, {
+    const response = await apiClient.get(`/api/v1/appointments/${id}/ics`, {
       responseType: 'blob',
     });
     return response.data;
