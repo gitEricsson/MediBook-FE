@@ -107,7 +107,7 @@ export default memo(function DeskDepartments() {
         actions={<Btn variant="primary" size="sm" icon="plus" onClick={() => setDialog('add')}>Add department</Btn>}
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-        <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
+        <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'visible' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="Departments list">
             <thead style={{ background: MB.bg2, borderBottom: `1px solid ${MB.line}` }}>
               <tr>

@@ -146,6 +146,7 @@ export const AdminService = {
       patient: 'ROLE_PATIENT',
       doctor: 'ROLE_DOCTOR',
       admin: 'ROLE_ADMIN',
+      super_admin: 'ROLE_SUPER_ADMIN',
     };
     const response = await apiClient.patch(`/api/v1/users/${id}/role`, { role: roleMap[role] });
     return unwrapApiResponse(response.data);

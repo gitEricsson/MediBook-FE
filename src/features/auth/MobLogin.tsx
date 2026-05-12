@@ -20,6 +20,7 @@ function useLoginLogic() {
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('medibook_remembered_email'))
+  const [showPassword, setShowPassword] = useState(false)
   const [needs2FA, setNeeds2FA] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,7 +28,7 @@ function useLoginLogic() {
     e.preventDefault()
     setError(null)
     try {
-      const response = await login({ email, password, rememberMe })
+      const response = await login({ email, password })
       if (response.requires2FA) { setNeeds2FA(true); return }
       if (response.user) {
         if (rememberMe) {
@@ -58,12 +59,12 @@ function useLoginLogic() {
     }
   }
 
-  return { email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, needs2FA, error, isLoggingIn, isVerifying2FA, handleLogin, handleVerify2FA }
+  return { email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, showPassword, setShowPassword, needs2FA, error, isLoggingIn, isVerifying2FA, handleLogin, handleVerify2FA }
 }
 
 // ── Shared form fields ────────────────────────────────────────────────────────
 function LoginForm({
-  email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe,
+  email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, showPassword, setShowPassword,
   needs2FA, error, isLoggingIn, isVerifying2FA,
   handleLogin, handleVerify2FA,
 }: ReturnType<typeof useLoginLogic>) {
@@ -85,8 +86,17 @@ function LoginForm({
         </Field>
         <Field label="Password" htmlFor="login-password">
           <Input id="login-password" value={password} onChange={(e) => setPassword(e.target.value)}
-            icon="lock" type="password"
-            suffix={<Icon name="eye" size={16} color={MB.text3} />}
+            icon="lock" type={showPassword ? 'text' : 'password'}
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} color={MB.text3} />
+              </button>
+            }
             autoComplete="current-password" />
         </Field>
         {needs2FA && (
@@ -96,7 +106,7 @@ function LoginForm({
           </Field>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -2 }}>
-          <Checkbox checked={false} label="Remember me" />
+          <Checkbox checked={rememberMe} onChange={(checked) => setRememberMe(checked)} label="Remember me" />
           <Link to="/forgot-password" style={{ fontSize: 13, color: MB.primary, fontWeight: 500 }}>Forgot password?</Link>
         </div>
         <Btn variant="primary" size="lg" full

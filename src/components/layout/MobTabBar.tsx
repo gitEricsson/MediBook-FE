@@ -32,6 +32,12 @@ const TABS: Record<UserRole, Tab[]> = {
     { id: 'docs',      label: 'Doctors',  icon: 'stethoscope', path: '/admin/docs'      },
     { id: 'analytics', label: 'Analytics',icon: 'chart',       path: '/admin/analytics' },
   ],
+  super_admin: [
+    { id: 'patients',  label: 'Patients', icon: 'users',       path: '/admin/patients'  },
+    { id: 'depts',     label: 'Depts',    icon: 'building',    path: '/admin/depts'     },
+    { id: 'docs',      label: 'Doctors',  icon: 'stethoscope', path: '/admin/docs'      },
+    { id: 'admins',    label: 'Admins',   icon: 'shield',      path: '/admin/admins'    },
+  ],
 }
 
 interface MobTabBarProps {

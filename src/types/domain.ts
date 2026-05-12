@@ -6,7 +6,7 @@ export type AppointmentStatus =
   | 'CANCELLED'
   | 'NO_SHOW'
 
-export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN'
+export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN' | 'ROLE_SUPER_ADMIN'
 
 export type AppointmentType = 'IN_PERSON' | 'TELEHEALTH' | 'TELEMEDICINE'
 
@@ -16,7 +16,7 @@ export type SlotStatus = 'OPEN' | 'HELD' | 'TAKEN'
 export type AvatarTone = 'primary' | 'teal' | 'indigo' | 'amber' | 'rose' | 'slate'
 
 // ─── Role ─────────────────────────────────────────────────────────────────
-export type UserRole = 'patient' | 'doctor' | 'admin'
+export type UserRole = 'patient' | 'doctor' | 'admin' | 'super_admin'
 
 // ─── Domain entities ──────────────────────────────────────────────────────
 export interface Doctor {

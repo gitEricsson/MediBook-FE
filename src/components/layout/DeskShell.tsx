@@ -20,6 +20,15 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
     { id: 'settings',  label: 'Settings',      icon: 'settings'    },
   ],
+  super_admin: [
+    { id: 'home',      label: 'Overview',      icon: 'grid'        },
+    { id: 'depts',     label: 'Departments',   icon: 'building'    },
+    { id: 'docs',      label: 'Doctors',       icon: 'stethoscope' },
+    { id: 'analytics', label: 'Analytics',     icon: 'chart'       },
+    { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
+    { id: 'admins',    label: 'Admins',         icon: 'shield'      },
+    { id: 'settings',  label: 'Settings',      icon: 'settings'    },
+  ],
   doctor: [
     { id: 'schedule', label: 'Schedule',       icon: 'calendar' },
     { id: 'hours',    label: 'Working hours',  icon: 'clock'    },
@@ -33,7 +42,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   ],
 }
 
-const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', doctor: 'Doctor', patient: 'Patient' }
+const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', super_admin: 'Super Admin', doctor: 'Doctor', patient: 'Patient' }
 
 const NAV_PATHS: Record<UserRole, Record<string, string>> = {
   admin: {
@@ -42,6 +51,15 @@ const NAV_PATHS: Record<UserRole, Record<string, string>> = {
     docs: '/admin/docs',
     analytics: '/admin/analytics',
     capacity: '/admin/capacity',
+    settings: '/admin/settings',
+  },
+  super_admin: {
+    home: '/admin/patients',
+    depts: '/admin/depts',
+    docs: '/admin/docs',
+    analytics: '/admin/analytics',
+    capacity: '/admin/capacity',
+    admins: '/admin/admins',
     settings: '/admin/settings',
   },
   doctor: {

@@ -35,18 +35,26 @@ export function unwrapApiResponse<T>(payload: ApiResponse<T> | T): T {
 
 export function normalizeUserRole(role: string): UserRole {
   switch (role) {
+    case 'ROLE_SUPER_ADMIN':
+    case 'super_admin':
+      return 'super_admin';
     case 'ROLE_ADMIN':
+    case 'admin':
       return 'admin';
     case 'ROLE_DOCTOR':
+    case 'doctor':
       return 'doctor';
     case 'ROLE_PATIENT':
+    case 'patient':
     default:
       return 'patient';
   }
 }
 
-export function toBackendRole(role: UserRole): 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN' {
+export function toBackendRole(role: UserRole): string {
   switch (role) {
+    case 'super_admin':
+      return 'ROLE_SUPER_ADMIN';
     case 'admin':
       return 'ROLE_ADMIN';
     case 'doctor':
