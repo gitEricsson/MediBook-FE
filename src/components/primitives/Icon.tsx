@@ -44,6 +44,10 @@ const PATHS: Record<IconName, React.ReactNode> = {
   building:     <><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M9 16h2M13 16h2"/></>,
   users:        <><circle cx="9" cy="8" r="4"/><path d="M2 21c1-4 3.5-6 7-6s6 2 7 6"/><path d="M16 11a4 4 0 000-7M22 21c-.5-3-2-5-5-5.5"/></>,
   logout:       <><path d="M14 8V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1h9a1 1 0 001-1v-3"/><path d="M21 12H10M17 8l4 4-4 4"/></>,
+  camera:       <><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>,
+  'eye-off':    <><path d="M17.9 17.9A10 10 0 016.1 6.1M9.9 4.2A10 10 0 0122 12c-.5 1.4-1.2 2.7-2.1 3.9M1 1l22 22"/><path d="M2 12c1.7-4 5.5-7 10-7 1.2 0 2.3.2 3.4.6"/><path d="M14 17.7A8 8 0 014.3 10M12 5.2V5"/></>,
+  shield:       <><path d="M12 3l8 4v5c0 4.5-3.5 8.7-8 9-4.5-.3-8-4.5-8-9V7l8-4z"/></>,
+  crown:        <><path d="M2 20h20M5 20l2-8 5 4 5-4 2 8"/><path d="M12 4l2.5 4H9.5L12 4z"/></>,
 }
 
 export const Icon = memo(function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.75 }: IconProps) {

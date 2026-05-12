@@ -8,6 +8,9 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { UnauthorizedState } from '@/components/auth/UnauthorizedState'
 import { useIdleTimeout } from '@/hooks/useIdleTimeout'
 
+// ── Landing ───────────────────────────────────────────────────────────────
+const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 const MobLogin           = lazy(() => import('@/features/auth/MobLogin'))
 const MobRegister        = lazy(() => import('@/features/auth/MobRegister'))
@@ -39,6 +42,7 @@ const DeskAnalytics        = lazy(() => import('@/features/admin/DeskAnalytics')
 const DeskCapacity         = lazy(() => import('@/features/admin/DeskCapacity'))
 const DeskDoctorSchedule   = lazy(() => import('@/features/admin/DeskDoctorSchedule'))
 const DeskSettings         = lazy(() => import('@/features/admin/DeskSettings'))
+const DeskSuperAdmins      = lazy(() => import('@/features/admin/DeskSuperAdmins'))
 
 const Spinner = (
   <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: MB.bg2 }}>
@@ -83,18 +87,19 @@ export default function App() {
             <Route path="/doctor/profile"     element={<ProtectedRoute allowedRoles={['doctor']}><MobProfile /></ProtectedRoute>} />
 
             {/* ── Admin ──────────────────────────────────────────────── */}
-            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><Navigate to="/admin/patients" /></ProtectedRoute>} />
-            <Route path="/admin/patients"  element={<ProtectedRoute allowedRoles={['admin']}><DeskPatientSearch /></ProtectedRoute>} />
-            <Route path="/admin/depts"     element={<ProtectedRoute allowedRoles={['admin']}><DeskDepartments /></ProtectedRoute>} />
-            <Route path="/admin/docs"      element={<ProtectedRoute allowedRoles={['admin']}><DeskDoctors /></ProtectedRoute>} />
-            <Route path="/admin/schedule"  element={<ProtectedRoute allowedRoles={['admin']}><DeskDoctorSchedule /></ProtectedRoute>} />
-            <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><DeskAnalytics /></ProtectedRoute>} />
-            <Route path="/admin/capacity"  element={<ProtectedRoute allowedRoles={['admin']}><DeskCapacity /></ProtectedRoute>} />
-            <Route path="/admin/settings"  element={<ProtectedRoute allowedRoles={['admin']}><DeskSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><Navigate to="/admin/patients" /></ProtectedRoute>} />
+            <Route path="/admin/patients"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskPatientSearch /></ProtectedRoute>} />
+            <Route path="/admin/depts"     element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskDepartments /></ProtectedRoute>} />
+            <Route path="/admin/docs"      element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskDoctors /></ProtectedRoute>} />
+            <Route path="/admin/schedule"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskDoctorSchedule /></ProtectedRoute>} />
+            <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskAnalytics /></ProtectedRoute>} />
+            <Route path="/admin/capacity"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskCapacity /></ProtectedRoute>} />
+            <Route path="/admin/settings"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskSettings /></ProtectedRoute>} />
+            <Route path="/admin/admins"    element={<ProtectedRoute allowedRoles={['super_admin']}><DeskSuperAdmins /></ProtectedRoute>} />
 
             {/* ── Default ────────────────────────────────────────────── */}
-            <Route path="/"  element={<Navigate to="/login" replace />} />
-            <Route path="*"  element={<Navigate to="/login" replace />} />
+            <Route path="/"  element={<LandingPage />} />
+            <Route path="*"  element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
 

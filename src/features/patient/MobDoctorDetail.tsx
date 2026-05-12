@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
+import { PatientShell } from '@/components/layout/PatientShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
 import { Badge } from '@/components/primitives/Badge'
 import { Btn } from '@/components/primitives/Btn'
@@ -12,6 +13,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { useDoctorDetail, useDoctorAvailability } from '@/hooks/useDoctorData'
 import { useBooking } from '@/hooks/useBooking'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useViewport } from '@/hooks/useViewport'
 
 interface SlotBtnProps {
   time: string
@@ -58,9 +60,183 @@ function buildWeek(offset = 0) {
   })
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────
+// ── Shared slot-picker panel ──────────────────────────────────────────────────
+function SlotPicker({
+  week, selectedDate, setSelectedDate, selectedSlotId, setSelectedSlotId,
+  availability, isAvailLoading, isError, cols = 3,
+}: {
+  week: ReturnType<typeof buildWeek>
+  selectedDate: string; setSelectedDate: (d: string) => void
+  selectedSlotId: string | null; setSelectedSlotId: (s: string | null) => void
+  availability: { slots: { id: string; startTime: string; isAvailable: boolean; start: string }[] }[] | undefined
+  isAvailLoading: boolean; isError: boolean; cols?: number
+}) {
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 14, flexWrap: 'nowrap' }}>
+        {week.map(({ iso, label, day }) => {
+          const isActive = selectedDate === iso
+          return (
+            <div key={iso} role="button" tabIndex={0}
+              onClick={() => { setSelectedDate(iso); setSelectedSlotId(null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setSelectedDate(iso); setSelectedSlotId(null) } }}
+              style={{ width: 52, padding: '8px 0', borderRadius: 10, flexShrink: 0, textAlign: 'center', cursor: 'pointer',
+                background: isActive ? MB.primary : MB.bg, border: `1px solid ${isActive ? MB.primary : MB.line}`, color: isActive ? '#fff' : MB.text }}>
+              <div style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2 }}>{day}</div>
+            </div>
+          )
+        })}
+      </div>
+      {isAvailLoading && (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 8 }}>
+          {[0, 1, 2, 3, 4, 5].map((i) => <Skel key={i} w="100%" h={40} r={8} />)}
+        </div>
+      )}
+      {isError && <ErrorState title="Couldn't load availability" body="We'll retry when you choose another day." />}
+      {!isAvailLoading && !isError && (!availability || availability.length === 0 || availability[0].slots.length === 0) && (
+        <EmptyState icon="calendar" title="No slots on this day" body="Try another day this week." />
+      )}
+      {!isAvailLoading && !isError && availability && availability[0]?.slots.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 8 }}>
+          {availability[0].slots.map((slot) => {
+            const h = parseInt(slot.startTime.split(':')[0])
+            const ampm = h >= 12 ? 'PM' : 'AM'
+            return (
+              <SlotBtn key={slot.id} time={slot.startTime} ampm={ampm}
+                selected={selectedSlotId === slot.id} disabled={!slot.isAvailable}
+                onClick={() => setSelectedSlotId(slot.id)} />
+            )
+          })}
+        </div>
+      )}
+    </>
+  )
+}
 
-export default memo(function MobDoctorDetail() {
+// ── Desktop two-column ────────────────────────────────────────────────────────
+function DesktopDoctorDetail() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+  const week = buildWeek()
+  const { data: doctor, isLoading: isDocLoading } = useDoctorDetail(id || '')
+  const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate)
+  const { holdSlot, isHolding } = useBooking()
+
+  const handleContinue = async () => {
+    if (!id || !selectedSlotId) return
+    const selectedSlot = availability?.[0]?.slots.find((s) => s.id === selectedSlotId)
+    if (!selectedSlot) return
+    const hold = await holdSlot({ doctorId: Number(id), scheduledAt: selectedSlot.start, type: 'IN_PERSON' })
+    navigate('/patient/book/review', { state: { hold, doctor, selectedDate, slotId: selectedSlotId, scheduledAt: selectedSlot.start } })
+  }
+
+  const fee = doctor?.effectiveConsultationFee ?? doctor?.consultationFee
+  const rating = doctor?.averageRating
+
+  return (
+    <PatientShell title={doctor ? `Dr. ${doctor.name}` : 'Doctor profile'} actions={
+      <Btn variant="secondary" size="sm" icon="chevronLeft" onClick={() => navigate(-1)}>Back</Btn>
+    }>
+      {isDocLoading ? (
+        <div style={{ padding: 28, display: 'flex', gap: 24 }}>
+          <Skel w={320} h={400} r={12} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Skel h={160} r={12} /><Skel h={200} r={12} />
+          </div>
+        </div>
+      ) : !doctor ? (
+        <div style={{ padding: 28 }}><ErrorState title="Doctor not found" /></div>
+      ) : (
+        <div style={{ padding: 28, display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+          {/* Left: profile */}
+          <div style={{ width: 320, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
+              <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+                <PhotoBlock w={80} h={80} label={`DR · ${doctor.name.split(' ')[1]?.toUpperCase().slice(0, 3) || 'DOC'}`} tone="primary" />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: MB.ink }}>Dr. {doctor.name}</div>
+                  <div style={{ fontSize: 13, color: MB.text2, marginTop: 2 }}>{doctor.specialization || doctor.spec}</div>
+                  <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{doctor.department || doctor.dept}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: doctor.bio ? 14 : 0 }}>
+                {doctor.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
+                {doctor.telemedicineEnabled && <Badge tone="primary" size="sm">Telehealth</Badge>}
+                {doctor.yearsOfExperience != null && <Badge tone="neutral" size="sm">{doctor.yearsOfExperience} yrs</Badge>}
+              </div>
+              {doctor.bio && <p style={{ fontSize: 13, color: MB.text2, lineHeight: 1.6, margin: 0 }}>{doctor.bio}</p>}
+            </div>
+
+            {/* Stats */}
+            {(rating != null || fee != null || doctor.languages) && (
+              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {rating != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, color: MB.text2 }}>Rating</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 700, color: MB.ink }}>
+                      <span style={{ color: '#F59E0B' }}>★</span> {rating.toFixed(1)}
+                      <span style={{ fontSize: 12, fontWeight: 400, color: MB.text3 }}>({doctor.reviewCount ?? 0})</span>
+                    </div>
+                  </div>
+                )}
+                {fee != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, color: MB.text2 }}>Consultation fee</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</div>
+                  </div>
+                )}
+                {doctor.languages && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: 13, color: MB.text2 }}>Languages</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: MB.text }}>{doctor.languages}</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right: slot picker */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink, marginBottom: 18 }}>Available slots</div>
+              <SlotPicker week={week} selectedDate={selectedDate} setSelectedDate={setSelectedDate}
+                selectedSlotId={selectedSlotId} setSelectedSlotId={setSelectedSlotId}
+                availability={availability} isAvailLoading={isAvailLoading} isError={isError} cols={4} />
+            </div>
+
+            {/* CTA bar */}
+            <div style={{ marginTop: 16, background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {selectedSlotId && (() => {
+                  const slot = availability?.[0]?.slots.find((s) => s.id === selectedSlotId)
+                  const d = new Date(selectedDate)
+                  return (
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>
+                        {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {slot?.startTime}
+                      </div>
+                      {fee != null && <div style={{ fontSize: 12, color: MB.text3, marginTop: 2 }}>Consultation fee: ₦{fee.toLocaleString()}</div>}
+                    </div>
+                  )
+                })()}
+                {!selectedSlotId && <div style={{ fontSize: 13, color: MB.text3 }}>Select a time slot above to continue</div>}
+              </div>
+              <Btn variant="primary" size="lg" disabled={!selectedSlotId || isHolding} loading={isHolding} onClick={handleContinue}>
+                {isHolding ? 'Securing slot…' : 'Continue to review →'}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </PatientShell>
+  )
+}
+
+// ── Mobile (original, unchanged) ──────────────────────────────────────────────
+function MobileDoctorDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
@@ -234,17 +410,16 @@ export default memo(function MobDoctorDetail() {
             <span style={{ fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
           </div>
         )}
-        <Btn
-          variant="primary"
-          size="lg"
-          full
-          disabled={!selectedSlotId || isHolding}
-          loading={isHolding}
-          onClick={handleContinue}
-        >
+        <Btn variant="primary" size="lg" full disabled={!selectedSlotId || isHolding} loading={isHolding} onClick={handleContinue}>
           {isHolding ? 'Securing slot…' : 'Continue to review'}
         </Btn>
       </div>
     </MobScreen>
   )
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+export default memo(function MobDoctorDetail() {
+  const { isWide } = useViewport()
+  return isWide ? <DesktopDoctorDetail /> : <MobileDoctorDetail />
 })

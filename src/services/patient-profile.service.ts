@@ -19,12 +19,12 @@ export interface PatientProfileResponse {
 
 export const PatientProfileService = {
   getMyProfile: async () => {
-    const response = await apiClient.get('/api/v1/me/profile');
+    const response = await apiClient.get('/api/v1/patients/me');
     return unwrapApiResponse<PatientProfileResponse>(response.data);
   },
 
   upsertMyProfile: async (payload: PatientProfileRequest) => {
-    const response = await apiClient.put('/api/v1/me/profile', payload);
+    const response = await apiClient.put('/api/v1/patients/me', payload);
     return unwrapApiResponse<PatientProfileResponse>(response.data);
   },
 };

@@ -2,6 +2,7 @@ import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
+import { DoctorShell } from '@/components/layout/DoctorShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Card } from '@/components/primitives/Card'
@@ -14,6 +15,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Skel } from '@/components/feedback/Skel'
 import { SafeHtml } from '@/components/feedback/SafeHtml'
 import { toast } from 'sonner'
+import { useViewport } from '@/hooks/useViewport'
 import type { IconName } from '@/types/ui'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -96,7 +98,7 @@ function StatusConfirmSheet({ action, apptName, time, onConfirm, onClose, loadin
   )
 }
 
-export default memo(function MobDocApptDetail() {
+function MobileDocApptDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -231,4 +233,92 @@ export default memo(function MobDocApptDetail() {
       )}
     </MobScreen>
   )
+}
+
+// ── Desktop: reuse mobile content inside DoctorShell ─────────────────────────
+function DesktopDocApptDetail() {
+  const { id } = useParams<{ id: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { appt, time } = location.state || {}
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(appt?.patientId || 'pt-1')
+
+  const transitionMutation = useMutation({
+    mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
+      DoctorPortalService.transitionAppointment(id || '1', status as 'COMPLETED' | 'NO_SHOW'),
+    onSuccess: (_data, status) => {
+      queryClient.invalidateQueries({ queryKey: ['schedule'] })
+      toast.success(status === 'COMPLETED' ? 'Appointment marked completed' : status === 'NO_SHOW' ? 'Marked as no-show' : 'Appointment cancelled')
+      setConfirmAction(null)
+      if (status === 'COMPLETED') navigate(`/doctor/appt/${id}/note`, { state: { appt } })
+      else navigate(-1)
+    },
+    onError: () => { toast.error('Could not update appointment status'); setConfirmAction(null) },
+  })
+
+  if (!appt) return null
+
+  return (
+    <DoctorShell title={`${appt.name}`} subtitle={`${time} PT — Appointment detail`} actions={
+      <Btn variant="secondary" size="sm" icon="chevronLeft" onClick={() => navigate(-1)}>Back to schedule</Btn>
+    }>
+      <div style={{ flex: 1, padding: 28, display: 'flex', gap: 24, minHeight: 0, overflowY: 'auto' }}>
+        {/* Left: actions */}
+        <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+              <PhotoBlock w={48} h={48} label={`PT · ${appt.name.split(' ')[1]?.toUpperCase() || 'PT'}`} tone="slate" />
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>{appt.name}</div>
+                <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{time} PT</div>
+              </div>
+            </div>
+            <StatusPill status={appt.status} />
+          </div>
+          <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Btn variant="primary" full icon="check" disabled={appt.status === 'COMPLETED' || appt.status === 'CANCELLED'} onClick={() => setConfirmAction('COMPLETED')}>
+              {appt.status === 'COMPLETED' ? 'Visit Completed' : 'Mark completed'}
+            </Btn>
+            <Btn variant="secondary" full icon="edit" onClick={() => navigate(`/doctor/appt/${id}/note`, { state: { appt } })}>Add clinical note</Btn>
+            <div style={{ height: 1, background: MB.line2 }} />
+            <Btn variant="dangerOutline" full disabled={appt.status === 'COMPLETED' || appt.status === 'CANCELLED'} onClick={() => setConfirmAction('CANCELLED')}>Cancel appointment</Btn>
+            <Btn variant="dangerOutline" full disabled={['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status)} onClick={() => setConfirmAction('NO_SHOW')}>Mark no-show</Btn>
+          </div>
+        </div>
+        {/* Right: detail */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
+            <div className="mb-eyebrow" style={{ marginBottom: 10 }}>Reason for visit</div>
+            <SafeHtml html={appt.reason} style={{ fontSize: 14, color: MB.text, lineHeight: 1.6 }} />
+          </div>
+          <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
+            <div className="mb-eyebrow" style={{ marginBottom: 10 }}>Patient history</div>
+            {isSummaryLoading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[0, 1, 2].map((i) => <Skel key={i} h={14} r={4} />)}</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                <ProfileRow label="Last visit" value={summary?.lastVisitDate || 'Not available'} />
+                <ProfileRow label="Blood group" value={summary?.bloodGroup || 'Not provided'} />
+                <ProfileRow label="Allergies" value={summary?.allergies || 'None reported'} last />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {confirmAction && (
+        <StatusConfirmSheet action={confirmAction} apptName={appt.name} time={time || ''}
+          onConfirm={() => transitionMutation.mutate(confirmAction)}
+          onClose={() => setConfirmAction(null)}
+          loading={transitionMutation.isPending} />
+      )}
+    </DoctorShell>
+  )
+}
+
+export default memo(function MobDocApptDetail() {
+  const { isWide } = useViewport()
+  return isWide ? <DesktopDocApptDetail /> : <MobileDocApptDetail />
 })

@@ -4,11 +4,12 @@ import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { useAuthStore } from '@/store/authStore'
 
-const ROLE_HOME = {
+const ROLE_HOME: Record<string, string> = {
   admin: '/admin/patients',
+  super_admin: '/admin/patients',
   doctor: '/doctor/schedule',
   patient: '/patient/search',
-} as const
+}
 
 export function UnauthorizedState() {
   const navigate = useNavigate()

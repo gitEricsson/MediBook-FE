@@ -4,9 +4,11 @@ import { DeskShell } from '@/components/layout/DeskShell'
 import { DeskTopbar } from '@/components/layout/DeskTopbar'
 import { Btn } from '@/components/primitives/Btn'
 import { Badge } from '@/components/primitives/Badge'
+import { Icon } from '@/components/primitives/Icon'
 import { Toggle } from '@/components/forms/Toggle'
 import { useQuery } from '@tanstack/react-query'
 import { AdminService } from '@/services/admin.service'
+import { useAuthStore } from '@/store/authStore'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -37,6 +39,8 @@ function ToggleRow({ label, hint, checked, onChange, disabled }: {
 export default memo(function DeskSettings() {
   const { data: health } = useQuery({ queryKey: ['system', 'health'], queryFn: AdminService.getHealth })
   const { data: version } = useQuery({ queryKey: ['system', 'version'], queryFn: AdminService.getVersion })
+  const role = useAuthStore((s) => s.user?.role)
+  const isSuperAdmin = role === 'super_admin'
 
   // UI-only settings (no backend endpoint for org-level config in this API)
   const [smsReminders, setSmsReminders] = useState(true)
@@ -89,15 +93,22 @@ export default memo(function DeskSettings() {
           </div>
         </Section>
 
-        <Section title="Danger zone">
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: MB.text }}>Reset all platform data</div>
-            <div style={{ fontSize: 12, color: MB.text3, marginTop: 2, marginBottom: 14, lineHeight: 1.5 }}>
-              Permanently delete all appointments, patients, and doctor profiles. This cannot be undone.
+        {isSuperAdmin ? (
+          <Section title="Danger zone">
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: MB.text }}>Reset all platform data</div>
+              <div style={{ fontSize: 12, color: MB.text3, marginTop: 2, marginBottom: 14, lineHeight: 1.5 }}>
+                Permanently delete all appointments, patients, and doctor profiles. This cannot be undone.
+              </div>
+              <Btn variant="dangerOutline" size="sm" icon="trash">Delete all data…</Btn>
             </div>
-            <Btn variant="dangerOutline" size="sm" icon="trash">Delete all data…</Btn>
+          </Section>
+        ) : (
+          <div style={{ padding: '14px 16px', background: MB.bg2, borderRadius: 10, border: `1px solid ${MB.line2}`, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Icon name="shield" size={16} color={MB.text3} />
+            <span style={{ fontSize: 13, color: MB.text3 }}>Danger zone is restricted to Super Admins.</span>
           </div>
-        </Section>
+        )}
 
         <div style={{ padding: '12px 16px', background: MB.bg2, borderRadius: 10, fontSize: 12, color: MB.text3, border: `1px solid ${MB.line2}` }}>
           Organisation-level configuration (name, subdomain, contact) is managed through the backend API. Contact your system administrator to change these settings.

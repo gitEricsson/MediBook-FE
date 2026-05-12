@@ -15,6 +15,7 @@ export interface UserProfile {
   emailNotifications?: boolean;
   smsNotifications?: boolean;
   locale?: string;
+  avatarUrl?: string;
 }
 
 export interface UpdateProfileRequest {
@@ -69,6 +70,7 @@ const mapUser = (user: {
   emailNotifications?: boolean;
   smsNotifications?: boolean;
   locale?: string;
+  avatarUrl?: string;
 }): UserProfile => ({
   id: String(user.id),
   email: user.email,
@@ -82,6 +84,7 @@ const mapUser = (user: {
   emailNotifications: user.emailNotifications,
   smsNotifications: user.smsNotifications,
   locale: user.locale,
+  avatarUrl: user.avatarUrl,
 });
 
 export const UserService = {
@@ -141,6 +144,7 @@ export const UserService = {
       patient: 'ROLE_PATIENT',
       doctor: 'ROLE_DOCTOR',
       admin: 'ROLE_ADMIN',
+      super_admin: 'ROLE_SUPER_ADMIN',
     };
     const response = await apiClient.patch(`/api/v1/users/${id}/role`, { role: roleMap[role] });
     return mapUser(unwrapApiResponse(response.data));
@@ -157,5 +161,14 @@ export const UserService = {
 
   revokeSessions: async (id: string) => {
     await apiClient.post(`/api/v1/users/${id}/revoke-sessions`);
+  },
+
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/api/v1/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return mapUser(unwrapApiResponse(response.data));
   },
 };

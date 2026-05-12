@@ -138,7 +138,7 @@ export const DoctorPortalService = {
   },
 
   saveConsultationNote: async (data: ConsultationNoteRequest) => {
-    const response = await apiClient.post(`/api/v1/consultation-notes/appointment/${data.appointmentId}`, {
+    const response = await apiClient.post(`/api/v1/consultations/${data.appointmentId}/notes`, {
       diagnosis: data.diagnosis,
       treatmentPlan: data.treatmentPlan,
       prescriptions: data.prescriptions,

@@ -7,6 +7,7 @@ export type IconName =
   | 'stethoscope' | 'inbox' | 'info' | 'alert' | 'sparkle'
   | 'arrowRight' | 'download' | 'moreH' | 'moreV'
   | 'lock' | 'mail' | 'phone' | 'building' | 'users' | 'logout'
+  | 'camera' | 'eye-off' | 'shield' | 'crown'
 
 // ─── Button variants ──────────────────────────────────────────────────────
 export type BtnVariant =

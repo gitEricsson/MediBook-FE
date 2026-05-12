@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useState, useRef } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -132,6 +132,8 @@ export default memo(function MobProfile() {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [panel, setPanel] = useState<Panel>(null)
+  const queryClient = useQueryClient()
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const { data: user, isLoading: userLoading } = useQuery({ queryKey: ['me'], queryFn: UserService.getMe })
   const { data: profile } = useQuery({
     queryKey: ['patient-profile'],
@@ -139,6 +141,21 @@ export default memo(function MobProfile() {
     enabled: user?.role === 'patient',
     retry: false,
   })
+
+  const avatarMutation = useMutation({
+    mutationFn: (file: File) => UserService.uploadAvatar(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] })
+      toast.success('Profile picture updated')
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to upload photo'),
+  })
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) avatarMutation.mutate(file)
+    e.target.value = ''
+  }
 
   const name = user ? `${user.firstName} ${user.lastName}` : 'Profile'
   const initials = user ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}` : 'ME'
@@ -149,13 +166,19 @@ export default memo(function MobProfile() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         {/* Header */}
         <div style={{ background: MB.bg, padding: '20px 16px', display: 'flex', alignItems: 'center', gap: 14, borderBottom: `1px solid ${MB.line2}` }}>
-          <PhotoBlock w={64} h={64} label={`PT · ${initials.toUpperCase()}`} tone="primary" />
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <PhotoBlock w={64} h={64} label={initials.toUpperCase()} tone="primary" src={user?.avatarUrl} onClick={() => avatarInputRef.current?.click()} />
+            <div style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%', background: MB.primary, border: `2px solid ${MB.bg}`, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <Icon name="camera" size={10} color="#fff" />
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleAvatarChange} />
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink }}>
               {userLoading ? <Skel w={120} h={16} /> : name}
             </div>
             <div style={{ fontSize: 13, color: MB.text3, marginTop: 1 }}>
-              {user?.role === 'patient' ? 'Patient' : user?.role ?? 'Account'}
+              {user?.role === 'patient' ? 'Patient' : user?.role === 'doctor' ? 'Doctor' : user?.role ?? 'Account'}
             </div>
           </div>
           <Btn variant="secondary" size="sm" icon="edit" onClick={() => setPanel('edit')}>Edit</Btn>
