@@ -27,12 +27,39 @@ export const BookingService = {
   },
 
   reschedule: async (id: string, newStart: string, newEnd: string, holdId?: string) => {
-    const response = await apiClient.put(`/api/v1/appointments/${id}/reschedule`, {
+    const response = await apiClient.post(`/api/v1/appointments/${id}/reschedule`, {
       newStart,
       newEnd,
       holdId,
     });
     return unwrapApiResponse<Appointment>(response.data);
+  },
+
+  createRecurringSeries: async (payload: {
+    doctorId: number;
+    recurrenceType: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+    recurrenceInterval?: number;
+    startDate: string;
+    endDate?: string;
+    maxOccurrences?: number;
+    timeOfDay: { hour: number; minute: number };
+    durationMins?: number;
+    appointmentType: 'IN_PERSON' | 'TELEHEALTH' | 'TELEMEDICINE';
+    reason?: string;
+  }) => {
+    const response = await apiClient.post('/api/v1/appointments/recurring', payload);
+    return unwrapApiResponse(response.data);
+  },
+
+  getMySeries: async (page = 0, size = 20) => {
+    const response = await apiClient.get('/api/v1/appointments/recurring/my', {
+      params: toPageableParams({ page, size }),
+    });
+    return unwrapApiResponse<PageResponse<{ id: number; doctorName: string; recurrenceType: string; startDate: string; endDate?: string; status: string; appointmentType: string; reason?: string }>>(response.data);
+  },
+
+  cancelSeries: async (id: string) => {
+    await apiClient.delete(`/api/v1/appointments/recurring/${id}`);
   },
 
   cancel: async (id: string, reason?: string) => {

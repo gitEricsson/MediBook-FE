@@ -138,12 +138,27 @@ export const DoctorPortalService = {
   },
 
   saveConsultationNote: async (data: ConsultationNoteRequest) => {
-    const response = await apiClient.post(`/api/v1/consultations/${data.appointmentId}/notes`, {
+    const response = await apiClient.post(`/api/v1/consultation-notes/appointment/${data.appointmentId}`, {
       diagnosis: data.diagnosis,
       treatmentPlan: data.treatmentPlan,
       prescriptions: data.prescriptions,
       followUpDate: data.followUpDate,
     });
+    return unwrapApiResponse(response.data);
+  },
+
+  updateConsultationNote: async (noteId: string, data: Omit<ConsultationNoteRequest, 'appointmentId'>) => {
+    const response = await apiClient.put(`/api/v1/consultation-notes/${noteId}`, data);
+    return unwrapApiResponse(response.data);
+  },
+
+  getNoteTemplates: async (doctorId: string) => {
+    const response = await apiClient.get(`/api/v1/note-templates/doctors/${doctorId}`);
+    return unwrapApiResponse<Array<{ id: number; name: string; templateType: string; content: string }>>(response.data);
+  },
+
+  createNoteTemplate: async (doctorId: string, name: string, content: string) => {
+    const response = await apiClient.post(`/api/v1/note-templates/doctors/${doctorId}`, { name, content });
     return unwrapApiResponse(response.data);
   }
 };

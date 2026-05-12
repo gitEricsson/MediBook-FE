@@ -13,6 +13,7 @@ import { RowMenu } from '@/components/table/RowMenu'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { useAdminDepartments, useAdminActions } from '@/hooks/useAdmin'
+import { AdminService } from '@/services/admin.service'
 import { toast } from 'sonner'
 import type { Department } from '@/services/admin.service'
 
@@ -104,7 +105,19 @@ export default memo(function DeskDepartments() {
       <DeskTopbar
         title="Departments"
         subtitle={`${displayDepts.filter((d) => d.isActive).length} active · ${displayDepts.length} total`}
-        actions={<Btn variant="primary" size="sm" icon="plus" onClick={() => setDialog('add')}>Add department</Btn>}
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" size="sm" icon="download" onClick={async () => {
+              try {
+                const blob = await AdminService.exportDepartmentsCsv()
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a'); a.href = url; a.download = 'departments.csv'; a.click()
+                URL.revokeObjectURL(url)
+              } catch { toast.error('Export failed') }
+            }}>Export CSV</Btn>
+            <Btn variant="primary" size="sm" icon="plus" onClick={() => setDialog('add')}>Add department</Btn>
+          </div>
+        }
       />
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
         <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'visible' }}>

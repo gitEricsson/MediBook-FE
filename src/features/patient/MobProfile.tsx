@@ -12,7 +12,7 @@ import { Input } from '@/components/forms/Input'
 import { Skel } from '@/components/feedback/Skel'
 import { useAuth } from '@/hooks/useAuth'
 import { UserService } from '@/services/user.service'
-import { PatientProfileService } from '@/services/patient-profile.service'
+import { PatientProfileService, PatientProfileResponse } from '@/services/patient-profile.service'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
@@ -124,9 +124,58 @@ function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Edit medical details panel ─────────────────────────────────────────────────
+
+function EditMedicalPanel({ profile, onClose }: { profile: PatientProfileResponse | null; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [bloodGroup, setBloodGroup] = useState(profile?.bloodGroup ?? '')
+  const [allergies, setAllergies] = useState(profile?.allergies ?? '')
+  const [medicalHistory, setMedicalHistory] = useState(profile?.medicalHistory ?? '')
+  const [emergencyContact, setEmergencyContact] = useState(profile?.emergencyContact ?? '')
+
+  const mutation = useMutation({
+    mutationFn: () => PatientProfileService.upsertMyProfile({ bloodGroup: bloodGroup || undefined, allergies, medicalHistory, emergencyContact }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-profile'] })
+      toast.success('Medical info updated')
+      onClose()
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to update medical info'),
+  })
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ background: MB.bg, width: '100%', borderRadius: '20px 20px 0 0', padding: '20px 20px 32px', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, background: MB.line, borderRadius: 2, margin: '0 auto 20px' }} aria-hidden="true" />
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: MB.ink, margin: '0 0 16px' }}>Medical information</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <Field label="Blood group" htmlFor="med-bg" hint="e.g. A+, O-">
+            <Input id="med-bg" value={bloodGroup} onChange={(e) => setBloodGroup(e.target.value)} placeholder="A+" />
+          </Field>
+          <Field label="Allergies" htmlFor="med-allergy">
+            <Input id="med-allergy" value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="Penicillin, Latex…" />
+          </Field>
+          <Field label="Medical history" htmlFor="med-hist">
+            <textarea id="med-hist" value={medicalHistory} onChange={(e) => setMedicalHistory(e.target.value)} rows={4}
+              placeholder="Hypertension (2018), Appendectomy (2020)…"
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${MB.line}`, fontSize: 14, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box', color: MB.text }} />
+          </Field>
+          <Field label="Emergency contact" htmlFor="med-ec" hint="Name and phone number">
+            <Input id="med-ec" value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} placeholder="Jane Doe – +1 555 000 0000" icon="phone" />
+          </Field>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Cancel</Btn>
+          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} loading={mutation.isPending} onClick={() => mutation.mutate()}>Save</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────
 
-type Panel = 'edit' | 'password' | null
+type Panel = 'edit' | 'password' | 'medical' | null
 
 export default memo(function MobProfile() {
   const { logout } = useAuth()
@@ -194,10 +243,13 @@ export default memo(function MobProfile() {
           </Section>
 
           <Section title="Medical details">
-            <Card padding={0}>
+            <Card padding={0} style={{ position: 'relative' }}>
               <ProfileRow label="Allergies" value={profile?.allergies ?? ''} />
               <ProfileRow label="Medical history" value={profile?.medicalHistory ?? ''} />
               <ProfileRow label="Emergency contact" value={profile?.emergencyContact ?? ''} last />
+              <div style={{ padding: '10px 14px', borderTop: `1px solid ${MB.line2}`, display: 'flex', justifyContent: 'flex-end' }}>
+                <Btn variant="secondary" size="sm" icon="edit" onClick={() => setPanel('medical')}>Edit medical info</Btn>
+              </div>
             </Card>
           </Section>
 
@@ -219,11 +271,35 @@ export default memo(function MobProfile() {
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate('/patient/invoices')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: `1px solid ${MB.line2}`, cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Icon name="inbox" size={16} color={MB.text3} />
                   <span style={{ fontSize: 14, color: MB.text }}>Invoices</span>
+                </div>
+                <Icon name="chevronRight" size={16} color={MB.text4} />
+              </div>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate('/patient/waitlist')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderBottom: `1px solid ${MB.line2}`, cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="clock" size={16} color={MB.text3} />
+                  <span style={{ fontSize: 14, color: MB.text }}>Waitlist</span>
+                </div>
+                <Icon name="chevronRight" size={16} color={MB.text4} />
+              </div>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate('/patient/recurring')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="calendar" size={16} color={MB.text3} />
+                  <span style={{ fontSize: 14, color: MB.text }}>Recurring appointments</span>
                 </div>
                 <Icon name="chevronRight" size={16} color={MB.text4} />
               </div>
@@ -261,6 +337,7 @@ export default memo(function MobProfile() {
 
       {panel === 'edit'     && <EditProfilePanel onClose={() => setPanel(null)} />}
       {panel === 'password' && <ChangePasswordPanel onClose={() => setPanel(null)} />}
+      {panel === 'medical'  && <EditMedicalPanel profile={profile ?? null} onClose={() => setPanel(null)} />}
     </MobScreen>
   )
 })

@@ -177,15 +177,36 @@ function MobileDocApptDetail() {
           </Section>
 
           <Section title="Clinical Notes">
-            <Btn 
-              variant="secondary" 
-              full 
-              icon="plus" 
+            <Btn
+              variant="secondary"
+              full
+              icon="plus"
               onClick={() => navigate(`/doctor/appt/${id}/note`, { state: { appt } })}
             >
               Add clinical note
             </Btn>
           </Section>
+
+          {(appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH') && (
+            <Section title="Telemedicine">
+              <Btn
+                variant="primary"
+                full
+                icon="phone"
+                onClick={async () => {
+                  try {
+                    const { TelemedicineService } = await import('@/services/telemedicine.service')
+                    const session = await TelemedicineService.createSession(Number(id))
+                    navigate(`/doctor/telemedicine/${session.id}`)
+                  } catch {
+                    toast.error('Could not create telemedicine session')
+                  }
+                }}
+              >
+                Start telemedicine session
+              </Btn>
+            </Section>
+          )}
         </div>
       </div>
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
