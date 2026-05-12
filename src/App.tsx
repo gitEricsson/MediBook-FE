@@ -8,6 +8,9 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { UnauthorizedState } from '@/components/auth/UnauthorizedState'
 import { useIdleTimeout } from '@/hooks/useIdleTimeout'
 
+// ── Landing ───────────────────────────────────────────────────────────────
+const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 const MobLogin           = lazy(() => import('@/features/auth/MobLogin'))
 const MobRegister        = lazy(() => import('@/features/auth/MobRegister'))
@@ -93,8 +96,8 @@ export default function App() {
             <Route path="/admin/settings"  element={<ProtectedRoute allowedRoles={['admin']}><DeskSettings /></ProtectedRoute>} />
 
             {/* ── Default ────────────────────────────────────────────── */}
-            <Route path="/"  element={<Navigate to="/login" replace />} />
-            <Route path="*"  element={<Navigate to="/login" replace />} />
+            <Route path="/"  element={<LandingPage />} />
+            <Route path="*"  element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
 

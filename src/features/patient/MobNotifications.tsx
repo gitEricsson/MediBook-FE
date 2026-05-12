@@ -2,6 +2,8 @@ import { memo } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
+import { PatientShell } from '@/components/layout/PatientShell'
+import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
@@ -11,6 +13,7 @@ import type { BadgeTone } from '@/types/ui'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NotificationService } from '@/services/notification.service'
 import type { NotificationItem } from '@/services/notification.service'
+import { useViewport } from '@/hooks/useViewport'
 
 type NotifState = 'default' | 'loading' | 'empty'
 
@@ -46,7 +49,58 @@ function toRelativeTime(iso: string) {
 
 interface MobNotificationsProps { state?: NotifState }
 
+// ── Notification list (shared) ────────────────────────────────────────────────
+function NotifList({ items, state, onRetry, wide = false }: {
+  items: NotifItem[]; state: NotifState | 'error' | 'loading'
+  onRetry: () => void; wide?: boolean
+}) {
+  return (
+    <div style={{ flex: 1, overflow: 'auto' }}>
+      {state === 'empty' && <EmptyState icon="bell" title="You're all caught up" body="Reminders and updates about your visits will show here." />}
+      {state === 'error' && <ErrorState title="Couldn't load notifications" onRetry={onRetry} />}
+      {state === 'loading' && (
+        <div style={{ padding: wide ? '24px 28px' : 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ display: 'flex', gap: 12 }}>
+              <Skel w={40} h={40} r={10} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Skel w="60%" h={13} /><Skel w="90%" h={11} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {state === 'default' && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: wide ? '8px 0' : 0 }}>
+          {items.map((n, i) => (
+            <li key={i} style={{
+              padding: wide ? '14px 28px' : '14px 16px',
+              display: 'flex', gap: 12,
+              borderBottom: `1px solid ${MB.line2}`,
+              background: n.unread ? `${MB.primary50}66` : 'transparent',
+              maxWidth: wide ? 720 : undefined,
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TONE_BG[n.tone] }}>
+                <Icon name={n.icon} size={17} color={TONE_COLOR[n.tone]} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>{n.title}</span>
+                  <span style={{ fontSize: 11, color: MB.text3, flexShrink: 0 }}>{n.time}</span>
+                </div>
+                <div style={{ fontSize: 13, color: MB.text2, marginTop: 2, lineHeight: 1.45 }}>{n.body}</div>
+              </div>
+              {n.unread && <div aria-label="Unread" style={{ width: 8, height: 8, borderRadius: '50%', background: MB.primary, marginTop: 6, flexShrink: 0 }} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default memo(function MobNotifications({ state = 'default' }: MobNotificationsProps) {
+  const { isWide } = useViewport()
   const queryClient = useQueryClient()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['notifications'],
@@ -71,6 +125,16 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
   })
   const resolvedState: NotifState | 'error' = isLoading ? 'loading' : isError ? 'error' : items.length === 0 ? 'empty' : state
 
+  if (isWide) {
+    return (
+      <PatientShell title="Notifications" actions={
+        items.length > 0 ? <Btn variant="secondary" size="sm" icon="check" onClick={() => markAll.mutate()} loading={markAll.isPending}>Mark all read</Btn> : undefined
+      }>
+        <NotifList items={items} state={resolvedState} onRetry={() => refetch()} wide />
+      </PatientShell>
+    )
+  }
+
   return (
     <MobScreen>
       <MobTopBar title="Notifications" right={
@@ -78,45 +142,7 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
           <Icon name="check" size={18} color={MB.text2} />
         </button>
       } />
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {resolvedState === 'empty' && <EmptyState icon="bell" title="You're all caught up" body="Reminders and updates about your visits will show here." />}
-        {resolvedState === 'error' && <ErrorState title="Couldn't load notifications" onRetry={() => refetch()} />}
-        {resolvedState === 'loading' && (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{ display: 'flex', gap: 12 }}>
-                <Skel w={40} h={40} r={10} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skel w="60%" h={13} /><Skel w="90%" h={11} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {resolvedState === 'default' && (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {items.map((n, i) => (
-              <li key={i} style={{
-                padding: '14px 16px', display: 'flex', gap: 12,
-                borderBottom: `1px solid ${MB.line2}`,
-                background: n.unread ? `${MB.primary50}66` : 'transparent',
-              }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: TONE_BG[n.tone] }}>
-                  <Icon name={n.icon} size={18} color={TONE_COLOR[n.tone]} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>{n.title}</span>
-                    <span style={{ fontSize: 11, color: MB.text3, flexShrink: 0 }}>{n.time}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: MB.text2, marginTop: 2, lineHeight: 1.4 }}>{n.body}</div>
-                </div>
-                {n.unread && <div aria-label="Unread" style={{ width: 8, height: 8, borderRadius: '50%', background: MB.primary, marginTop: 6, flexShrink: 0 }} />}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <NotifList items={items} state={resolvedState} onRetry={() => refetch()} />
     </MobScreen>
   )
 })

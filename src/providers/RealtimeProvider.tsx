@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSSENotifications, NotificationEvent } from '@/hooks/useSSENotifications';
+import { useStompNotifications, NotificationEvent } from '@/hooks/useStompNotifications';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
@@ -8,7 +8,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const status = useAuthStore((s) => s.status);
   const addNotification = useNotificationStore((s) => s.addNotification);
 
-  useSSENotifications(
+  useStompNotifications(
     (event: NotificationEvent) => {
       addNotification({
         notificationId: event.notificationId,
