@@ -225,3 +225,17 @@ export function useLiquidHover() {
 
   return { ref, onMouseEnter, onMouseLeave }
 }
+
+// ── Responsive Check ──────────────────────────────────────────────────────────
+export function useIsMobile(breakpoint = 900) {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.matchMedia(`(max-width: ${breakpoint}px)`).matches : false)
+
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`)
+    const fn = () => setIsMobile(mql.matches)
+    mql.addEventListener('change', fn)
+    return () => mql.removeEventListener('change', fn)
+  }, [breakpoint])
+
+  return isMobile
+}

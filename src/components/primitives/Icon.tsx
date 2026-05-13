@@ -47,7 +47,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   camera:       <><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>,
   'eye-off':    <><path d="M17.9 17.9A10 10 0 016.1 6.1M9.9 4.2A10 10 0 0122 12c-.5 1.4-1.2 2.7-2.1 3.9M1 1l22 22"/><path d="M2 12c1.7-4 5.5-7 10-7 1.2 0 2.3.2 3.4.6"/><path d="M14 17.7A8 8 0 014.3 10M12 5.2V5"/></>,
   shield:       <><path d="M12 3l8 4v5c0 4.5-3.5 8.7-8 9-4.5-.3-8-4.5-8-9V7l8-4z"/></>,
-  crown:        <><path d="M2 20h20M5 20l2-8 5 4 5-4 2 8"/><path d="M12 4l2.5 4H9.5L12 4z"/></>,
+  crown:        <><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+  video:        <><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></>,
+  creditCard:   <><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></>,
+  star:         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>,
+  menu:         <path d="M3 12h18M3 6h18M3 18h18"/>,
+  close:        <path d="M6 6l12 12M18 6L6 18"/>,
 }
 
 export const Icon = memo(function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.75 }: IconProps) {

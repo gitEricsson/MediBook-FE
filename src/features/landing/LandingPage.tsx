@@ -11,7 +11,7 @@ import { Logo } from '@/components/layout/Logo'
 import { Icon } from '@/components/primitives/Icon'
 import {
   useTypewriter, useCountUp, useScrollReveal, useStaggerReveal,
-  useParallax, useScrollFill, useCarousel, prefersReducedMotion,
+  useParallax, useScrollFill, useCarousel, prefersReducedMotion, useIsMobile,
 } from '@/hooks/useAnimation'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +97,11 @@ const ANIM_CSS = `
   .lp-liquid-btn::before{display:none;}
   .lp-card-hover:hover{transform:none;}
 }
+
+@media(max-width: 768px) {
+  .lp-hide-mobile { display: none !important; }
+  .lp-show-mobile { display: block !important; }
+}
 `
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,6 +159,34 @@ function GearBg() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HERO AVATAR
+// ─────────────────────────────────────────────────────────────────────────────
+function HeroAvatar({ 
+  src, top, left, right, bottom, delay, pointerStyle 
+}: { 
+  src: string, top?: number | string, left?: number | string, right?: number | string, bottom?: number | string, 
+  delay: string, pointerStyle: React.CSSProperties
+}) {
+  return (
+    <div style={{
+      position: 'absolute', top, left, right, bottom, zIndex: 10,
+      animation: `lp-float 6s ease-in-out infinite ${delay}, lp-fade-in 1s ease both ${delay}`,
+      pointerEvents: 'none'
+    }}>
+      <div style={{ position: 'relative', width: 76, height: 76, borderRadius: '50%', background: '#fff', padding: 5, boxShadow: '0 12px 36px rgba(16,24,40,.12)' }}>
+        <img src={src} alt="Doctor" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+        {/* Pointer cursor */}
+        <div style={{ position: 'absolute', width: 28, height: 28, ...pointerStyle }}>
+          <svg viewBox="0 0 24 24" width="28" height="28" fill={MB.primary700} stroke="#fff" strokeWidth="2" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}>
+            <path d="M5.5 3.21V20.8c0 .45.54.67.85.35l4.86-4.86a.5.5 0 0 1 .35-.15h6.42c.45 0 .67-.54.35-.85L6.35 2.86a.5.5 0 0 0-.85.35Z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HERO SECTION
 // ─────────────────────────────────────────────────────────────────────────────
 function HeroSection() {
@@ -166,6 +199,7 @@ function HeroSection() {
     2000
   )
 
+  const isMobile = useIsMobile(900)
   return (
     <section style={{ position: 'relative', overflow: 'hidden', background: MB.bg, padding: '100px 24px 80px' }}>
       {/* Parallax blobs */}
@@ -174,14 +208,32 @@ function HeroSection() {
       <div style={{ position: 'absolute', top: 120, left: '30%', width: 280, height: 280, borderRadius: '50%', background: `radial-gradient(circle, ${MB.primary50} 0%, transparent 68%)`, transform: `translateY(${p3}px)`, pointerEvents: 'none', opacity: 0.5, willChange: 'transform' }} />
 
       <div style={{ maxWidth: 1120, margin: '0 auto', position: 'relative' }}>
-        <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center' }}>
-          {/* Eyebrow pill */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 14px 5px 8px', borderRadius: 999, background: MB.primary50, border: `1px solid ${MB.primary100}`, marginBottom: 22, animation: 'lp-fade-in .6s ease both' }}>
-            <span style={{ width: 22, height: 22, borderRadius: '50%', background: MB.primary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="sparkle" size={11} color="#fff" />
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Healthcare, simplified</span>
+        <div style={{ maxWidth: 780, margin: '0 auto', textAlign: 'center', position: 'relative' }}>
+
+          {/* Floating Avatars (Hidden on mobile) */}
+          <div className="lp-hide-mobile">
+            <HeroAvatar 
+              src="/doctor_avatar_1_1778628057718.png" 
+              top={-10} left={-60} delay="0s" 
+              pointerStyle={{ bottom: -8, right: -8, transform: 'rotate(160deg)' }} 
+            />
+            <HeroAvatar 
+              src="/doctor_avatar_2_1778628196879.png" 
+              top={20} right={-50} delay="0.5s" 
+              pointerStyle={{ bottom: -8, left: -14, transform: 'rotate(250deg)' }} 
+            />
+            <HeroAvatar 
+              src="/doctor_avatar_3_1778628250846.png" 
+              bottom={60} left={-30} delay="1s" 
+              pointerStyle={{ top: -12, right: -16, transform: 'rotate(60deg)' }} 
+            />
+            <HeroAvatar 
+              src="/doctor_avatar_4_1778628898019.png" 
+              bottom={30} right={-70} delay="1.5s" 
+              pointerStyle={{ top: -12, left: -14, transform: 'rotate(330deg)' }} 
+            />
           </div>
+
 
           {/* Headline with typewriter */}
           <h1 style={{ fontSize: 'clamp(38px, 6.5vw, 70px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.035em', lineHeight: 1.08, margin: '0 0 24px', animation: 'lp-fade-up .7s .1s both ease' }}>
@@ -240,9 +292,9 @@ function HeroSection() {
               <div style={{ flex: 1, maxWidth: 300, marginLeft: 8, height: 22, background: MB.bg, borderRadius: 5, border: `1px solid ${MB.line}`, display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: 11, color: MB.text3, fontFamily: 'ui-monospace, monospace' }}>medibook.health</div>
             </div>
             {/* App UI preview */}
-            <div style={{ display: 'flex', height: 340 }}>
-              {/* Sidebar mini */}
-              <div style={{ width: 180, borderRight: `1px solid ${MB.line2}`, padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 3, background: MB.bg }}>
+            <div style={{ display: 'flex', height: isMobile ? 'auto' : 340 }}>
+              {/* Sidebar mini (Hidden on mobile) */}
+              <div className="lp-hide-mobile" style={{ width: 180, borderRight: `1px solid ${MB.line2}`, padding: '18px 12px', display: 'flex', flexDirection: 'column', gap: 3, background: MB.bg }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 4px', marginBottom: 16 }}>
                   <Logo size={22} /><span style={{ fontSize: 12, fontWeight: 700, color: MB.ink }}>MediBook</span>
                 </div>
@@ -264,7 +316,7 @@ function HeroSection() {
                   <Icon name="search" size={13} color={MB.text4} />
                   <span style={{ fontSize: 12, color: MB.text4 }}>Search by name or specialty…</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
                   {[
                     { name: 'Dr. Sarah Chen', spec: 'Cardiology', next: 'Today · 4:30 PM', bg: MB.primary100, tc: MB.primary700, badge: 'Accepting new', bcolor: MB.success },
                     { name: 'Dr. Marcus Okafor', spec: 'Dermatology', next: 'Tomorrow · 9 AM', bg: '#CCEAE6', tc: '#0E7C7B', badge: 'Telehealth', bcolor: '#6366F1' },
@@ -371,62 +423,19 @@ function StatsSection() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROBLEM SECTION (scroll-reveal stagger)
-// ─────────────────────────────────────────────────────────────────────────────
-const PROBLEMS = [
-  { icon: 'x', title: 'Phone tag & long waits', body: 'Patients spend hours calling clinics, only to find no availability or end up double-booked.' },
-  { icon: 'alert', title: 'No-shows and lost revenue', body: 'Without automated reminders, practices lose 15–20% of scheduled revenue to no-shows every week.' },
-  { icon: 'building', title: 'Zero operational insight', body: 'Admin teams manage on spreadsheets, unable to spot bottlenecks, low-capacity doctors, or underperforming departments.' },
-]
-
-function ProblemSection() {
-  const { containerRef, visibleCount } = useStaggerReveal(PROBLEMS.length, 120)
-  const { ref: headRef, visible: headVisible } = useScrollReveal(0)
-
-  return (
-    <section style={{ background: MB.bg2, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
-        <div ref={headRef} className={cn('lp-reveal', headVisible && 'visible')} style={{ textAlign: 'center', maxWidth: 580, margin: '0 auto 52px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: MB.dangerBg, border: `1px solid #FCA29B`, marginBottom: 14 }}>
-            <Icon name="alert" size={12} color={MB.danger} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: MB.danger, letterSpacing: '0.06em', textTransform: 'uppercase' }}>The problem</span>
-          </div>
-          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Healthcare scheduling is broken</h2>
-          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: 0 }}>MediBook fixes all three at once.</p>
-        </div>
-        <div ref={containerRef} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
-          {PROBLEMS.map((item, i) => (
-            <div key={item.title} className="lp-card-hover" style={{
-              background: MB.bg, border: `1px solid ${MB.line}`,
-              borderLeft: `4px solid ${MB.danger}`, borderRadius: 14, padding: '24px 22px',
-              opacity: i < visibleCount ? 1 : 0,
-              transform: i < visibleCount ? 'none' : 'translateY(20px)',
-              transition: `opacity .5s ease, transform .5s ease`,
-            }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: MB.dangerBg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <Icon name={item.icon as never} size={16} color={MB.danger} />
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink, marginBottom: 8 }}>{item.title}</div>
-              <div style={{ fontSize: 13, color: MB.text2, lineHeight: 1.65 }}>{item.body}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEATURE GRID (liquid-fill hover + stagger)
 // ─────────────────────────────────────────────────────────────────────────────
 const FEATURES = [
-  { icon: 'search', title: 'Smart doctor search', body: 'Filter by specialty, department, availability. Real-time slot visibility — no phone calls ever.' },
-  { icon: 'calendar', title: 'Real-time scheduling', body: 'Live availability synced across all devices. No double-bookings. Changes reflect instantly.' },
+  { icon: 'search', title: 'Smart Search & Discovery', body: 'Full-text search and faceted filtering by specialty, department, availability. Find the right doctor in seconds.' },
+  { icon: 'video', title: 'Telemedicine Suite', body: 'Integrated Video/Audio and chat with an AI note-taker to automatically save consultation summaries.' },
+  { icon: 'creditCard', title: 'Payments & Billing', body: 'Automated consultation fees, invoicing, and instant refunds via Paystack, Flutterwave, or Stripe.' },
+  { icon: 'star', title: 'Patient Experience', body: 'Verified ratings, reviews, recurring appointments, and smart waitlists to improve care quality.' },
+  { icon: 'chart', title: 'Advanced Analytics', body: 'Interactive charted dashboards and a custom report builder for deep operational insights.' },
   { icon: 'bell', title: 'Automated reminders', body: 'SMS & email reminders sent 48h, 24h, and 2h before. Cuts no-shows by up to 60%.' },
   { icon: 'edit', title: 'Consultation notes', body: 'Doctors capture structured SOAP notes directly from the schedule. Searchable history.' },
-  { icon: 'chart', title: 'Admin analytics', body: 'Capacity heatmaps, doctor utilization, revenue tracking — all in real-time.' },
-  { icon: 'lock', title: 'Role-based access', body: 'Granular permissions for patients, doctors, and administrators. Everyone sees exactly what they need.' },
+  { icon: 'calendar', title: 'Real-time scheduling', body: 'Live availability synced across all devices. No double-bookings. Changes reflect instantly.' },
 ]
 
 function FeatureCard({ icon, title, body, delay }: { icon: string; title: string; body: string; delay: number }) {
@@ -465,10 +474,6 @@ function FeaturesSection() {
     <section id="features" style={{ background: MB.bg, padding: '80px 24px' }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
         <div ref={ref} className={cn('lp-reveal', visible && 'visible')} style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto 52px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: MB.primary50, border: `1px solid ${MB.primary100}`, marginBottom: 14 }}>
-            <Icon name="sparkle" size={11} color={MB.primary} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Platform features</span>
-          </div>
           <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Everything you need, nothing you don't</h2>
           <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: 0 }}>Purpose-built for healthcare. Every feature reduces friction for all three roles.</p>
         </div>
@@ -487,23 +492,45 @@ const ROLES = [
   {
     id: 'patient', accent: MB.primary,
     icon: 'user', role: 'For Patients', headline: 'Book in minutes, not hours',
-    points: ['Search by specialty in real time', 'See live slot availability — no phone calls', 'Get SMS & email reminders automatically', 'View full visit history and notes', 'Cancel or reschedule with one tap'],
+    points: [
+      'Full-text search & faceted filtering (gender, fees)',
+      'Telemedicine with Video/Audio and Chat',
+      'Recurring appointments & smart waitlists',
+      'Verified ratings and doctor reviews',
+      'Instant refunds on appointment cancellation'
+    ],
     cta: 'Book your first appointment', href: '/register',
     gradient: `linear-gradient(135deg, ${MB.primary} 0%, #1BA06E 100%)`,
   },
   {
-    id: 'doctor', accent: '#2563EB',
+    id: 'doctor', accent: MB.primary,
     icon: 'stethoscope', role: 'For Doctors', headline: 'Focus on patients, not paperwork',
-    points: ['Full day at a glance — timeline view', 'Mark complete, cancelled, or no-show', 'Capture SOAP notes in seconds', 'Set and adjust working hours anytime', 'Never get interrupted by double-bookings'],
-    cta: 'View doctor dashboard', href: '/login',
-    gradient: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+    points: [
+      'AI call note-taker for consultation summaries',
+      'Captures structured SOAP notes in seconds',
+      'Set and adjust working hours anytime', 
+      'Never get interrupted by double-bookings',
+      'Integrated Video & Chat for telehealth',
+      'Full day timeline with status tracking'
+    ],
+    // cta: 'View doctor dashboard', href: '/login',
+    cta: undefined, href: undefined,
+    gradient: `linear-gradient(135deg, ${MB.primary} 0%, #1BA06E 100%)`,
   },
   {
-    id: 'admin', accent: '#7C3AED',
+    id: 'admin', accent: MB.primary,
     icon: 'building', role: 'For Administrators', headline: 'Run a smarter clinic',
-    points: ['Manage departments, doctors, patients', 'Real-time capacity per doctor per day', 'Analytics by department, status, revenue', 'Create and deactivate profiles instantly', 'Export reports in one click'],
-    cta: 'Explore admin console', href: '/login',
-    gradient: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+    points: [
+      'Manage departments, doctors, patients',
+      'Interactive charted dashboards & KPIs',
+      'Custom report builder for clinical insights',
+      'Manage payments (Paystack, Stripe, Monnify)',
+      'Real-time capacity and revenue heatmaps',
+      'Automated invoicing and refund management'
+    ],
+        // cta: 'Explore admin console', href: '/login',
+    cta: undefined, href: undefined,
+    gradient: `linear-gradient(135deg, ${MB.primary} 0%, #1BA06E 100%)`,
   },
 ]
 
@@ -545,16 +572,18 @@ function RoleCardDesktop({ role, visible, index }: { role: typeof ROLES[0]; visi
             </li>
           ))}
         </ul>
-        <Link to={role.href} style={{
-          marginTop: 'auto', height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-          background: hov ? 'rgba(255,255,255,.18)' : role.accent,
-          border: hov ? '1px solid rgba(255,255,255,.3)' : '1px solid transparent',
-          color: '#fff', borderRadius: 9, textDecoration: 'none',
-          fontSize: 13, fontWeight: 700,
-          transition: 'background .3s, border .3s',
-        }}>
-          {role.cta} <Icon name="arrowRight" size={14} color="#fff" />
-        </Link>
+        {role.cta && role.href && (
+          <Link to={role.href} style={{
+            marginTop: 'auto', height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            background: hov ? 'rgba(255,255,255,.18)' : role.accent,
+            border: hov ? '1px solid rgba(255,255,255,.3)' : '1px solid transparent',
+            color: '#fff', borderRadius: 9, textDecoration: 'none',
+            fontSize: 13, fontWeight: 700,
+            transition: 'background .3s, border .3s',
+          }}>
+            {role.cta} <Icon name="arrowRight" size={14} color="#fff" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -587,9 +616,11 @@ function RolesMobileCarousel() {
               </li>
             ))}
           </ul>
-          <Link to={role.href} style={{ height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.3)', color: '#fff', borderRadius: 9, textDecoration: 'none', fontSize: 13, fontWeight: 700, marginTop: 'auto' }}>
-            {role.cta} <Icon name="arrowRight" size={14} color="#fff" />
-          </Link>
+          {role.cta && role.href && (
+            <Link to={role.href} style={{ height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.3)', color: '#fff', borderRadius: 9, textDecoration: 'none', fontSize: 13, fontWeight: 700, marginTop: 'auto' }}>
+              {role.cta} <Icon name="arrowRight" size={14} color="#fff" />
+            </Link>
+          )}
         </div>
       </div>
       {/* Dots + nav */}
@@ -613,14 +644,7 @@ function RolesMobileCarousel() {
 function RolesSection() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(() => prefersReducedMotion())
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
-
-  useEffect(() => {
-    const mql = window.matchMedia('(max-width: 767px)')
-    const fn = () => setIsMobile(mql.matches)
-    mql.addEventListener('change', fn)
-    return () => mql.removeEventListener('change', fn)
-  }, [])
+  const isMobile = useIsMobile(767)
 
   useEffect(() => {
     if (prefersReducedMotion()) return
@@ -635,10 +659,6 @@ function RolesSection() {
     <section id="roles" style={{ background: MB.bg2, padding: '80px 24px' }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
         <div ref={headRef} className={cn('lp-reveal', headVis && 'visible')} style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto 52px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: MB.primary50, border: `1px solid ${MB.primary100}`, marginBottom: 14 }}>
-            <Icon name="users" size={11} color={MB.primary} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Built for everyone</span>
-          </div>
           <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: 0 }}>One platform. Three experiences.</h2>
         </div>
         <div ref={containerRef}>
@@ -659,7 +679,7 @@ function RolesSection() {
 const STEPS = [
   { n: 1, title: 'Search & filter', body: 'Find doctors by specialty, department, or name. See availability for the next 7 days in real time.' },
   { n: 2, title: 'Pick a slot', body: 'Choose from morning or afternoon slots. The system holds your slot for 5 minutes while you review.' },
-  { n: 3, title: 'Confirm & receive', body: 'Get instant email confirmation plus SMS reminders. Add it to your calendar with one click.' },
+  { n: 3, title: 'Confirm & receive', body: 'Instant invoicing and secure payment. Get confirmation plus SMS reminders added to your calendar.' },
 ]
 
 function BookingFlowSection() {
@@ -669,10 +689,10 @@ function BookingFlowSection() {
 
   return (
     <section style={{ background: MB.bg, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 60, alignItems: 'center' }}>
         {/* Left: steps */}
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: MB.primary50, border: `1px solid ${MB.primary100}`, marginBottom: 20 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', marginBottom: 20 }}>
             <Icon name="user" size={11} color={MB.primary} />
             <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Patient flow</span>
           </div>
@@ -752,7 +772,7 @@ function DoctorWorkflowSection() {
 
   return (
     <section style={{ background: MB.bg2, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 60, alignItems: 'center' }}>
         {/* Left: schedule visual */}
         <div ref={leftRef} className={cn('lp-reveal-left', leftVis && 'visible')}>
           <div style={{ background: MB.bg, borderRadius: 18, border: `1px solid ${MB.line}`, overflow: 'hidden', boxShadow: '0 8px 32px rgba(16,24,40,.08)' }}>
@@ -777,16 +797,17 @@ function DoctorWorkflowSection() {
         </div>
         {/* Right: copy */}
         <div ref={rightRef} className={cn('lp-reveal-right', rightVis && 'visible')}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: '#EEF2FF', border: '1px solid #C7D2FE', marginBottom: 20 }}>
-            <Icon name="stethoscope" size={11} color="#2563EB" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Doctor workflow</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', marginBottom: 20 }}>
+            <Icon name="stethoscope" size={11} color={MB.primary} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Doctor workflow</span>
           </div>
           <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Your clinic day, at a glance</h2>
-          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 28px' }}>A clean chronological view of your day. Mark complete, log notes, manage hours — all from your phone.</p>
+          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 28px' }}>Integrated telemedicine with AI-powered summaries. Log notes, manage custom fees, and handle hours — all from your phone.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
-              { icon: 'clock', text: 'Set working hours once — MediBook auto-generates all slots' },
-              { icon: 'check', text: 'One tap to mark status with automatic patient notification' },
+              { icon: 'video', text: 'Video/Audio and chat for seamless telemedicine consultations' },
+              { icon: 'edit', text: 'AI call note-taker saves summaries directly as consultation notes' },
+                            { icon: 'check', text: 'One tap to mark status with automatic patient notification' },
               { icon: 'edit', text: 'Add SOAP consultation notes tied to each appointment' },
             ].map((item) => (
               <div key={item.text} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -836,16 +857,16 @@ function AdminSection() {
 
   return (
     <section style={{ background: MB.bg, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 60, alignItems: 'center' }}>
         {/* Left: copy + KPIs */}
         <div ref={leftRef} className={cn('lp-reveal-left', leftVis && 'visible')}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: '#F3F0FF', border: '1px solid #DDD6FE', marginBottom: 20 }}>
-            <Icon name="grid" size={11} color="#7C3AED" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Admin console</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', marginBottom: 20 }}>
+            <Icon name="grid" size={11} color={MB.primary} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Admin console</span>
           </div>
           <h2 style={{ fontSize: 'clamp(24px, 3vw, 34px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Real-time operations visibility</h2>
-          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 28px' }}>One dashboard for all departments. Monitor capacity, track analytics, and act before problems happen.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 28px' }}>Interactive charted dashboards and a custom report builder. Monitor capacity, track payments, and act before problems happen.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {kpis.map((kpi) => (
               <div key={kpi.label} style={{ background: MB.bg2, borderRadius: 12, padding: '16px', border: `1px solid ${MB.line}`, transition: 'transform .2s, box-shadow .2s' }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 16px rgba(16,24,40,.07)' }}
@@ -980,10 +1001,7 @@ function SecuritySection() {
     <section style={{ background: MB.bg, padding: '72px 24px' }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
         <div ref={headRef} className={cn('lp-reveal', headVis && 'visible')} style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto 48px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 999, background: MB.primary50, border: `1px solid ${MB.primary100}`, marginBottom: 14 }}>
-            <Icon name="lock" size={11} color={MB.primary} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: MB.primary600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Security & compliance</span>
-          </div>
+ 
           <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Built with patient privacy in mind</h2>
           <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: 0 }}>Healthcare data is among the most sensitive. MediBook is engineered from the ground up with security controls that protect everyone.</p>
         </div>
@@ -1002,6 +1020,72 @@ function SecuritySection() {
               <div style={{ fontSize: 13, color: MB.text2, lineHeight: 1.6 }}>{item.body}</div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTACT SECTION
+// ─────────────────────────────────────────────────────────────────────────────
+function ContactSection() {
+  const { ref, visible } = useScrollReveal(0)
+
+  return (
+    <section id="contact" style={{ background: MB.bg2, padding: '80px 24px' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 60, alignItems: 'center' }}>
+        <div ref={ref} className={cn('lp-reveal-left', visible && 'visible')}>
+          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 16px' }}>Ready to transform your practice?</h2>
+          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 32px', maxWidth: 460 }}>
+            Our team is here to help you set up MediBook for your clinic. Reach out for a tailored demo, pricing details, or any questions.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {[
+              { icon: 'mail', label: 'Email us', value: 'hello@medibook.health' },
+              { icon: 'phone', label: 'Call us', value: '+234 701 507 0004' },
+              { icon: 'pin', label: 'Visit us', value: 'Lekki gardens Phase 2, Lagos, Nigeria' },
+            ].map((c) => (
+              <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: MB.bg, border: `1px solid ${MB.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={c.icon as never} size={18} color={MB.primary} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: MB.text3, marginBottom: 2 }}>{c.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: MB.ink }}>{c.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={cn('lp-reveal-right', visible && 'visible')}>
+          <div style={{ background: MB.bg, borderRadius: 18, border: `1px solid ${MB.line}`, padding: 32, boxShadow: '0 8px 32px rgba(16,24,40,.06)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: MB.ink, margin: '0 0 24px' }}>Send us a message</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Full name</label>
+                <input type="text" placeholder="Dr. Jane Doe" style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', transition: 'border .2s' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Work email</label>
+                <input type="email" placeholder="jane@clinic.com" style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', transition: 'border .2s' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Message</label>
+                <textarea rows={4} placeholder="How can we help?" style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', resize: 'vertical', transition: 'border .2s' }} />
+              </div>
+              <button className="lp-liquid-btn" style={{
+                marginTop: 8, height: 48, background: MB.primary, color: '#fff', border: 'none', borderRadius: 10,
+                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(14,138,95,.25)', transition: 'background .15s, transform .12s'
+              }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = MB.primary600 }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = MB.primary }}>
+                Send message
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1075,6 +1159,9 @@ function CtaSection() {
 // ─────────────────────────────────────────────────────────────────────────────
 function Nav() {
   const scrolled = useNavScroll()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const isMobile = useIsMobile(900)
+
   const links = [
     { label: 'For Patients', href: '#roles' },
     { label: 'For Doctors', href: '#roles' },
@@ -1082,42 +1169,91 @@ function Nav() {
   ]
 
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 100, background: scrolled ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.75)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderBottom: scrolled ? `1px solid ${MB.line2}` : '1px solid transparent', transition: 'background .2s ease, border-color .2s ease, box-shadow .2s ease', boxShadow: scrolled ? '0 1px 14px rgba(16,24,40,.07)' : 'none', animation: 'lp-nav-in .4s ease both' }}>
+    <header style={{ 
+      position: 'sticky', top: 0, zIndex: 100, 
+      background: scrolled || menuOpen ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.75)', 
+      backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', 
+      borderBottom: scrolled || menuOpen ? `1px solid ${MB.line2}` : '1px solid transparent', 
+      transition: 'background .2s ease, border-color .2s ease, box-shadow .2s ease', 
+      boxShadow: scrolled ? '0 1px 14px rgba(16,24,40,.07)' : 'none', 
+      animation: 'lp-nav-in .4s ease both' 
+    }}>
       <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }} onClick={() => setMenuOpen(false)}>
           <Logo size={30} />
           <span style={{ fontSize: 17, fontWeight: 700, color: MB.ink, letterSpacing: '-0.01em' }}>MediBook</span>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1, justifyContent: 'center' }}>
+
+        {!isMobile && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flex: 1, justifyContent: 'center' }}>
+              {links.map((l) => (
+                <a key={l.label} href={l.href} style={{ fontSize: 14, fontWeight: 500, color: MB.text2, textDecoration: 'none', transition: 'color .12s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.primary }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.text2 }}>
+                  {l.label}
+                </a>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Link to="/login" style={{ fontSize: 14, fontWeight: 500, color: MB.text, textDecoration: 'none', padding: '6px 12px', borderRadius: 8, transition: 'background .12s' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.bg3 }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
+                Sign in
+              </Link>
+              <Link to="/register" style={{
+                height: 38, padding: '0 18px',
+                background: MB.primary, color: '#fff', border: 'none', borderRadius: 9,
+                fontSize: 14, fontWeight: 600,
+                display: 'inline-flex', alignItems: 'center',
+                textDecoration: 'none',
+                boxShadow: '0 1px 4px rgba(14,138,95,.22)',
+                transition: 'background .12s, box-shadow .12s',
+              }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.primary600 }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.primary }}>
+                Get started
+              </Link>
+            </div>
+          </>
+        )}
+
+        {isMobile && (
+          <button 
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{ background: 'none', border: 'none', padding: 8, cursor: 'pointer', color: MB.ink, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name={menuOpen ? 'close' : 'menu'} size={24} />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Menu */}
+      {isMobile && menuOpen && (
+        <div style={{ 
+          position: 'absolute', top: 64, left: 0, right: 0, 
+          background: '#fff', borderBottom: `1px solid ${MB.line2}`, 
+          padding: '12px 24px 32px', display: 'flex', flexDirection: 'column', gap: 8,
+          boxShadow: '0 12px 24px rgba(0,0,0,0.05)',
+          animation: 'lp-fade-up .3s ease both'
+        }}>
           {links.map((l) => (
-            <a key={l.label} href={l.href} style={{ fontSize: 14, fontWeight: 500, color: MB.text2, textDecoration: 'none', transition: 'color .12s' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.primary }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.text2 }}>
+            <a key={l.label} href={l.href} 
+              onClick={() => setMenuOpen(false)}
+              style={{ padding: '14px 0', fontSize: 16, fontWeight: 600, color: MB.ink, textDecoration: 'none', borderBottom: `1px solid ${MB.bg2}` }}>
               {l.label}
             </a>
           ))}
+          <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <Link to="/login" onClick={() => setMenuOpen(false)} style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: MB.bg2, color: MB.ink, borderRadius: 12, textDecoration: 'none', fontWeight: 600 }}>
+              Sign in
+            </Link>
+            <Link to="/register" onClick={() => setMenuOpen(false)} style={{ height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: MB.primary, color: '#fff', borderRadius: 12, textDecoration: 'none', fontWeight: 600 }}>
+              Get started
+            </Link>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Link to="/login" style={{ fontSize: 14, fontWeight: 500, color: MB.text, textDecoration: 'none', padding: '6px 12px', borderRadius: 8, transition: 'background .12s' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.bg3 }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
-            Sign in
-          </Link>
-          <Link to="/register" style={{
-            height: 38, padding: '0 18px',
-            background: MB.primary, color: '#fff', border: 'none', borderRadius: 9,
-            fontSize: 14, fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center',
-            textDecoration: 'none',
-            boxShadow: '0 1px 4px rgba(14,138,95,.22)',
-            transition: 'background .12s, box-shadow .12s',
-          }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.primary600 }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.primary }}>
-            Get started
-          </Link>
-        </div>
-      </div>
+      )}
     </header>
   )
 }
@@ -1126,18 +1262,19 @@ function Nav() {
 // FOOTER
 // ─────────────────────────────────────────────────────────────────────────────
 function Footer() {
+  const isMobile = useIsMobile(768)
   return (
     <footer style={{ background: MB.ink, padding: '48px 24px 32px' }}>
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 32, marginBottom: 40 }}>
-          <div style={{ maxWidth: 280 }}>
+        <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'space-between', textAlign: isMobile ? 'center' : 'left', flexWrap: 'wrap', gap: 32, marginBottom: 40 }}>
+          <div style={{ maxWidth: 280, display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <Logo size={28} />
               <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>MediBook</span>
             </div>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', lineHeight: 1.7, margin: 0 }}>The intelligent appointment platform for modern healthcare.</p>
           </div>
-          <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: isMobile ? 32 : 48, flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start' }}>
             {[
               { title: 'Platform', links: [{ label: 'For Patients', href: '#roles' }, { label: 'For Doctors', href: '#roles' }, { label: 'Features', href: '#features' }] },
               { title: 'Account', links: [{ label: 'Sign in', href: '/login' }, { label: 'Create account', href: '/register' }, { label: 'Forgot password', href: '/forgot-password' }] },
@@ -1163,8 +1300,8 @@ function Footer() {
             ))}
           </div>
         </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 24, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)' }}>© 2026 MediBook Health. All rights reserved.</div>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 24, display: 'flex', justifyContent: isMobile ? 'center' : 'space-between', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>© 2026 MediBook Health. All rights reserved.</div>
           <div style={{ display: 'flex', gap: 20 }}>
             {['Privacy Policy', 'Terms of Service'].map((l) => (
               <a key={l} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textDecoration: 'none', transition: 'color .12s' }}
@@ -1193,7 +1330,6 @@ export default memo(function LandingPage() {
       <HeroSection />
       <TrustBar />
       <StatsSection />
-      <ProblemSection />
       <FeaturesSection />
       <RolesSection />
       <BookingFlowSection />
@@ -1201,6 +1337,7 @@ export default memo(function LandingPage() {
       <AdminSection />
       <SecuritySection />
       <TextFillReveal />
+      <ContactSection />
       <CtaSection />
       <Footer />
     </div>

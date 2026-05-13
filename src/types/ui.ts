@@ -8,6 +8,8 @@ export type IconName =
   | 'arrowRight' | 'download' | 'moreH' | 'moreV'
   | 'lock' | 'mail' | 'phone' | 'building' | 'users' | 'logout'
   | 'camera' | 'eye-off' | 'shield' | 'crown'
+  | 'video' | 'creditCard' | 'star' | 'menu' | 'close'
+
 
 // ─── Button variants ──────────────────────────────────────────────────────
 export type BtnVariant =
