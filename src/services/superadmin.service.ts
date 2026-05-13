@@ -59,4 +59,13 @@ export const SuperAdminService = {
   deleteAdmin: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/v1/admin/admins/${id}`);
   },
+
+  resetAdminPassword: async (id: string, newPassword: string): Promise<void> => {
+    await apiClient.post(`/api/v1/admin/admins/${id}/reset-password`, { newPassword });
+  },
+
+  updateAdmin: async (id: string, data: { firstName: string; lastName: string; phone?: string }): Promise<AdminAccount> => {
+    const response = await apiClient.patch(`/api/v1/admin/admins/${id}`, data);
+    return mapAdmin(unwrapApiResponse<AdminApiResponse>(response.data));
+  },
 };

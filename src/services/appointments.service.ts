@@ -17,6 +17,13 @@ export interface CancelRequest {
   reason?: string;
 }
 
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  limit: number;
+}
+
 export const AppointmentsService = {
   getById: async (id: string) => {
     const response = await apiClient.get(`/api/v1/appointments/${id}`);
@@ -34,7 +41,7 @@ export const AppointmentsService = {
   },
 
   reschedule: async (id: string, payload: RescheduleRequest) => {
-    const response = await apiClient.put(`/api/v1/appointments/${id}/reschedule`, payload);
+    const response = await apiClient.post(`/api/v1/appointments/${id}/reschedule`, payload);
     return unwrapApiResponse<Appointment>(response.data);
   },
 
@@ -53,6 +60,14 @@ export const AppointmentsService = {
       responseType: 'blob',
     });
     return response.data;
+  },
+
+  /** Cursor-based paginated appointments — more efficient for infinite scroll */
+  getMyAppointmentsCursor: async (tab: 'upcoming' | 'past' = 'upcoming', cursor?: string, limit = 20) => {
+    const response = await apiClient.get('/api/v1/me/appointments/cursor', {
+      params: { tab, ...(cursor && { cursor }), limit },
+    });
+    return unwrapApiResponse<CursorPage<Appointment>>(response.data);
   },
 
   releaseHold: async (holdId: string, doctorId: number, scheduledAt: string) => {

@@ -13,14 +13,21 @@ export interface NotificationItem {
 }
 
 export const NotificationService = {
-  list: async () => {
-    const response = await apiClient.get('/api/v1/me/notifications');
+  list: async (unreadOnly = false) => {
+    const response = await apiClient.get('/api/v1/me/notifications', {
+      params: unreadOnly ? { unread: true } : undefined,
+    });
     return unwrapApiResponse<NotificationItem[]>(response.data);
   },
 
   listUnread: async () => {
-    const response = await apiClient.get('/api/v1/me/notifications', { params: { unread: true } });
+    const response = await apiClient.get('/api/v1/me/notifications/unread');
     return unwrapApiResponse<NotificationItem[]>(response.data);
+  },
+
+  getUnreadCount: async (): Promise<number> => {
+    const response = await apiClient.get('/api/v1/me/notifications/unread-count');
+    return unwrapApiResponse<number>(response.data);
   },
 
   markRead: async (notificationId: string, createdAt: string) => {

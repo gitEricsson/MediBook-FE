@@ -15,8 +15,11 @@ import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { useAdminDoctors, useAdminDepartments } from '@/hooks/useAdmin'
 import { AdminService } from '@/services/admin.service'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ReviewsService, ReviewResponse } from '@/services/reviews.service'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { parseApiError } from '@/lib/api/contracts'
+import { Badge } from '@/components/primitives/Badge'
 
 // ── Add Doctor Drawer ─────────────────────────────────────────────────────────
 
@@ -139,11 +142,65 @@ function AddDoctorDrawer({ onClose, onSaved }: { onClose: () => void; onSaved: (
   )
 }
 
+// ── Pending review moderation ─────────────────────────────────────────────────
+
+function PendingReviews() {
+  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'reviews', 'pending'],
+    queryFn: () => ReviewsService.getPendingReviews(0, 20).then((p) => p.content),
+  })
+
+  const moderateMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'approve' | 'reject' }) =>
+      ReviewsService.moderate(id, action),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reviews', 'pending'] })
+      toast.success(vars.action === 'approve' ? 'Review approved' : 'Review rejected')
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Operation failed'),
+  })
+
+  if (isLoading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 24 }}>
+      {[0, 1].map((i) => <div key={i} style={{ height: 80, background: MB.bg2, borderRadius: 10 }} />)}
+    </div>
+  )
+
+  const reviews = data ?? []
+  if (reviews.length === 0) return (
+    <div style={{ padding: 40, textAlign: 'center', color: MB.text3, fontSize: 14 }}>No reviews pending moderation.</div>
+  )
+
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {reviews.map((r: ReviewResponse) => (
+        <div key={r.id} style={{ background: MB.bg2, borderRadius: 12, padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{r.patientName}</div>
+              <div style={{ fontSize: 12, color: MB.text3 }}>→ Dr. {r.doctorName}</div>
+              <div style={{ fontSize: 13, color: '#F59E0B', marginTop: 2 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
+            </div>
+            <Badge tone="warn" size="sm">Pending</Badge>
+          </div>
+          {r.comment && <p style={{ margin: '0 0 12px', fontSize: 13, color: MB.text2, lineHeight: 1.5 }}>{r.comment}</p>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="primary" size="sm" loading={moderateMutation.isPending} onClick={() => moderateMutation.mutate({ id: String(r.id), action: 'approve' })}>Approve</Btn>
+            <Btn variant="dangerOutline" size="sm" loading={moderateMutation.isPending} onClick={() => moderateMutation.mutate({ id: String(r.id), action: 'reject' })}>Reject</Btn>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default memo(function DeskDoctors() {
   const { data: doctors, isLoading } = useAdminDoctors()
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<'doctors' | 'reviews'>('doctors')
   const [showAddDrawer, setShowAddDrawer] = useState(false)
   const [revoking, setRevoking] = useState<number | null>(null)
 
@@ -200,20 +257,28 @@ export default memo(function DeskDoctors() {
         subtitle={`${filteredDocs.length} of ${displayDocs.length}`}
         actions={
           <>
-            <div style={{ width: 240 }}>
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search doctors..." icon="search" aria-label="Search doctors" />
+            <div style={{ display: 'flex', gap: 4, background: MB.bg2, borderRadius: 8, padding: 4 }}>
+              {(['doctors', 'reviews'] as const).map((t) => (
+                <button key={t} onClick={() => setActiveTab(t)}
+                  style={{ padding: '6px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    background: activeTab === t ? MB.bg : 'transparent', color: activeTab === t ? MB.text : MB.text3 }}>
+                  {t === 'doctors' ? 'Doctors' : 'Reviews'}
+                </button>
+              ))}
             </div>
-            <Btn variant="secondary" icon="download" onClick={handleExport} disabled={isLoading || filteredDocs.length === 0}>
-              Export
-            </Btn>
-            <Btn variant="primary" icon="plus" onClick={() => setShowAddDrawer(true)}>
-              Add doctor
-            </Btn>
+            {activeTab === 'doctors' && <>
+              <div style={{ width: 240 }}>
+                <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search doctors..." icon="search" aria-label="Search doctors" />
+              </div>
+              <Btn variant="secondary" icon="download" onClick={handleExport} disabled={isLoading || filteredDocs.length === 0}>Export</Btn>
+              <Btn variant="primary" icon="plus" onClick={() => setShowAddDrawer(true)}>Add doctor</Btn>
+            </>}
           </>
         }
       />
-      <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
-        <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: activeTab === 'reviews' ? 0 : 24 }}>
+        {activeTab === 'reviews' && <PendingReviews />}
+        {activeTab === 'doctors' && <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
           <div className="mb-table-frame">
           <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="Doctors list">
             <thead style={{ background: MB.bg2, borderBottom: `1px solid ${MB.line}` }}>
@@ -272,7 +337,7 @@ export default memo(function DeskDoctors() {
             </tbody>
           </table>
           </div>
-        </div>
+        </div>}
       </div>
     </DeskShell>
     {showAddDrawer && (

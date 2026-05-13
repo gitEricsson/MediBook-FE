@@ -4,6 +4,7 @@ import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
 import { PatientShell } from '@/components/layout/PatientShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
+import { Avatar } from '@/components/primitives/Avatar'
 import { Badge } from '@/components/primitives/Badge'
 import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
@@ -14,6 +15,66 @@ import { useDoctorDetail, useDoctorAvailability } from '@/hooks/useDoctorData'
 import { useBooking } from '@/hooks/useBooking'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { ReviewsService, ReviewResponse } from '@/services/reviews.service'
+import { WaitlistService } from '@/services/waitlist.service'
+import { toast } from 'sonner'
+import { parseApiError } from '@/lib/api/contracts'
+
+// ── Doctor reviews section ─────────────────────────────────────────────────────
+function DoctorReviews({ doctorId }: { doctorId: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['reviews', 'doctor', doctorId],
+    queryFn: () => ReviewsService.getDoctorReviews(doctorId, 0, 5),
+    enabled: !!doctorId,
+  })
+
+  if (isLoading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {[0, 1].map((i) => <Skel key={i} h={80} w="100%" r={10} />)}
+    </div>
+  )
+
+  const reviews = data?.content ?? []
+  if (reviews.length === 0) return (
+    <div style={{ fontSize: 13, color: MB.text3, textAlign: 'center', padding: '16px 0' }}>No reviews yet.</div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {reviews.map((r: ReviewResponse) => (
+        <div key={r.id} style={{ background: MB.bg2, borderRadius: 10, padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Avatar name={r.patientName} size={28} tone="primary" />
+              <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{r.patientName}</div>
+            </div>
+            <div style={{ fontSize: 13, color: '#F59E0B' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
+          </div>
+          {r.comment && <p style={{ margin: 0, fontSize: 13, color: MB.text2, lineHeight: 1.5 }}>{r.comment}</p>}
+          <div style={{ fontSize: 11, color: MB.text3, marginTop: 6 }}>
+            {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Waitlist join button ───────────────────────────────────────────────────────
+function WaitlistButton({ doctorId }: { doctorId: string }) {
+  const mutation = useMutation({
+    mutationFn: () => WaitlistService.join({ doctorId: Number(doctorId) }),
+    onSuccess: () => toast.success('Added to waitlist — we\'ll notify you when a slot opens'),
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to join waitlist'),
+  })
+
+  return (
+    <Btn variant="secondary" size="sm" icon="clock" loading={mutation.isPending} onClick={() => mutation.mutate()}>
+      Join waitlist
+    </Btn>
+  )
+}
 
 interface SlotBtnProps {
   time: string
@@ -380,7 +441,14 @@ function MobileDoctorDetail() {
           )}
           {isError && <ErrorState title="Couldn't load availability" body="We'll retry when you choose another day." />}
           {!isAvailLoading && !isError && (!availability || availability.length === 0 || availability[0].slots.length === 0) && (
-            <EmptyState icon="calendar" title="No slots on this day" body="Try another day this week." />
+            <div>
+              <EmptyState icon="calendar" title="No slots on this day" body="Try another day this week." />
+              {id && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+                  <WaitlistButton doctorId={id} />
+                </div>
+              )}
+            </div>
           )}
           {!isAvailLoading && !isError && availability && availability[0]?.slots.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
@@ -401,6 +469,14 @@ function MobileDoctorDetail() {
             </div>
           )}
         </div>
+
+        {/* Reviews section */}
+        {id && (
+          <div style={{ padding: '0 16px 24px' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink, marginBottom: 12 }}>Patient reviews</div>
+            <DoctorReviews doctorId={id} />
+          </div>
+        )}
       </div>
 
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>

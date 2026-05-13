@@ -173,6 +173,36 @@ export const AdminService = {
     return Array.isArray(raw) ? raw : (raw as { content: DoctorUtilizationEntry[] }).content ?? [];
   },
 
+  // Capacity
+  getDailyCapacity: async (date: string) => {
+    const response = await apiClient.get('/api/v1/admin/analytics/capacity', { params: { date } });
+    return unwrapApiResponse(response.data);
+  },
+
+  // Department CSV export
+  exportDepartmentsCsv: async () => {
+    const response = await apiClient.get('/api/v1/admin/departments/export.csv', {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
+  // Doctor Leave (admin view)
+  getDoctorLeaves: async (doctorId: string) => {
+    const response = await apiClient.get(`/api/v1/doctors/${doctorId}/leaves`);
+    return unwrapApiResponse<Array<{ id: number; startDate: string; endDate: string; reason?: string; leaveType: string; status: string }>>(response.data);
+  },
+
+  createDoctorLeave: async (doctorId: string, payload: {
+    startDate: string;
+    endDate: string;
+    reason?: string;
+    leaveType?: 'PERSONAL' | 'SICK' | 'CONFERENCE' | 'HOLIDAY';
+  }) => {
+    const response = await apiClient.post(`/api/v1/doctors/${doctorId}/leaves`, payload);
+    return unwrapApiResponse(response.data);
+  },
+
   // System Health
   getHealth: async () => {
     const response = await apiClient.get('/health');

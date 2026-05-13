@@ -15,13 +15,123 @@ import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useDoctors } from '@/hooks/useDoctors'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { DepartmentsService } from '@/services/departments.service'
 import { LookupsService } from '@/services/lookups.service'
+import { IntelligenceService, TriageResult } from '@/services/intelligence.service'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useNavigate } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
+import { useAuthStore } from '@/store/authStore'
+import { parseApiError } from '@/lib/api/contracts'
 import type { Doctor } from '@/types/domain'
+
+// ── Symptom triage sheet ───────────────────────────────────────────────────────
+
+const URGENCY_STYLE: Record<string, { bg: string; color: string }> = {
+  LOW:       { bg: '#D1FAE5', color: '#065F46' },
+  MEDIUM:    { bg: '#FEF3C7', color: '#92400E' },
+  HIGH:      { bg: '#FEE2E2', color: '#991B1B' },
+  EMERGENCY: { bg: '#DC2626', color: '#fff'    },
+}
+
+function SymptomTriageSheet({ onClose, onSpecialize }: { onClose: () => void; onSpecialize: (spec: string) => void }) {
+  const user = useAuthStore((s) => s.user)
+  const [input, setInput] = useState('')
+  const [symptoms, setSymptoms] = useState<string[]>([])
+  const [result, setResult] = useState<TriageResult | null>(null)
+
+  const addSymptom = () => {
+    const trimmed = input.trim()
+    if (trimmed && !symptoms.includes(trimmed)) setSymptoms((s) => [...s, trimmed])
+    setInput('')
+  }
+
+  const mutation = useMutation({
+    mutationFn: () => IntelligenceService.triageSymptoms(symptoms, Number(user?.id ?? 0)),
+    onSuccess: (res) => setResult(res),
+    onError: (err) => alert(parseApiError(err).message || 'Triage failed'),
+  })
+
+  const urgency = result?.urgencyIndicator ?? 'LOW'
+  const urgencyStyle = URGENCY_STYLE[urgency] ?? URGENCY_STYLE.LOW
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ background: MB.bg, width: '100%', maxWidth: 560, margin: '0 auto', borderRadius: '20px 20px 0 0', padding: '20px 20px 32px', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, background: MB.line, borderRadius: 2, margin: '0 auto 20px' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: MB.ink }}>Symptom checker</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <Icon name="x" size={18} color={MB.text3} />
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: MB.text3, margin: '0 0 16px', lineHeight: 1.5 }}>
+          Not a diagnosis. AI-assisted suggestions — always consult a doctor.
+        </p>
+
+        {!result ? (
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); addSymptom() } }}
+                placeholder="e.g. chest pain, fever, cough"
+                style={{ flex: 1 } as React.CSSProperties}
+              />
+              <Btn variant="secondary" size="sm" onClick={addSymptom} disabled={!input.trim()}>Add</Btn>
+            </div>
+            {symptoms.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                {symptoms.map((s) => (
+                  <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 999, background: MB.primary50, fontSize: 12, color: MB.primary600, fontWeight: 500 }}>
+                    {s}
+                    <button onClick={() => setSymptoms((prev) => prev.filter((x) => x !== s))}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: MB.primary600, lineHeight: 1 }}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <Btn variant="primary" size="lg" full disabled={symptoms.length === 0} loading={mutation.isPending} onClick={() => mutation.mutate()}>
+              Analyse symptoms
+            </Btn>
+          </>
+        ) : (
+          <>
+            {/* Urgency banner */}
+            <div style={{ padding: '12px 14px', borderRadius: 10, marginBottom: 16, background: urgencyStyle.bg }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: urgencyStyle.color }}>{urgency} urgency</div>
+              <div style={{ fontSize: 13, color: urgencyStyle.color, marginTop: 4, opacity: 0.9 }}>{result.summary}</div>
+            </div>
+
+            {result.possibleConsiderations.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: MB.text3, textTransform: 'uppercase', letterSpacing: 0.04, marginBottom: 8 }}>Possible considerations</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {result.possibleConsiderations.map((c) => (
+                    <div key={c} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: MB.bg2, borderRadius: 8 }}>
+                      <span style={{ fontSize: 13, color: MB.text }}>{c}</span>
+                      <Btn variant="secondary" size="sm" onClick={() => { onSpecialize(c); onClose() }}>Search</Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ padding: '8px 10px', background: MB.bg2, borderRadius: 8, fontSize: 11, color: MB.text3, marginBottom: 16, lineHeight: 1.5 }}>
+              {result.disclaimer}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="secondary" size="md" style={{ flex: 1 }} onClick={() => { setResult(null); setSymptoms([]) }}>Start over</Btn>
+              <Btn variant="primary" size="md" style={{ flex: 1 }} onClick={onClose}>Find a doctor</Btn>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── Mobile filter chip ────────────────────────────────────────────────────────
 interface ChipProps {
@@ -273,6 +383,7 @@ function MobileSearch() {
   const state = useSearchState(departments)
   const { query, setQuery, dept, setDept, spec, setSpec, acceptingNew, setAcceptingNew, doctors, isLoading, isError, refetch, clearAll, hasFilters } = state
   const [openFilter, setOpenFilter] = useState<'dept' | 'spec' | null>(null)
+  const [showTriage, setShowTriage] = useState(false)
   const deptNames = departments.map((d) => d.name)
 
   return (
@@ -296,6 +407,19 @@ function MobileSearch() {
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
+        {/* Symptom checker banner */}
+        <button
+          onClick={() => setShowTriage(true)}
+          style={{ width: '100%', marginBottom: 12, padding: '10px 14px', background: MB.primary50, border: `1px solid ${MB.primary100}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+        >
+          <Icon name="sparkle" size={16} color={MB.primary} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: MB.primary600 }}>Not sure which doctor to see?</div>
+            <div style={{ fontSize: 12, color: MB.primary600, opacity: 0.8 }}>Describe your symptoms for AI-assisted guidance</div>
+          </div>
+          <Icon name="chevronRight" size={14} color={MB.primary} style={{ marginLeft: 'auto' } as React.CSSProperties} />
+        </button>
+
         {isLoading && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1, 2, 3].map((i) => <DocCardSkel key={i} />)}</div>}
         {isError && <ErrorState title="Couldn't load doctors" body="Check your connection and try again." onRetry={() => refetch()} />}
         {!isLoading && !isError && (!doctors || doctors.length === 0) && (
@@ -310,6 +434,12 @@ function MobileSearch() {
         )}
       </div>
       <MobTabBar active="search" />
+      {showTriage && (
+        <SymptomTriageSheet
+          onClose={() => setShowTriage(false)}
+          onSpecialize={(term) => { setQuery(term); setShowTriage(false) }}
+        />
+      )}
     </MobScreen>
   )
 }

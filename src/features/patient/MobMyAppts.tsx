@@ -11,14 +11,57 @@ import { Icon } from '@/components/primitives/Icon'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
-import { useMyAppointments } from '@/hooks/useAppointments'
+import { useMyAppointments, useMyAppointmentsCursor } from '@/hooks/useAppointments'
 import { BookingService } from '@/services/booking.service'
 import { AppointmentsService } from '@/services/appointments.service'
+import { ReviewsService } from '@/services/reviews.service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { parseApiError } from '@/lib/api/contracts'
 import { useNavigate } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
 import type { Appointment } from '@/types/api'
+
+// ── Leave a review dialog ─────────────────────────────────────────────────────
+function ReviewDialog({ appt, onClose }: { appt: Appointment; onClose: () => void }) {
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: () => ReviewsService.submit({ appointmentId: Number(appt.id), rating, comment: comment || undefined }),
+    onSuccess: () => { toast.success('Review submitted — thank you!'); onClose() },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to submit review'),
+  })
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: MB.bg, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400 }}>
+        <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: MB.ink }}>Rate your visit</h3>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: MB.text3 }}>Dr. {appt.doctorName}</p>
+        {/* Star rating */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button key={star} onClick={() => setRating(star)}
+              style={{ fontSize: 32, background: 'none', border: 'none', cursor: 'pointer', color: star <= rating ? '#F59E0B' : MB.line, padding: 0 }}>
+              ★
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Tell others about your experience (optional)"
+          rows={4}
+          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${MB.line}`, fontSize: 14, color: MB.text, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
+        />
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Skip</Btn>
+          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} disabled={rating === 0} loading={mutation.isPending} onClick={() => mutation.mutate()}>Submit review</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function formatDate(iso: string) {
@@ -78,6 +121,8 @@ function ApptCard({ appt }: { appt: Appointment }) {
   const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const { month, day, time } = formatDate(appt.scheduledAt)
   const scheduled = new Date(appt.scheduledAt)
+  const [showReview, setShowReview] = useState(false)
+  const isCompleted = appt.status === 'COMPLETED'
 
   return (
     <Card padding={14}>
@@ -98,9 +143,12 @@ function ApptCard({ appt }: { appt: Appointment }) {
           )}
         </div>
       </div>
-      {(isCancelable || appt.status === 'CONFIRMED') && (
+      {(isCancelable || appt.status === 'CONFIRMED' || isCompleted) && (
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
           <Btn variant="secondary" size="sm" icon="download" style={{ flex: 1 }} onClick={downloadICS}>Calendar</Btn>
+          {isCompleted && (
+            <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => setShowReview(true)}>Rate visit</Btn>
+          )}
           {isCancelable && (
             <>
               <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
@@ -109,6 +157,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
           )}
         </div>
       )}
+      {showReview && <ReviewDialog appt={appt} onClose={() => setShowReview(false)} />}
       {confirmCancel && (
         <div role="dialog" aria-modal="true" style={{ marginTop: 12, padding: 12, background: MB.dangerBg, borderRadius: 8 }}>
           <div style={{ fontSize: 13, color: MB.danger, fontWeight: 600, marginBottom: 4 }}>Cancel this appointment?</div>
@@ -292,13 +341,37 @@ function DesktopMyAppts() {
   )
 }
 
-// ── Mobile layout ─────────────────────────────────────────────────────────────
+// ── Mobile layout (cursor-paginated infinite scroll) ─────────────────────────
 function MobileMyAppts() {
   const [tab, setTab] = useState<Tab>('upcoming')
-  const { data, isLoading, isError, refetch } = useMyAppointments(tab)
+  const navigate = useNavigate()
+
+  // Use cursor pagination for infinite scroll on mobile
+  const {
+    data: pages,
+    isLoading,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMyAppointmentsCursor(tab)
+
+  // Counts for tab badges — use lightweight offset queries
   const { data: upcomingData } = useMyAppointments('upcoming')
   const { data: pastData } = useMyAppointments('past')
-  const navigate = useNavigate()
+
+  const allItems = pages?.pages.flatMap((p) => p.items) ?? []
+
+  // Scroll sentinel to trigger next page load
+  const sentinelRef = (node: HTMLDivElement | null) => {
+    if (!node || !hasNextPage) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage()
+    }, { threshold: 0.1 })
+    obs.observe(node)
+    return () => obs.disconnect()
+  }
 
   return (
     <MobScreen>
@@ -313,14 +386,24 @@ function MobileMyAppts() {
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
         {isLoading && <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{[0, 1, 2].map((i) => <ApptSkel key={i} />)}</div>}
         {isError && <ErrorState title="Couldn't load your visits" onRetry={() => refetch()} />}
-        {!isLoading && !isError && (!data || data.length === 0) && (
+        {!isLoading && !isError && allItems.length === 0 && (
           <EmptyState icon="calendar" title={tab === 'upcoming' ? 'No upcoming visits' : 'No past visits'}
             body="When you book a doctor, your appointments will appear here."
             action={tab === 'upcoming' ? <Btn size="sm" icon="search" style={{ marginTop: 8 }} onClick={() => navigate('/patient/search')}>Find a doctor</Btn> : undefined} />
         )}
-        {!isLoading && !isError && data && data.length > 0 && (
+        {!isLoading && !isError && allItems.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {data.map((a) => <ApptCard key={a.id} appt={a} />)}
+            {allItems.map((a) => <ApptCard key={a.id} appt={a} />)}
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} style={{ height: 1 }} />
+            {isFetchingNextPage && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[0, 1].map((i) => <ApptSkel key={i} />)}
+              </div>
+            )}
+            {!hasNextPage && allItems.length > 0 && (
+              <div style={{ textAlign: 'center', fontSize: 12, color: MB.text4, padding: '8px 0' }}>All visits loaded</div>
+            )}
           </div>
         )}
       </div>

@@ -118,12 +118,72 @@ function ConfirmRemoveDialog({ adminName, adminId, onClose }: { adminName: strin
   )
 }
 
+// ── Reset Password Dialog ─────────────────────────────────────────────────────
+
+function ResetPasswordDialog({ adminName, adminId, onClose }: { adminName: string; adminId: string; onClose: () => void }) {
+  const [newPassword, setNewPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: () => SuperAdminService.resetAdminPassword(adminId, newPassword),
+    onSuccess: () => {
+      toast.success(`Password reset for ${adminName} — all sessions revoked`)
+      onClose()
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to reset password'),
+  })
+
+  const valid = newPassword.length >= 8
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(11,18,32,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: MB.bg, borderRadius: 16, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 48px rgba(0,0,0,0.20)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="lock" size={20} color="#D97706" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: MB.ink }}>Reset password</h2>
+            <p style={{ margin: 0, fontSize: 13, color: MB.text3 }}>{adminName}</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: MB.text2, margin: '0 0 16px', lineHeight: 1.6 }}>
+          All active sessions for this admin will be revoked immediately. They must log in with the new password.
+        </p>
+        <Field label="New password" required htmlFor="rp-pwd" hint="Minimum 8 characters">
+          <Input
+            id="rp-pwd"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            type={showPwd ? 'text' : 'password'}
+            icon="lock"
+            autoComplete="new-password"
+            suffix={
+              <button type="button" onClick={() => setShowPwd(!showPwd)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}>
+                <Icon name={showPwd ? 'eye-off' : 'eye'} size={16} color={MB.text3} />
+              </button>
+            }
+          />
+        </Field>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Cancel</Btn>
+          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} disabled={!valid} loading={mutation.isPending} onClick={() => mutation.mutate()}>
+            Reset password
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default memo(function DeskSuperAdmins() {
   const currentUserId = useAuthStore((s) => s.user?.id)
   const [showCreate, setShowCreate] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
+  const [resetPwd, setResetPwd] = useState<{ id: string; name: string } | null>(null)
   const queryClient = useQueryClient()
 
   const { data: admins = [], isLoading } = useQuery({
@@ -218,6 +278,7 @@ export default memo(function DeskSuperAdmins() {
                               admin.enabled
                                 ? { label: 'Deactivate', icon: 'x', onClick: () => toggleMutation.mutate({ id: admin.id, active: true }), disabled: isSelf }
                                 : { label: 'Activate', icon: 'check', onClick: () => toggleMutation.mutate({ id: admin.id, active: false }) },
+                              { label: 'Reset password', icon: 'lock', onClick: () => setResetPwd({ id: admin.id, name: fullName }), disabled: isSelf },
                               { label: 'Remove admin', icon: 'trash', danger: true, onClick: () => setConfirmRemove({ id: admin.id, name: fullName }), disabled: isSelf },
                             ]}
                           />
@@ -237,6 +298,13 @@ export default memo(function DeskSuperAdmins() {
           adminName={confirmRemove.name}
           adminId={confirmRemove.id}
           onClose={() => setConfirmRemove(null)}
+        />
+      )}
+      {resetPwd && (
+        <ResetPasswordDialog
+          adminName={resetPwd.name}
+          adminId={resetPwd.id}
+          onClose={() => setResetPwd(null)}
         />
       )}
     </DeskShell>
