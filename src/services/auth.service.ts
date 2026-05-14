@@ -57,8 +57,13 @@ export const AuthService = {
   },
 
   logout: async () => {
-    const { refreshToken } = useAuthStore.getState();
-    await apiClient.post('/api/v1/auth/logout', { refreshToken });
+    const { refreshToken, clearAllTokens } = useAuthStore.getState();
+    try {
+      await apiClient.post('/api/v1/auth/logout', { refreshToken });
+    } finally {
+      // Always clear tokens even if logout request fails
+      clearAllTokens();
+    }
   },
 
   forgotPassword: async (data: ForgotPasswordRequest) => {

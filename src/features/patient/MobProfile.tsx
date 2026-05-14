@@ -19,6 +19,8 @@ import { parseApiError } from '@/lib/api/contracts'
 import { useNavigate } from 'react-router-dom'
 import { AccessGrantList } from './AccessGrantList'
 import { ConsentsService } from '@/services/consents.service'
+import { sanitizeInput } from '@/lib/sanitize'
+import { validatePassword } from '@/lib/validation'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -50,7 +52,11 @@ function EditProfilePanel({ onClose }: { onClose: () => void }) {
   const [phone, setPhone] = useState(user?.phone ?? '')
 
   const mutation = useMutation({
-    mutationFn: () => UserService.updateMe({ firstName, lastName, phone }),
+    mutationFn: () => UserService.updateMe({
+      firstName: sanitizeInput(firstName),
+      lastName: sanitizeInput(lastName),
+      phone: phone.replace(/\s+/g, ''),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] })
       toast.success('Profile updated')
@@ -93,6 +99,25 @@ function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
   const [next, setNext] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const handleChangePassword = () => {
+    setError(null)
+
+    // Validate inputs
+    if (!current || !next) {
+      setError('Please fill in both password fields')
+      return
+    }
+
+    // Validate new password strength
+    const passwordErrors = validatePassword(next)
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors[0])
+      return
+    }
+
+    mutation.mutate()
+  }
+
   const mutation = useMutation({
     mutationFn: () => UserService.changePassword({ currentPassword: current, newPassword: next }),
     onSuccess: () => { toast.success('Password changed'); onClose() },
@@ -119,7 +144,7 @@ function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Cancel</Btn>
-          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} loading={mutation.isPending} disabled={!current || !next} onClick={() => mutation.mutate()}>Update password</Btn>
+          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} loading={mutation.isPending} disabled={!current || !next} onClick={handleChangePassword}>Update password</Btn>
         </div>
       </div>
     </div>
@@ -136,7 +161,12 @@ function EditMedicalPanel({ profile, onClose }: { profile: PatientProfileRespons
   const [emergencyContact, setEmergencyContact] = useState(profile?.emergencyContact ?? '')
 
   const mutation = useMutation({
-    mutationFn: () => PatientProfileService.upsertMyProfile({ bloodGroup: bloodGroup || undefined, allergies, medicalHistory, emergencyContact }),
+    mutationFn: () => PatientProfileService.upsertMyProfile({
+      bloodGroup: sanitizeInput(bloodGroup) || undefined,
+      allergies: sanitizeInput(allergies),
+      medicalHistory: sanitizeInput(medicalHistory),
+      emergencyContact: sanitizeInput(emergencyContact),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient-profile'] })
       toast.success('Medical info updated')

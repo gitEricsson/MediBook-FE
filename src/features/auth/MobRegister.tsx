@@ -12,6 +12,8 @@ import { Icon } from '@/components/primitives/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { useViewport } from '@/hooks/useViewport'
 import { parseApiError } from '@/lib/api/contracts'
+import { validatePassword, validateEmail, validateRequired } from '@/lib/validation'
+import { sanitizeInput } from '@/lib/sanitize'
 
 function useRegisterLogic() {
   const navigate = useNavigate()
@@ -27,12 +29,48 @@ function useRegisterLogic() {
   const [registered, setRegistered] = useState(false)
 
   const [showPassword, setShowPassword] = useState(false)
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agreeTerms) { setError('You must agree to the Terms and Privacy Policy.'); return }
-    setError(null); setFieldErrors({})
+    setError(null)
+    setFieldErrors({})
+
+    // Validate required fields
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    if (!agreeTerms) {
+      setError('You must agree to the Terms and Privacy Policy.')
+      return
+    }
+
+    // Validate email format
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setFieldErrors({ email: emailError })
+      return
+    }
+
+    // Validate password strength
+    const passwordErrors = validatePassword(password)
+    if (passwordErrors.length > 0) {
+      setFieldErrors({ password: passwordErrors[0] })
+      return
+    }
+
     try {
-      await register({ firstName, lastName, email, phone, password })
+      // Sanitize inputs before sending to API
+      const sanitizedData = {
+        firstName: sanitizeInput(firstName),
+        lastName: sanitizeInput(lastName),
+        email: email.toLowerCase().trim(),
+        phone: phone.replace(/\s+/g, ''),
+        password: password, // Don't sanitize password
+      }
+
+      await register(sanitizedData)
       localStorage.removeItem('mb_tour_seen')
       setRegistered(true)
     } catch (err) {

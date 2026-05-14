@@ -52,6 +52,7 @@ const DeskCapacity         = lazy(() => import('@/features/admin/DeskCapacity'))
 const DeskDoctorSchedule   = lazy(() => import('@/features/admin/DeskDoctorSchedule'))
 const DeskSettings         = lazy(() => import('@/features/admin/DeskSettings'))
 const DeskSuperAdmins      = lazy(() => import('@/features/admin/DeskSuperAdmins'))
+const MobDeletedRecords    = lazy(() => import('@/features/admin/MobDeletedRecords'))
 
 const Spinner = (
   <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: MB.bg2 }}>
@@ -112,6 +113,7 @@ export default function App() {
             <Route path="/admin/capacity"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskCapacity /></ProtectedRoute>} />
             <Route path="/admin/settings"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskSettings /></ProtectedRoute>} />
             <Route path="/admin/admins"    element={<ProtectedRoute allowedRoles={['super_admin']}><DeskSuperAdmins /></ProtectedRoute>} />
+            <Route path="/admin/deleted-records" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><MobDeletedRecords /></ProtectedRoute>} />
 
             {/* ── Default ────────────────────────────────────────────── */}
             <Route path="/"  element={<LandingPage />} />

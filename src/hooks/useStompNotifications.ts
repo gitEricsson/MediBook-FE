@@ -16,10 +16,18 @@ export interface NotificationEvent {
 // Convert http(s)://host to ws(s)://host/ws?token=...
 // Backend auth: JWT passed as query param because browser WebSocket API
 // cannot send custom headers during the HTTP→WS upgrade handshake.
-const buildWsUrl = (token: string) =>
-  `${env.VITE_API_URL.replace(/^http/, 'ws')}/ws?token=${encodeURIComponent(token)}`;
+// Security: Always use wss:// (secure WebSocket) in production, ws:// only in dev
+const buildWsUrl = (token: string) => {
+  const apiUrl = env.VITE_API_URL;
+  // Convert https:// to wss://, http:// to ws://
+  const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
+  const host = apiUrl.replace(/^https?:\/\//, '');
+  return `${wsProtocol}://${host}/ws?token=${encodeURIComponent(token)}`;
+};
 
-const RECONNECT_DELAY_MS = 5_000;
+// Exponential backoff for reconnection with max delay
+const INITIAL_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30000;
 
 export const useStompNotifications = (
   onNotification: (event: NotificationEvent) => void,
@@ -27,14 +35,18 @@ export const useStompNotifications = (
 ) => {
   const clientRef = useRef<Client | null>(null);
   const onNotificationRef = useRef(onNotification);
+  const reconnectAttemptsRef = useRef(0);
 
   useEffect(() => {
     onNotificationRef.current = onNotification;
   }, [onNotification]);
 
   const disconnect = useCallback(() => {
-    clientRef.current?.deactivate();
-    clientRef.current = null;
+    if (clientRef.current) {
+      clientRef.current.deactivate();
+      clientRef.current = null;
+    }
+    reconnectAttemptsRef.current = 0;
   }, []);
 
   const connect = useCallback(() => {
@@ -44,9 +56,15 @@ export const useStompNotifications = (
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
 
+    // Calculate exponential backoff delay
+    const exponentialDelay = Math.min(
+      INITIAL_RECONNECT_DELAY_MS * Math.pow(2, reconnectAttemptsRef.current),
+      MAX_RECONNECT_DELAY_MS
+    );
+
     const client = new Client({
       brokerURL: buildWsUrl(token),
-      reconnectDelay: RECONNECT_DELAY_MS,
+      reconnectDelay: exponentialDelay,
 
       // Re-read the token from the store before every connect / reconnect attempt.
       // The Axios response interceptor already handles access-token refresh on HTTP 401s,
@@ -64,14 +82,32 @@ export const useStompNotifications = (
       },
 
       onConnect: () => {
+        // Reset reconnect attempts on successful connection
+        reconnectAttemptsRef.current = 0;
+
         client.subscribe('/user/queue/notifications', (frame: IMessage) => {
           try {
             const payload = JSON.parse(frame.body) as NotificationEvent;
             onNotificationRef.current(payload);
-          } catch {
-            // malformed JSON — skip
+          } catch (e) {
+            // Malformed JSON — log and skip
+            console.warn('[WebSocket] Malformed notification payload:', e);
           }
         });
+      },
+
+      // Handle connection errors gracefully
+      onStompError: (frame) => {
+        reconnectAttemptsRef.current += 1;
+        console.error('[WebSocket] STOMP error:', frame);
+        // Client will automatically attempt to reconnect with exponential backoff
+      },
+
+      // Handle WebSocket connection errors
+      onWebSocketError: (event) => {
+        reconnectAttemptsRef.current += 1;
+        console.error('[WebSocket] Connection error:', event);
+        // Client will automatically attempt to reconnect with exponential backoff
       },
     });
 

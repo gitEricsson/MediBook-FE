@@ -43,6 +43,12 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // Security: prevent MIME type sniffing attacks
+    config.headers['X-Content-Type-Options'] = 'nosniff';
+    // Security: prevent clickjacking attacks
+    config.headers['X-Frame-Options'] = 'DENY';
+    // Security: prevent XSS attacks
+    config.headers['X-XSS-Protection'] = '1; mode=block';
     return config;
   },
   (error) => Promise.reject(error)
@@ -54,7 +60,7 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Handle 401 Unauthorized (Expired Access Token)
+    // Handle 401 Unauthorized (Expired Access Token or Session Expired)
     const isRefreshRequest = originalRequest.url?.includes('/api/v1/auth/refresh');
     if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       if (isRefreshing) {
@@ -81,16 +87,26 @@ apiClient.interceptors.response.use(
         setTokens(accessToken, rotatedRefreshToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        
+
         processQueue(null, accessToken);
         return apiClient(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        window.dispatchEvent(new CustomEvent('auth:logout'));
+        // Check if the API error indicates session expired
+        const errorData = (refreshError as AxiosError)?.response?.data as Record<string, unknown> | undefined;
+        const errorCode = errorData?.['code'];
+        const message = errorCode === 'SESSION_EXPIRED' ? 'Session expired' : 'Session expired';
+        window.dispatchEvent(new CustomEvent('auth:logout', { detail: { message } }));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Handle 403 Forbidden (Access Denied)
+    if (error.response?.status === 403) {
+      window.dispatchEvent(new CustomEvent('auth:access-denied', { detail: { message: 'Access denied' } }));
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);

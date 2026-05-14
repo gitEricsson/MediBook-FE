@@ -10,6 +10,53 @@ export function sanitizeText(input: string): string {
 }
 
 /**
+ * Sanitizes HTML input by encoding dangerous characters and stripping tags.
+ * Prevents stored XSS attacks.
+ */
+export function sanitizeHtml(input: string): string {
+  // First strip all HTML tags using DOMPurify
+  const stripped = DOMPurify.sanitize(input, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+  // Then encode HTML entities for extra safety
+  return stripHtmlEntities(stripped)
+}
+
+/**
+ * Sanitizes user input before sending to API:
+ * - Trims whitespace
+ * - Collapses multiple spaces to single space
+ * - Removes null bytes and other control characters
+ * Prevents injection attacks and malformed data
+ */
+export function sanitizeInput(input: string): string {
+  if (typeof input !== 'string') return ''
+
+  // Trim leading/trailing whitespace
+  let sanitized = input.trim()
+
+  // Collapse multiple spaces into one
+  sanitized = sanitized.replace(/\s+/g, ' ')
+
+  // Remove null bytes and control characters (except newline, tab)
+  sanitized = sanitized.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
+
+  return sanitized
+}
+
+/**
+ * Helper: encode HTML entities to prevent injection
+ */
+function stripHtmlEntities(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }
+  return text.replace(/[&<>"']/g, (char) => map[char] || char)
+}
+
+/**
  * Sanitizes an object's string values shallowly.
  * Use before rendering any form data received from the network.
  */
