@@ -13,18 +13,20 @@ interface InputProps {
   disabled?: boolean
   suffix?: React.ReactNode
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   full?: boolean
   size?: Size
   autoComplete?: string
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
   maxLength?: number
+  style?: React.CSSProperties
   'aria-label'?: string
   'aria-describedby'?: string
 }
 
 export const Input = memo(function Input({
   id, value, placeholder, icon, type = 'text', error, disabled, suffix,
-  onChange, full = true, size = 'md', autoComplete, inputMode, maxLength, 'aria-label': ariaLabel,
+  onChange, onKeyDown, full = true, size = 'md', autoComplete, inputMode, maxLength, style, 'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedby,
 }: InputProps) {
   const h = size === 'sm' ? 34 : size === 'lg' ? 48 : 40
@@ -37,6 +39,7 @@ export const Input = memo(function Input({
       style={{
         '--mb-input-height': `${h}px`,
         '--mb-input-width': full ? '100%' : undefined,
+        ...style,
       } as React.CSSProperties}
     >
       {icon && (
@@ -46,7 +49,7 @@ export const Input = memo(function Input({
       )}
       <input
         id={id} type={type} value={value} placeholder={placeholder}
-        disabled={disabled} onChange={onChange}
+        disabled={disabled} onChange={onChange} onKeyDown={onKeyDown}
         autoComplete={autoComplete}
         inputMode={inputMode}
         maxLength={maxLength}

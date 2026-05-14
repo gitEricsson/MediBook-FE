@@ -39,6 +39,7 @@ function useLoginLogic() {
         if (response.user.role === 'patient') navigate('/patient')
         else if (response.user.role === 'doctor') navigate('/doctor')
         else if (response.user.role === 'admin') navigate('/admin')
+        else if (response.user.role === 'super_admin') navigate('/admin')
       }
     } catch (err) {
       setError(parseApiError(err).message || 'The email or password you entered is incorrect.')
@@ -53,6 +54,7 @@ function useLoginLogic() {
         if (response.user.role === 'patient') navigate('/patient')
         else if (response.user.role === 'doctor') navigate('/doctor')
         else if (response.user.role === 'admin') navigate('/admin')
+        else if (response.user.role === 'super_admin') navigate('/admin')
       }
     } catch (err) {
       setError(parseApiError(err).message || 'Invalid verification code.')

@@ -106,11 +106,12 @@ function MobileDocApptDetail() {
   const { appt, time } = location.state || {};
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
 
-  const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(appt?.patientId || 'pt-1');
+  const patientId = appt?.patientId;
+  const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '');
 
   const transitionMutation = useMutation({
     mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
-      DoctorPortalService.transitionAppointment(id || '1', status as 'COMPLETED' | 'NO_SHOW'),
+      DoctorPortalService.transitionAppointment(id!, status as 'COMPLETED' | 'NO_SHOW'),
     onSuccess: (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ['schedule'] });
       toast.success(
@@ -131,7 +132,17 @@ function MobileDocApptDetail() {
     }
   });
 
-  if (!appt) return null;
+  if (!appt || !patientId) return (
+    <MobScreen>
+      <MobTopBar title="Appointment" back />
+      <div style={{ flex: 1, padding: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 18, fontWeight: 600, color: MB.text, marginBottom: 8 }}>Patient information not available.</div>
+          <div style={{ fontSize: 13, color: MB.text3 }}>Please navigate from the appointments list.</div>
+        </div>
+      </div>
+    </MobScreen>
+  );
 
   return (
     <MobScreen>
@@ -264,11 +275,12 @@ function DesktopDocApptDetail() {
   const queryClient = useQueryClient()
   const { appt, time } = location.state || {}
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
-  const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(appt?.patientId || 'pt-1')
+  const patientId = appt?.patientId
+  const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '')
 
   const transitionMutation = useMutation({
     mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
-      DoctorPortalService.transitionAppointment(id || '1', status as 'COMPLETED' | 'NO_SHOW'),
+      DoctorPortalService.transitionAppointment(id!, status as 'COMPLETED' | 'NO_SHOW'),
     onSuccess: (_data, status) => {
       queryClient.invalidateQueries({ queryKey: ['schedule'] })
       toast.success(status === 'COMPLETED' ? 'Appointment marked completed' : status === 'NO_SHOW' ? 'Marked as no-show' : 'Appointment cancelled')
@@ -279,7 +291,7 @@ function DesktopDocApptDetail() {
     onError: () => { toast.error('Could not update appointment status'); setConfirmAction(null) },
   })
 
-  if (!appt) return null
+  if (!appt || !patientId) return null
 
   return (
     <DoctorShell title={`${appt.name}`} subtitle={`${time} PT — Appointment detail`} actions={

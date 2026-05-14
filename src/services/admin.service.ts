@@ -158,19 +158,30 @@ export const AdminService = {
 
   // Analytics
   getAppointmentAnalytics: async (from: string, to: string): Promise<AppointmentAnalytics> => {
-    const response = await apiClient.get('/api/v1/admin/analytics/appointments', { params: { from, to } });
+    const formatDateTime = (date: string) => date.includes('T') ? date : `${date}T00:00:00`;
+    const response = await apiClient.get('/api/v1/admin/analytics/appointments', { params: { from: formatDateTime(from), to: formatDateTime(to) } });
     return unwrapApiResponse<AppointmentAnalytics>(response.data);
   },
 
   getRevenueAnalytics: async (from: string, to: string): Promise<RevenueAnalytics> => {
-    const response = await apiClient.get('/api/v1/admin/analytics/revenue', { params: { from, to } });
+    const formatDateTime = (date: string) => date.includes('T') ? date : `${date}T00:00:00`;
+    const response = await apiClient.get('/api/v1/admin/analytics/revenue', { params: { from: formatDateTime(from), to: formatDateTime(to) } });
     return unwrapApiResponse<RevenueAnalytics>(response.data);
   },
 
   getDoctorUtilization: async (from: string, to: string): Promise<DoctorUtilizationEntry[]> => {
-    const response = await apiClient.get('/api/v1/admin/analytics/doctor-utilization', { params: { from, to } });
-    const raw = unwrapApiResponse<DoctorUtilizationEntry[] | { content: DoctorUtilizationEntry[] }>(response.data);
-    return Array.isArray(raw) ? raw : (raw as { content: DoctorUtilizationEntry[] }).content ?? [];
+    const formatDateTime = (date: string) => date.includes('T') ? date : `${date}T00:00:00`;
+    const response = await apiClient.get('/api/v1/admin/analytics/doctor-utilization', { params: { from: formatDateTime(from), to: formatDateTime(to) } });
+    const raw = unwrapApiResponse<{ doctors: Array<{ doctorId: number; doctorName: string; specialization: string; totalAppointments: number; completedAppointments: number; utilizationPercent: number }> }>(response.data);
+    const transformed = (raw.doctors || []).map((doc) => ({
+      doctorId: doc.doctorId,
+      doctorName: doc.doctorName,
+      department: doc.specialization,
+      totalSlots: doc.totalAppointments,
+      bookedSlots: doc.completedAppointments,
+      utilizationRate: doc.utilizationPercent,
+    }));
+    return transformed;
   },
 
   // Capacity

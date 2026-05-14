@@ -70,9 +70,6 @@ export const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
     effectiveConsultationFee: doctor.effectiveConsultationFee,
     averageRating: doctor.averageRating,
     reviewCount: doctor.reviewCount,
-    tone: 'primary',
-    next: '',
-    city: 'Bay General',
   };
 };
 

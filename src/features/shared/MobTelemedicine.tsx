@@ -37,18 +37,26 @@ import { useViewport } from '@/hooks/useViewport'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STATUS_TONE: Record<SessionStatus, 'neutral' | 'warn' | 'success' | 'primary' | 'danger'> = {
+  CREATED:   'neutral',
+  RINGING:   'warn',
   SCHEDULED: 'neutral',
   WAITING:   'warn',
   ACTIVE:    'success',
+  ENDED:     'primary',
+  MISSED:    'warn',
   COMPLETED: 'primary',
   CANCELLED: 'neutral',
   FAILED:    'danger',
 }
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
+  CREATED:   'Created',
+  RINGING:   'Ringing',
   SCHEDULED: 'Scheduled',
   WAITING:   'Waiting for doctor',
   ACTIVE:    'In session',
+  ENDED:     'Ended',
+  MISSED:    'Missed',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
   FAILED:    'Failed',

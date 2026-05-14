@@ -13,6 +13,7 @@ import {
   useTypewriter, useCountUp, useScrollReveal, useStaggerReveal,
   useParallax, useScrollFill, useCarousel, prefersReducedMotion,
 } from '@/hooks/useAnimation'
+import { ContactSection } from './ContactSection'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATION CSS (injected once)
@@ -1202,6 +1203,7 @@ export default memo(function LandingPage() {
       <SecuritySection />
       <TextFillReveal />
       <CtaSection />
+      <ContactSection />
       <Footer />
     </div>
   )

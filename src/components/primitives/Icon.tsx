@@ -6,6 +6,7 @@ interface IconProps {
   size?: number
   color?: string
   strokeWidth?: number
+  style?: React.CSSProperties
 }
 
 const PATHS: Record<IconName, React.ReactNode> = {
@@ -50,13 +51,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
   crown:        <><path d="M2 20h20M5 20l2-8 5 4 5-4 2 8"/><path d="M12 4l2.5 4H9.5L12 4z"/></>,
 }
 
-export const Icon = memo(function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.75 }: IconProps) {
+export const Icon = memo(function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.75, style }: IconProps) {
   return (
     <svg
       width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
       aria-hidden="true"
-      style={{ flexShrink: 0, display: 'block' }}
+      style={{ flexShrink: 0, display: 'block', ...style }}
     >
       {PATHS[name] ?? null}
     </svg>

@@ -88,6 +88,12 @@ export const ChatService = {
     return unwrapApiResponse<MessageResponse[]>(response.data);
   },
 
+  /** Get conversation metadata */
+  getConversation: async (conversationId: number): Promise<ConversationResponse> => {
+    const response = await apiClient.get(`/api/v1/chat/conversations/${conversationId}`);
+    return unwrapApiResponse<ConversationResponse>(response.data);
+  },
+
   // ── Doctor AI operations ─────────────────────────────────────────────────
 
   /** Generate AI conversation summary — doctor/admin only */

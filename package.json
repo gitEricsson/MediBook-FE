@@ -27,6 +27,7 @@
     "react-router-dom": "^7.15.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "twilio-video": "^2.35.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
