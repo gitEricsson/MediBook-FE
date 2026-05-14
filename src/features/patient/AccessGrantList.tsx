@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { Icon } from '@/components/primitives/Icon'
 import { Btn } from '@/components/primitives/Btn'
-import { AccessGrant, getPatientGrants, revokeAccess } from '@/services/access-grant.service'
+import { AccessGrantService, AccessGrantResponse as AccessGrant } from '@/services/access-grant.service'
 import { AccessGrantModal } from './AccessGrantModal'
 
 interface AccessGrantListProps {
@@ -20,7 +20,7 @@ export const AccessGrantList = memo(function AccessGrantList({ patientId }: Acce
     setLoading(true)
     setError(null)
     try {
-      const data = await getPatientGrants(patientId, 0, 50)
+      const data = await AccessGrantService.getPatientGrants(patientId, 0, 50)
       setGrants(data.content)
     } catch (err) {
       setError('Failed to load access grants')
@@ -38,7 +38,7 @@ export const AccessGrantList = memo(function AccessGrantList({ patientId }: Acce
 
     setRevoking(grantId)
     try {
-      await revokeAccess(patientId, grantId)
+      await AccessGrantService.revokeAccess(patientId, grantId)
       setGrants((prev) => prev.filter((g) => g.id !== grantId))
     } catch (err) {
       setError('Failed to revoke access')

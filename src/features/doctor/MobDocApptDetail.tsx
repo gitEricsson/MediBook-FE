@@ -6,20 +6,137 @@ import { DoctorShell } from '@/components/layout/DoctorShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
 import { StatusPill } from '@/components/primitives/StatusPill'
 import { Card } from '@/components/primitives/Card'
+import { Badge } from '@/components/primitives/Badge'
 import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { usePatientSummary } from '@/hooks/useSchedule'
 import { DoctorPortalService } from '@/services/doctor-portal.service'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { AccessGrantService, AccessGrantResponse } from '@/services/access-grant.service'
+import { ConsultationNotesService, ConsultationNoteResponse } from '@/services/consultation-notes.service'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Skel } from '@/components/feedback/Skel'
 import { SafeHtml } from '@/components/feedback/SafeHtml'
 import { toast } from 'sonner'
+import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
 import type { IconName } from '@/types/ui'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><div className="mb-eyebrow" style={{ marginBottom: 8 }}>{title}</div>{children}</div>
+}
+
+function PatientRecordsSection({ patientId }: { patientId: string }) {
+  const queryClient = useQueryClient()
+  const [showNotes, setShowNotes] = useState(false)
+
+  const { data: grants, isLoading: grantsLoading } = useQuery({
+    queryKey: ['access-grants', 'outgoing'],
+    queryFn: () => AccessGrantService.getOutgoingRequests(0, 50),
+  })
+
+  const existingGrant = grants?.content.find((g: AccessGrantResponse) => String(g.patientId) === String(patientId))
+
+  const requestMutation = useMutation({
+    mutationFn: (reason: string) => AccessGrantService.requestAccess(Number(patientId), reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['access-grants', 'outgoing'] })
+      toast.success('Access request sent to patient')
+    },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to request access'),
+  })
+
+  const { data: notes, isLoading: notesLoading } = useQuery({
+    queryKey: ['consultation-notes', 'patient', patientId],
+    queryFn: () => ConsultationNotesService.getDoctorAccessNotes(Number(patientId)),
+    enabled: showNotes && existingGrant?.status === 'APPROVED',
+  })
+
+  if (grantsLoading) return <Skel h={60} r={10} />
+
+  const status = existingGrant?.status
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {!status && (
+        <Card padding={12}>
+          <div style={{ fontSize: 13, color: MB.text2, marginBottom: 10, lineHeight: 1.5 }}>
+            You can request access to this patient's consultation history. The patient must approve before you can view their records.
+          </div>
+          <Btn
+            variant="secondary"
+            size="sm"
+            icon="edit"
+            loading={requestMutation.isPending}
+            onClick={() => requestMutation.mutate('Clinical consultation for current appointment')}
+          >
+            Request record access
+          </Btn>
+        </Card>
+      )}
+
+      {status === 'PENDING' && (
+        <Card padding={12}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Badge tone="warn" size="sm">Pending approval</Badge>
+          </div>
+          <div style={{ fontSize: 13, color: MB.text2, lineHeight: 1.5 }}>
+            Your request to view this patient's records is awaiting their approval.
+          </div>
+        </Card>
+      )}
+
+      {status === 'APPROVED' && (
+        <Card padding={12}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Badge tone="success" size="sm">Access approved</Badge>
+            <Btn variant="secondary" size="sm" onClick={() => setShowNotes(!showNotes)}>
+              {showNotes ? 'Hide records' : 'View records'}
+            </Btn>
+          </div>
+          <div style={{ fontSize: 12, color: MB.text3 }}>
+            Showing notes from before {new Date(existingGrant!.grantedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+
+          {showNotes && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {notesLoading ? <Skel h={80} r={8} /> : (notes && notes.length > 0) ? notes.map((note: ConsultationNoteResponse) => (
+                <div key={note.id} style={{ padding: 10, background: MB.bg2, borderRadius: 8, fontSize: 13 }}>
+                  <div style={{ fontWeight: 600, color: MB.text, marginBottom: 4 }}>
+                    {new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </div>
+                  <div style={{ color: MB.text3, fontSize: 11, marginBottom: 6 }}>Dr. {note.doctorName}</div>
+                  <div style={{ color: MB.text2 }}><strong>Diagnosis:</strong> {note.diagnosis}</div>
+                  {note.prescriptions && <div style={{ color: MB.text2, marginTop: 4 }}><strong>Rx:</strong> {note.prescriptions}</div>}
+                </div>
+              )) : (
+                <div style={{ fontSize: 13, color: MB.text3, textAlign: 'center', padding: 12 }}>No consultation records in the approved window.</div>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {status === 'REVOKED' && (
+        <Card padding={12}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Badge tone="danger" size="sm">Access denied</Badge>
+          </div>
+          <div style={{ fontSize: 13, color: MB.text2, lineHeight: 1.5, marginBottom: 10 }}>
+            The patient has denied your previous request. You can request again.
+          </div>
+          <Btn
+            variant="secondary"
+            size="sm"
+            loading={requestMutation.isPending}
+            onClick={() => requestMutation.mutate('Clinical consultation for current appointment')}
+          >
+            Re-request access
+          </Btn>
+        </Card>
+      )}
+    </div>
+  )
 }
 
 function ProfileRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
@@ -198,6 +315,10 @@ function MobileDocApptDetail() {
             </Btn>
           </Section>
 
+          <Section title="Patient Records">
+            <PatientRecordsSection patientId={String(patientId)} />
+          </Section>
+
           {(appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH') && (
             <Section title="Telemedicine">
               <Btn
@@ -337,6 +458,10 @@ function DesktopDocApptDetail() {
                 <ProfileRow label="Allergies" value={summary?.allergies || 'None reported'} last />
               </div>
             )}
+          </div>
+          <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
+            <div className="mb-eyebrow" style={{ marginBottom: 10 }}>Patient records</div>
+            <PatientRecordsSection patientId={String(patientId)} />
           </div>
         </div>
       </div>

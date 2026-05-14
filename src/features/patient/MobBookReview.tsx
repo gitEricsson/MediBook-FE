@@ -88,7 +88,8 @@ export default memo(function MobBookReview() {
 
   if (!hold || !doctor) return null
 
-  const fee = doctor.effectiveConsultationFee ?? doctor.consultationFee
+  const fee = doctor.consultationFee
+  const isSenior = doctor.seniorConsultant
 
   const timerMins = Math.floor((holdTimer ?? 0) / 60)
   const timerSecs = (holdTimer ?? 0) % 60
@@ -112,7 +113,7 @@ export default memo(function MobBookReview() {
               <ReviewRow label="Date"         value={appointment?.scheduledAt ? formatDate(appointment.scheduledAt) : '—'} />
               <ReviewRow label="Time"         value={appointment?.scheduledAt ? formatTime(appointment.scheduledAt) : '—'} />
               <ReviewRow label="Department"   value={doctor.department || doctor.dept || '—'} />
-              {fee && <ReviewRow label="Fee paid" value={`₦${fee.toLocaleString()}`} />}
+              {fee && <ReviewRow label={isSenior ? 'Fee paid (Senior)' : 'Fee paid'} value={`₦${fee.toLocaleString()}`} />}
               <ReviewRow label="Reference"    value={appointment?.confirmationCode || `#${appointment?.id ?? ''}`} mono last />
             </Card>
             <Btn variant="primary" size="lg" full style={{ marginTop: 8 }} onClick={() => navigate('/patient/appts')}>
@@ -150,7 +151,7 @@ export default memo(function MobBookReview() {
               <ReviewRow label="Date"     value={scheduledAt ? formatDate(scheduledAt) : '—'} />
               <ReviewRow label="Time"     value={scheduledAt ? formatTime(scheduledAt) : '—'} />
               <ReviewRow label="Type"     value="In-person consultation" />
-              {fee && <ReviewRow label="Consultation fee" value={`₦${fee.toLocaleString()}`} last />}
+              {fee && <ReviewRow label={isSenior ? 'Consultation fee (Senior)' : 'Consultation fee'} value={`₦${fee.toLocaleString()}`} last />}
             </Card>
 
             <div className="mb-eyebrow" style={{ marginBottom: 8 }}>Reason for visit</div>

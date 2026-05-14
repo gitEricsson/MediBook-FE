@@ -43,12 +43,6 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Security: prevent MIME type sniffing attacks
-    config.headers['X-Content-Type-Options'] = 'nosniff';
-    // Security: prevent clickjacking attacks
-    config.headers['X-Frame-Options'] = 'DENY';
-    // Security: prevent XSS attacks
-    config.headers['X-XSS-Protection'] = '1; mode=block';
     return config;
   },
   (error) => Promise.reject(error)

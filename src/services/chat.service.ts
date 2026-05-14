@@ -94,6 +94,14 @@ export const ChatService = {
     return unwrapApiResponse<ConversationResponse>(response.data);
   },
 
+  // ── Direct messaging ─────────────────────────────────────────────────────
+
+  /** Send a direct message from the current user (patient or doctor) */
+  sendMessage: async (conversationId: number, body: string): Promise<MessageResponse> => {
+    const response = await apiClient.post(`/api/v1/chat/conversations/${conversationId}/messages`, { body });
+    return unwrapApiResponse<MessageResponse>(response.data);
+  },
+
   // ── Doctor AI operations ─────────────────────────────────────────────────
 
   /** Generate AI conversation summary — doctor/admin only */

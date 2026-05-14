@@ -29,7 +29,7 @@ export interface DoctorApiResponse {
   telemedicineEnabled?: boolean;
   yearsOfExperience?: number;
   consultationFee?: number;
-  effectiveConsultationFee?: number;
+  seniorConsultant?: boolean;
   averageRating?: number;
   reviewCount?: number;
 }
@@ -67,7 +67,7 @@ export const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
     telemedicineEnabled: doctor.telemedicineEnabled,
     yearsOfExperience: doctor.yearsOfExperience,
     consultationFee: doctor.consultationFee,
-    effectiveConsultationFee: doctor.effectiveConsultationFee,
+    seniorConsultant: doctor.seniorConsultant,
     averageRating: doctor.averageRating,
     reviewCount: doctor.reviewCount,
   };
@@ -108,8 +108,9 @@ export const DoctorService = {
         end: slot.end,
         startTime: slot.start.slice(11, 16),
         endTime: slot.end.slice(11, 16),
-        status: slot.status as 'OPEN' | 'HELD' | 'TAKEN',
+        status: slot.status as 'OPEN' | 'HELD' | 'TAKEN' | 'PAST',
         isAvailable: slot.status === 'OPEN',
+        isPast: slot.status === 'PAST',
       })),
     }));
   },

@@ -14,6 +14,7 @@ interface NavItem { id: string; label: string; icon: IconName; path: string }
 const NAV_ITEMS: NavItem[] = [
   { id: 'schedule', label: 'My schedule',    icon: 'calendar', path: '/doctor/schedule' },
   { id: 'hours',    label: 'Working hours',  icon: 'clock',    path: '/doctor/hours'    },
+  { id: 'leave',    label: 'Leave',           icon: 'calendar', path: '/doctor/leave'    },
   { id: 'profile',  label: 'Profile',        icon: 'user',     path: '/doctor/profile'  },
 ]
 
@@ -21,6 +22,7 @@ function useActiveId(): string {
   const { pathname } = useLocation()
   // appointment detail pages are part of "schedule"
   if (pathname.startsWith('/doctor/appt')) return 'schedule'
+  if (pathname.startsWith('/doctor/leave')) return 'leave'
   const found = NAV_ITEMS.find((n) => pathname.startsWith(n.path))
   return found?.id ?? 'schedule'
 }

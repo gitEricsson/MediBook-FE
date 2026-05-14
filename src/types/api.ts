@@ -123,6 +123,7 @@ export interface DoctorAvailability {
     endTime: string;
     status: SlotStatus;
     isAvailable: boolean;
+    isPast?: boolean;
   }[];
 }
 

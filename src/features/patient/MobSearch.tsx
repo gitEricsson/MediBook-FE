@@ -187,8 +187,9 @@ function FilterDropdown({ title, options, selected, onSelect, onClose }: {
 // ── Doctor card (shared) ──────────────────────────────────────────────────────
 function DocCard({ doc, wide = false }: { doc: Doctor; wide?: boolean }) {
   const navigate = useNavigate()
-  const fee = doc.effectiveConsultationFee ?? doc.consultationFee
+  const fee = doc.consultationFee
   const rating = doc.averageRating
+  const isSenior = doc.seniorConsultant
   const label = `DR · ${doc.name.split(' ')[1]?.slice(0, 3).toUpperCase() || 'DOC'}`
 
   return (
@@ -196,7 +197,10 @@ function DocCard({ doc, wide = false }: { doc: Doctor; wide?: boolean }) {
       <div style={{ display: 'flex', gap: wide ? 16 : 12 }}>
         <PhotoBlock w={wide ? 68 : 56} h={wide ? 68 : 56} label={label} tone="primary" />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: wide ? 15 : 14, fontWeight: 600, color: MB.text }}>Dr. {doc.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: wide ? 15 : 14, fontWeight: 600, color: MB.text }}>Dr. {doc.name}</span>
+            {isSenior && <span style={{ fontSize: 9, color: MB.primary, fontWeight: 700, background: MB.primary50, padding: '1px 5px', borderRadius: 3 }}>Senior</span>}
+          </div>
           <div style={{ fontSize: 12, color: MB.text2, marginTop: 2 }}>{doc.spec || doc.specialization}</div>
           <div style={{ fontSize: 11, color: MB.text3, marginTop: 1 }}>{doc.dept || doc.department}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>

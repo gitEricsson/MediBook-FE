@@ -3,10 +3,9 @@ import { MB } from '@/constants/tokens'
 import { DeskShell } from '@/components/layout/DeskShell'
 import { DeskTopbar } from '@/components/layout/DeskTopbar'
 import { Badge } from '@/components/primitives/Badge'
-import { Input } from '@/components/forms/Input'
 import { Th } from '@/components/table/Th'
 import { Td } from '@/components/table/Td'
-import { Button } from '@/components/primitives/Button'
+import { Btn } from '@/components/primitives/Btn'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -167,29 +166,29 @@ export default memo(function MobDeletedRecords() {
         <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: 16, marginBottom: 24, display: 'flex', gap: 12, alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text3, marginBottom: 8 }}>Start Date</label>
-            <Input
+            <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Start date"
+              style={{ width: '100%', height: 40, borderRadius: 8, border: `1px solid ${MB.line}`, padding: '0 12px', fontSize: 14, color: MB.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <div style={{ flex: 1 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text3, marginBottom: 8 }}>End Date</label>
-            <Input
+            <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              placeholder="End date"
+              style={{ width: '100%', height: 40, borderRadius: 8, border: `1px solid ${MB.line}`, padding: '0 12px', fontSize: 14, color: MB.text, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
-          <Button
-            tone="neutral"
+          <Btn
+            variant="secondary"
             size="sm"
             onClick={() => { setStartDate(''); setEndDate('') }}
           >
             Clear
-          </Button>
+          </Btn>
         </div>
 
         {/* Tab navigation */}
@@ -250,17 +249,17 @@ export default memo(function MobDeletedRecords() {
                     <Td>{appt.patientName}</Td>
                     <Td>{appt.doctorName}</Td>
                     <Td>{formatDate(appt.appointmentDate)}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{formatDate(appt.deletedAt)}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{appt.deletedBy}</Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{formatDate(appt.deletedAt)}</span></Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{appt.deletedBy}</span></Td>
                     <Td>
-                      <Button
-                        tone="success"
-                        size="xs"
+                      <Btn
+                        variant="primary"
+                        size="sm"
                         onClick={() => restoreAppointmentMutation.mutate(appt.id)}
                         disabled={restoreAppointmentMutation.isPending}
                       >
                         {restoreAppointmentMutation.isPending ? 'Restoring...' : 'Restore'}
-                      </Button>
+                      </Btn>
                     </Td>
                   </tr>
                 ))}
@@ -295,20 +294,18 @@ export default memo(function MobDeletedRecords() {
                   <tr key={note.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
                     <Td>{note.patientName}</Td>
                     <Td>{note.doctorName}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {note.noteContent.substring(0, 50)}...
-                    </Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{formatDate(note.deletedAt)}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{note.deletedBy}</Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3, display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note.noteContent.substring(0, 50)}...</span></Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{formatDate(note.deletedAt)}</span></Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{note.deletedBy}</span></Td>
                     <Td>
-                      <Button
-                        tone="success"
-                        size="xs"
+                      <Btn
+                        variant="primary"
+                        size="sm"
                         onClick={() => restoreNoteMutation.mutate(note.id)}
                         disabled={restoreNoteMutation.isPending}
                       >
                         {restoreNoteMutation.isPending ? 'Restoring...' : 'Restore'}
-                      </Button>
+                      </Btn>
                     </Td>
                   </tr>
                 ))}
@@ -344,17 +341,17 @@ export default memo(function MobDeletedRecords() {
                     <Td mono>{inv.invoiceNumber}</Td>
                     <Td>{inv.patientName}</Td>
                     <Td mono>{inv.amount.toFixed(2)} {inv.currency}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{formatDate(inv.deletedAt)}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{inv.deletedBy}</Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{formatDate(inv.deletedAt)}</span></Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{inv.deletedBy}</span></Td>
                     <Td>
-                      <Button
-                        tone="success"
-                        size="xs"
+                      <Btn
+                        variant="primary"
+                        size="sm"
                         onClick={() => restoreInvoiceMutation.mutate(inv.id)}
                         disabled={restoreInvoiceMutation.isPending}
                       >
                         {restoreInvoiceMutation.isPending ? 'Restoring...' : 'Restore'}
-                      </Button>
+                      </Btn>
                     </Td>
                   </tr>
                 ))}
@@ -392,17 +389,17 @@ export default memo(function MobDeletedRecords() {
                     <Td>{pay.patientName}</Td>
                     <Td mono>{pay.amount.toFixed(2)} {pay.currency}</Td>
                     <Td><Badge tone="neutral" size="sm">{pay.paymentMethod}</Badge></Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{formatDate(pay.deletedAt)}</Td>
-                    <Td style={{ fontSize: 12, color: MB.text3 }}>{pay.deletedBy}</Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{formatDate(pay.deletedAt)}</span></Td>
+                    <Td><span style={{ fontSize: 12, color: MB.text3 }}>{pay.deletedBy}</span></Td>
                     <Td>
-                      <Button
-                        tone="success"
-                        size="xs"
+                      <Btn
+                        variant="primary"
+                        size="sm"
                         onClick={() => restorePaymentMutation.mutate(pay.id)}
                         disabled={restorePaymentMutation.isPending}
                       >
                         {restorePaymentMutation.isPending ? 'Restoring...' : 'Restore'}
-                      </Button>
+                      </Btn>
                     </Td>
                   </tr>
                 ))}

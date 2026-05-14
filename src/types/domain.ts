@@ -10,7 +10,7 @@ export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN' | 'ROLE_
 
 export type AppointmentType = 'IN_PERSON' | 'TELEHEALTH' | 'TELEMEDICINE'
 
-export type SlotStatus = 'OPEN' | 'HELD' | 'TAKEN'
+export type SlotStatus = 'OPEN' | 'HELD' | 'TAKEN' | 'PAST'
 
 // ─── Avatar / badge tones ─────────────────────────────────────────────────
 export type AvatarTone = 'primary' | 'teal' | 'indigo' | 'amber' | 'rose' | 'slate'
@@ -38,7 +38,7 @@ export interface Doctor {
   telemedicineEnabled?: boolean
   yearsOfExperience?: number
   consultationFee?: number
-  effectiveConsultationFee?: number
+  seniorConsultant?: boolean
   averageRating?: number
   reviewCount?: number
   tone: AvatarTone

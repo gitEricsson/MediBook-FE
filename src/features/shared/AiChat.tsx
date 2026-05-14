@@ -14,7 +14,7 @@
  *   5. Patient sees consent prompt before AI participates
  *   6. AI provider errors never exposed raw — generic fallback message shown
  */
-import { memo, useState, useEffect, useRef, useCallback } from 'react'
+import { memo, useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
@@ -31,7 +31,9 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChatService, MessageResponse, AiDraft, AiSummaryResponse, SenderRole } from '@/services/chat.service'
 import { TelemedicineService, type VideoCallSession } from '@/services/telemedicine.service'
+import { Client, type IMessage } from '@stomp/stompjs'
 import { useAuthStore } from '@/store/authStore'
+import { env as appEnv } from '@/config/env'
 import { useVideoCallStore } from '@/store/videoCallStore'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
@@ -375,11 +377,57 @@ function ChatView({ conversationId }: { conversationId: number }) {
   const [consentGranted, setConsentGranted] = useState(false)
   const [hasUrgent, setHasUrgent] = useState(false)
 
-  const { data: messages = [], isLoading, isError, refetch } = useQuery({
+  const [liveMessages, setLiveMessages] = useState<MessageResponse[]>([])
+  const stompClientRef = useRef<Client | null>(null)
+
+  const { data: polledMessages = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['chat', 'messages', conversationId],
     queryFn: () => ChatService.getMessages(conversationId),
-    refetchInterval: 5_000,   // poll every 5s as lightweight fallback
+    refetchInterval: 10_000,  // fallback poll every 10s (STOMP handles real-time)
   })
+
+  // Merge polled + live messages, dedup by id
+  const messages = useMemo(() => {
+    const seen = new Set<number>()
+    const all = [...polledMessages, ...liveMessages]
+    return all.filter((m) => {
+      if (seen.has(m.id)) return false
+      seen.add(m.id)
+      return true
+    }).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  }, [polledMessages, liveMessages])
+
+  // STOMP real-time subscription for chat messages
+  useEffect(() => {
+    const token = useAuthStore.getState().accessToken
+    if (!token) return
+
+    const apiBase = appEnv.VITE_API_URL || `${window.location.protocol}//${window.location.host}`
+    const wsProtocol = apiBase.startsWith('https') ? 'wss' : 'ws'
+    const host = apiBase.replace(/^https?:\/\//, '')
+    const wsUrl = `${wsProtocol}://${host}/ws?token=${encodeURIComponent(token)}`
+
+    const client = new Client({
+      brokerURL: wsUrl,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe('/user/queue/chat', (frame: IMessage) => {
+          try {
+            const msg = JSON.parse(frame.body) as MessageResponse
+            if (msg.conversationId === conversationId) {
+              setLiveMessages((prev) => {
+                if (prev.find((m) => m.id === msg.id)) return prev
+                return [...prev, msg]
+              })
+            }
+          } catch {}
+        })
+      },
+    })
+    stompClientRef.current = client
+    client.activate()
+    return () => { client.deactivate() }
+  }, [conversationId])
 
   const { data: conversation } = useQuery({
     queryKey: ['chat', 'conversation', conversationId],
@@ -422,16 +470,12 @@ function ChatView({ conversationId }: { conversationId: number }) {
   const { isWide } = useViewport()
 
   const sendMutation = useMutation({
-    mutationFn: (body: string) => {
-      // Patient-side: sending via Twilio is handled externally;
-      // this endpoint just logs the message if needed (for now, use Twilio SDK on FE)
-      // For this implementation we POST a message intent and Twilio Conversations handles delivery
-      return Promise.resolve() // placeholder — real send goes via Twilio Conversations JS SDK
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chat', 'messages', conversationId] })
+    mutationFn: (body: string) => ChatService.sendMessage(conversationId, body),
+    onSuccess: (newMsg) => {
+      setLiveMessages((prev) => prev.find((m) => m.id === newMsg.id) ? prev : [...prev, newMsg])
       setText('')
     },
+    onError: (err) => toast.error(parseApiError(err).message || 'Failed to send message'),
   })
 
   const handleSend = () => {

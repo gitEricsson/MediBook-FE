@@ -40,4 +40,9 @@ export const ConsultationNotesService = {
     const response = await apiClient.get('/api/v1/consultation-notes/my-history');
     return unwrapApiResponse<ConsultationNoteResponse[]>(response.data);
   },
+
+  getDoctorAccessNotes: async (patientId: number) => {
+    const response = await apiClient.get(`/api/v1/consultation-notes/patient/${patientId}`);
+    return unwrapApiResponse<ConsultationNoteResponse[]>(response.data);
+  },
 };

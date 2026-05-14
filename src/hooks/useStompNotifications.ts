@@ -18,8 +18,7 @@ export interface NotificationEvent {
 // cannot send custom headers during the HTTP→WS upgrade handshake.
 // Security: Always use wss:// (secure WebSocket) in production, ws:// only in dev
 const buildWsUrl = (token: string) => {
-  const apiUrl = env.VITE_API_URL;
-  // Convert https:// to wss://, http:// to ws://
+  const apiUrl = env.VITE_API_URL || `${window.location.protocol}//${window.location.host}`;
   const wsProtocol = apiUrl.startsWith('https') ? 'wss' : 'ws';
   const host = apiUrl.replace(/^https?:\/\//, '');
   return `${wsProtocol}://${host}/ws?token=${encodeURIComponent(token)}`;

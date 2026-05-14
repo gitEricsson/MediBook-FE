@@ -177,9 +177,10 @@ interface DeskShellProps {
   role?: UserRole
 }
 
-export const DeskShell = memo(function DeskShell({ children, active: activeProp, role = 'admin' }: DeskShellProps) {
+export const DeskShell = memo(function DeskShell({ children, active: activeProp, role: roleProp }: DeskShellProps) {
   const navigate = useNavigate()
   const authUser = useAuthStore((s) => s.user)
+  const role = (roleProp ?? (authUser?.role as UserRole) ?? 'admin')
   const derivedActive = useActiveNavId(role)
   const active = activeProp ?? derivedActive
 

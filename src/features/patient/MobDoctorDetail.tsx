@@ -78,31 +78,33 @@ function WaitlistButton({ doctorId }: { doctorId: string }) {
 
 interface SlotBtnProps {
   time: string
-  ampm: string
   selected?: boolean
   disabled?: boolean
+  isPast?: boolean
   onClick?: () => void
 }
 
-function SlotBtn({ time, ampm, selected, disabled, onClick }: SlotBtnProps) {
+function SlotBtn({ time, selected, disabled, isPast, onClick }: SlotBtnProps) {
+  const isInactive = disabled || isPast
   return (
     <div
       role="button"
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={isInactive ? -1 : 0}
       aria-pressed={selected}
-      onClick={!disabled ? onClick : undefined}
-      onKeyDown={!disabled && onClick ? (e) => { if (e.key === 'Enter') onClick() } : undefined}
+      onClick={!isInactive ? onClick : undefined}
+      onKeyDown={!isInactive && onClick ? (e) => { if (e.key === 'Enter') onClick() } : undefined}
       style={{
         height: 40, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 600,
-        background: selected ? MB.primary : MB.bg,
-        color: selected ? '#fff' : disabled ? MB.text4 : MB.text,
+        fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', padding: '0 4px',
+        background: isPast ? MB.bg2 : selected ? MB.primary : MB.bg,
+        color: selected ? '#fff' : isInactive ? MB.text4 : MB.text,
         border: `1px solid ${selected ? MB.primary : MB.line}`,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
+        cursor: isInactive ? 'not-allowed' : 'pointer',
+        opacity: isPast ? 0.35 : disabled ? 0.5 : 1,
+        textDecoration: isPast ? 'line-through' : 'none',
       }}
     >
-      {time} <span style={{ fontSize: 10, marginLeft: 3, opacity: 0.7 }}>{ampm}</span>
+      {time}
     </div>
   )
 }
@@ -129,7 +131,7 @@ function SlotPicker({
   week: ReturnType<typeof buildWeek>
   selectedDate: string; setSelectedDate: (d: string) => void
   selectedSlotId: string | null; setSelectedSlotId: (s: string | null) => void
-  availability: { slots: { id: string; startTime: string; isAvailable: boolean; start: string }[] }[] | undefined
+  availability: { slots: { id: string; startTime: string; endTime: string; isAvailable: boolean; isPast?: boolean; start: string }[] }[] | undefined
   isAvailLoading: boolean; isError: boolean; cols?: number
 }) {
   return (
@@ -160,15 +162,12 @@ function SlotPicker({
       )}
       {!isAvailLoading && !isError && availability && availability[0]?.slots.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 8 }}>
-          {availability[0].slots.map((slot) => {
-            const h = parseInt(slot.startTime.split(':')[0])
-            const ampm = h >= 12 ? 'PM' : 'AM'
-            return (
-              <SlotBtn key={slot.id} time={slot.startTime} ampm={ampm}
+          {availability[0].slots.map((slot) => (
+              <SlotBtn key={slot.id} time={`${slot.startTime}–${slot.endTime}`}
                 selected={selectedSlotId === slot.id} disabled={!slot.isAvailable}
+                isPast={slot.isPast}
                 onClick={() => setSelectedSlotId(slot.id)} />
-            )
-          })}
+          ))}
         </div>
       )}
     </>
@@ -194,8 +193,9 @@ function DesktopDoctorDetail() {
     navigate('/patient/book/review', { state: { hold, doctor, selectedDate, slotId: selectedSlotId, scheduledAt: selectedSlot.start } })
   }
 
-  const fee = doctor?.effectiveConsultationFee ?? doctor?.consultationFee
+  const fee = doctor?.consultationFee
   const rating = doctor?.averageRating
+  const isSenior = doctor?.seniorConsultant
 
   return (
     <PatientShell title={doctor ? `Dr. ${doctor.name}` : 'Doctor profile'} actions={
@@ -226,6 +226,7 @@ function DesktopDoctorDetail() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: doctor.bio ? 14 : 0 }}>
                 {doctor.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
                 {doctor.telemedicineEnabled && <Badge tone="primary" size="sm">Telehealth</Badge>}
+                {isSenior && <Badge tone="primary" size="sm">Senior Consultant</Badge>}
                 {doctor.yearsOfExperience != null && <Badge tone="neutral" size="sm">{doctor.yearsOfExperience} yrs</Badge>}
               </div>
               {doctor.bio && <p style={{ fontSize: 13, color: MB.text2, lineHeight: 1.6, margin: 0 }}>{doctor.bio}</p>}
@@ -246,7 +247,10 @@ function DesktopDoctorDetail() {
                 {fee != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 13, color: MB.text2 }}>Consultation fee</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
+                      {isSenior && <span style={{ fontSize: 10, color: MB.primary, fontWeight: 600, background: MB.primary50, padding: '2px 6px', borderRadius: 4 }}>Senior premium</span>}
+                    </div>
                   </div>
                 )}
                 {doctor.languages && (
@@ -259,8 +263,8 @@ function DesktopDoctorDetail() {
             )}
           </div>
 
-          {/* Right: slot picker */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Right: slot picker + reviews */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink, marginBottom: 18 }}>Available slots</div>
               <SlotPicker week={week} selectedDate={selectedDate} setSelectedDate={setSelectedDate}
@@ -269,7 +273,7 @@ function DesktopDoctorDetail() {
             </div>
 
             {/* CTA bar */}
-            <div style={{ marginTop: 16, background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 {selectedSlotId && (() => {
                   const slot = availability?.[0]?.slots.find((s) => s.id === selectedSlotId)
@@ -279,7 +283,7 @@ function DesktopDoctorDetail() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>
                         {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {slot?.startTime}
                       </div>
-                      {fee != null && <div style={{ fontSize: 12, color: MB.text3, marginTop: 2 }}>Consultation fee: ₦{fee.toLocaleString()}</div>}
+                      {fee != null && <div style={{ fontSize: 12, color: MB.text3, marginTop: 2 }}>Consultation fee{isSenior ? ' (Senior)' : ''}: ₦{fee.toLocaleString()}</div>}
                     </div>
                   )
                 })()}
@@ -289,6 +293,14 @@ function DesktopDoctorDetail() {
                 {isHolding ? 'Securing slot…' : 'Continue to review →'}
               </Btn>
             </div>
+
+            {/* Reviews */}
+            {id && (
+              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink, marginBottom: 16 }}>Patient reviews</div>
+                <DoctorReviews doctorId={id} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -333,8 +345,9 @@ function MobileDoctorDetail() {
     return <MobScreen><MobTopBar title="Error" back /><EmptyState title="Doctor not found" /></MobScreen>
   }
 
-  const fee = doctor.effectiveConsultationFee ?? doctor.consultationFee
+  const fee = doctor.consultationFee
   const rating = doctor.averageRating
+  const isSenior = doctor.seniorConsultant
 
   return (
     <MobScreen>
@@ -356,6 +369,7 @@ function MobileDoctorDetail() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                 {doctor.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
                 {doctor.telemedicineEnabled && <Badge tone="primary" size="sm">Telemedicine</Badge>}
+                {isSenior && <Badge tone="primary" size="sm">Senior Consultant</Badge>}
                 {doctor.yearsOfExperience != null && <Badge tone="neutral" size="sm">{doctor.yearsOfExperience} yrs exp.</Badge>}
               </div>
             </div>
@@ -377,7 +391,10 @@ function MobileDoctorDetail() {
                 <>
                   {rating != null && <div style={{ width: 1, background: MB.line2 }} />}
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
+                      {isSenior && <span style={{ fontSize: 9, color: MB.primary, fontWeight: 600, background: MB.primary50, padding: '1px 4px', borderRadius: 3 }}>Senior</span>}
+                    </div>
                     <div style={{ fontSize: 11, color: MB.text3 }}>Consultation fee</div>
                   </div>
                 </>
@@ -452,20 +469,16 @@ function MobileDoctorDetail() {
           )}
           {!isAvailLoading && !isError && availability && availability[0]?.slots.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-              {availability[0].slots.map((slot) => {
-                const h = parseInt(slot.startTime.split(':')[0])
-                const ampm = h >= 12 ? 'PM' : 'AM'
-                return (
+              {availability[0].slots.map((slot) => (
                   <SlotBtn
                     key={slot.id}
-                    time={slot.startTime}
-                    ampm={ampm}
+                    time={`${slot.startTime}–${slot.endTime}`}
                     selected={selectedSlotId === slot.id}
                     disabled={!slot.isAvailable}
+                    isPast={slot.isPast}
                     onClick={() => setSelectedSlotId(slot.id)}
                   />
-                )
-              })}
+              ))}
             </div>
           )}
         </div>
@@ -482,7 +495,7 @@ function MobileDoctorDetail() {
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>
         {fee != null && selectedSlotId && (
           <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13, color: MB.text2 }}>
-            <span>Consultation fee</span>
+            <span>Consultation fee {isSenior ? '(Senior)' : ''}</span>
             <span style={{ fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
           </div>
         )}

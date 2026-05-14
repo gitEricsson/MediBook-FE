@@ -37,13 +37,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     setLoading();
-    try {
-      // Attempt to refresh the session on boot
-      const data = await AuthService.refresh({ refreshToken });
-      const userData = await AuthService.getCurrentUser();
-      setAuthenticated(userData, data.accessToken, data.refreshToken || refreshToken);
-    } catch {
-      setUnauthenticated();
+
+    // Retry up to 2 times on transient network failures
+    const MAX_RETRIES = 2;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const data = await AuthService.refresh({ refreshToken });
+        const userData = await AuthService.getCurrentUser();
+        setAuthenticated(userData, data.accessToken, data.refreshToken || refreshToken);
+        return; // success — exit
+      } catch (err: unknown) {
+        const isLastAttempt = attempt === MAX_RETRIES;
+        // Only retry on network errors, not on 401/403 (invalid token)
+        const isNetworkError =
+          err instanceof Error &&
+          (err.message === 'Network Error' || ('code' in err && (err as Record<string, unknown>).code === 'ERR_NETWORK'));
+
+        if (isLastAttempt || !isNetworkError) {
+          setUnauthenticated();
+          return;
+        }
+        // Brief delay before retry
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
     }
   }, [setAuthenticated, setUnauthenticated, setLoading]);
 

@@ -4,7 +4,7 @@ import { Icon } from '@/components/primitives/Icon'
 import { Input } from '@/components/forms/Input'
 import { Field } from '@/components/forms/Field'
 import { Btn } from '@/components/primitives/Btn'
-import { grantAccess } from '@/services/access-grant.service'
+import { AccessGrantService } from '@/services/access-grant.service'
 import { parseApiError } from '@/lib/api/contracts'
 
 interface AccessGrantModalProps {
@@ -30,10 +30,7 @@ export const AccessGrantModal = memo(function AccessGrantModal({ patientId, onCl
     setError(null)
 
     try {
-      await grantAccess(patientId, {
-        doctorId: parseInt(doctorId),
-        reason: reason || undefined,
-      })
+      await AccessGrantService.grantPatientAccess(patientId, parseInt(doctorId), reason || undefined)
       onSuccess()
       onClose()
     } catch (err) {
