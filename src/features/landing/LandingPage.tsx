@@ -1272,8 +1272,8 @@ export default memo(function LandingPage() {
       <AdminSection />
       <SecuritySection />
       <TextFillReveal />
-      <CtaSection />
       <ContactSection />
+      <CtaSection />
       <Footer />
     </div>
   )
