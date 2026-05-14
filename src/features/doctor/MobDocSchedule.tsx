@@ -64,8 +64,9 @@ function MobileDocSchedule() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const unreadCount = useNotificationStore(state => state.unreadCount);
-  
+
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [weekOffset, setWeekOffset] = useState(0);
   const { data: schedule, isLoading, isError, refetch } = useSchedule(user?.id || 'current', selectedDate);
 
   const apptEntries = schedule ? Object.entries(schedule.appointments).sort((a, b) => a[0].localeCompare(b[0])) : [];
@@ -74,9 +75,14 @@ function MobileDocSchedule() {
 
   const resolvedState: ScheduleState = isLoading ? 'loading' : isError ? 'error' : (apptEntries.length === 0 ? 'empty' : 'default');
 
+  const handlePrevWeek = () => setWeekOffset(w => w - 1);
+  const handleNextWeek = () => setWeekOffset(w => w + 1);
+
   // Week generation
+  const currentWeek = new Date();
+  currentWeek.setDate(currentWeek.getDate() + (weekOffset * 7));
   const weekDays = [...Array(7)].map((_, i) => {
-    const d = new Date();
+    const d = new Date(currentWeek);
     d.setDate(d.getDate() - d.getDay() + 1 + i); // Start from Monday
     return {
       d: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
@@ -101,8 +107,8 @@ function MobileDocSchedule() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Weekly Overview</div>
           <div style={{ display: 'flex', gap: 4 }}>
-            <button className="mb-icon-btn" aria-label="Previous week"><Icon name="chevronLeft" size={16} color={MB.text2} /></button>
-            <button className="mb-icon-btn" aria-label="Next week"><Icon name="chevronRight" size={16} color={MB.text2} /></button>
+            <button className="mb-icon-btn" aria-label="Previous week" onClick={handlePrevWeek}><Icon name="chevronLeft" size={16} color={MB.text2} /></button>
+            <button className="mb-icon-btn" aria-label="Next week" onClick={handleNextWeek}><Icon name="chevronRight" size={16} color={MB.text2} /></button>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }} role="listbox" aria-label="Week days">
@@ -145,15 +151,18 @@ function MobileDocSchedule() {
         )}
         {resolvedState === 'default' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {apptEntries.map(([time, appt]) => (
-              <DocApptRow 
-                key={time} 
-                time={time} 
-                dur={appt.dur ? `${appt.dur * 30}m` : '30m'} 
-                appt={appt} 
-                onClick={() => navigate(`/doctor/appt/${appt.id || '1'}`, { state: { appt, time } })}
-              />
-            ))}
+            {apptEntries.map(([time, appt]) => {
+              if (!appt.id) return null
+              return (
+                <DocApptRow
+                  key={time}
+                  time={time}
+                  dur={appt.dur ? `${appt.dur * 30}m` : '30m'}
+                  appt={appt}
+                  onClick={() => navigate(`/doctor/appt/${appt.id}`, { state: { appt, time } })}
+                />
+              )
+            })}
           </div>
         )}
       </div>
@@ -261,9 +270,10 @@ function DesktopDocSchedule() {
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 {apptEntries.map(([time, appt], i) => {
                   const sc = STATUS_COLOR[appt.status] ?? { bg: MB.bg3, color: MB.text3 }
+                  if (!appt.id) return null
                   return (
                     <div key={time}
-                      onClick={() => navigate(`/doctor/appt/${appt.id || '1'}`, { state: { appt, time } })}
+                      onClick={() => navigate(`/doctor/appt/${appt.id}`, { state: { appt, time } })}
                       style={{
                         padding: '16px 24px', display: 'flex', gap: 16, alignItems: 'center',
                         borderBottom: i === apptEntries.length - 1 ? 'none' : `1px solid ${MB.line2}`,

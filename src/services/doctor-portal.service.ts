@@ -158,7 +158,7 @@ export const DoctorPortalService = {
   },
 
   createNoteTemplate: async (doctorId: string, name: string, content: string) => {
-    const response = await apiClient.post(`/api/v1/note-templates/doctors/${doctorId}`, { name, content });
+    const response = await apiClient.post(`/api/v1/note-templates/doctors/${doctorId}`, { name, templateType: 'CONSULTATION', content });
     return unwrapApiResponse(response.data);
   }
 };

@@ -65,9 +65,10 @@ export function toBackendRole(role: UserRole): string {
   }
 }
 
-export function parseApiError(error: unknown): { message: string; code?: string; fieldErrors: Record<string, string> } {
-  const maybeAxios = error as { response?: { data?: BackendErrorResponse; status?: number } };
+export function parseApiError(error: unknown): { message: string; code?: string; correlationId?: string; fieldErrors: Record<string, string> } {
+  const maybeAxios = error as any;
   const data = maybeAxios.response?.data;
+  const correlationId = maybeAxios.response?.headers?.["x-correlation-id"] || maybeAxios.response?.headers?.["X-Correlation-Id"];
   const fieldErrors: Record<string, string> = {};
 
   if (Array.isArray(data?.errors)) {
@@ -77,6 +78,7 @@ export function parseApiError(error: unknown): { message: string; code?: string;
   }
 
   return {
+    correlationId,
     message: data?.message || (error instanceof Error ? error.message : 'Something went wrong'),
     code: data?.errorCode,
     fieldErrors,

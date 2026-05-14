@@ -148,6 +148,7 @@ export interface UserResponse {
   lastName: string;
   fullName?: string;
   phone?: string;
+  avatarUrl?: string;
   role: BackendRole;
   enabled: boolean;
   twoFactorEnabled?: boolean;
@@ -155,6 +156,7 @@ export interface UserResponse {
   smsNotifications?: boolean;
   locale?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PageResponse<T> {

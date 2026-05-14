@@ -47,7 +47,11 @@ export const BookingService = {
     appointmentType: 'IN_PERSON' | 'TELEHEALTH' | 'TELEMEDICINE';
     reason?: string;
   }) => {
-    const response = await apiClient.post('/api/v1/appointments/recurring', payload);
+    const formattedTimeOfDay = `${String(payload.timeOfDay.hour).padStart(2, '0')}:${String(payload.timeOfDay.minute).padStart(2, '0')}`;
+    const response = await apiClient.post('/api/v1/appointments/recurring', {
+      ...payload,
+      timeOfDay: formattedTimeOfDay,
+    });
     return unwrapApiResponse(response.data);
   },
 

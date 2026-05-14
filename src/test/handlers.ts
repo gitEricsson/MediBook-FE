@@ -43,8 +43,23 @@ export const handlers = [
   // Booking Handlers
   http.post('*/api/v1/appointments/holds', () => {
     return HttpResponse.json({
-      holdId: 'hold-123',
-      expiresAt: new Date(Date.now() + 600000).toISOString()
+      success: true,
+      data: {
+        holdId: 'hold-123',
+        expiresAt: new Date(Date.now() + 600000).toISOString()
+      }
+    });
+  }),
+
+  http.post('*/api/v1/appointments', () => {
+    return HttpResponse.json({
+      success: true,
+      data: {
+        id: 'appt-123',
+        status: 'PENDING',
+        doctorId: 1,
+        doctorName: 'Dr. Test',
+      }
     });
   }),
 ];

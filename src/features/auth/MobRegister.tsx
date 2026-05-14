@@ -12,6 +12,8 @@ import { Icon } from '@/components/primitives/Icon'
 import { useAuth } from '@/hooks/useAuth'
 import { useViewport } from '@/hooks/useViewport'
 import { parseApiError } from '@/lib/api/contracts'
+import { validatePassword, validateEmail, validateRequired } from '@/lib/validation'
+import { sanitizeInput } from '@/lib/sanitize'
 
 function useRegisterLogic() {
   const navigate = useNavigate()
@@ -26,12 +28,49 @@ function useRegisterLogic() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [registered, setRegistered] = useState(false)
 
+  const [showPassword, setShowPassword] = useState(false)
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agreeTerms) { setError('You must agree to the Terms and Privacy Policy.'); return }
-    setError(null); setFieldErrors({})
+    setError(null)
+    setFieldErrors({})
+
+    // Validate required fields
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    if (!agreeTerms) {
+      setError('You must agree to the Terms and Privacy Policy.')
+      return
+    }
+
+    // Validate email format
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setFieldErrors({ email: emailError })
+      return
+    }
+
+    // Validate password strength
+    const passwordErrors = validatePassword(password)
+    if (passwordErrors.length > 0) {
+      setFieldErrors({ password: passwordErrors[0] })
+      return
+    }
+
     try {
-      await register({ firstName, lastName, email, phone, password })
+      // Sanitize inputs before sending to API
+      const sanitizedData = {
+        firstName: sanitizeInput(firstName),
+        lastName: sanitizeInput(lastName),
+        email: email.toLowerCase().trim(),
+        phone: phone.replace(/\s+/g, ''),
+        password: password, // Don't sanitize password
+      }
+
+      await register(sanitizedData)
       localStorage.removeItem('mb_tour_seen')
       setRegistered(true)
     } catch (err) {
@@ -41,11 +80,11 @@ function useRegisterLogic() {
     }
   }
 
-  return { firstName, setFirstName, lastName, setLastName, email, setEmail, phone, setPhone, password, setPassword, agreeTerms, setAgreeTerms, error, fieldErrors, registered, isRegistering, handleRegister, navigate }
+  return { firstName, setFirstName, lastName, setLastName, email, setEmail, phone, setPhone, password, setPassword, agreeTerms, setAgreeTerms, showPassword, setShowPassword, error, fieldErrors, registered, isRegistering, handleRegister, navigate }
 }
 
 function RegisterForm(props: ReturnType<typeof useRegisterLogic>) {
-  const { firstName, setFirstName, lastName, setLastName, email, setEmail, phone, setPhone, password, setPassword, agreeTerms, setAgreeTerms, error, fieldErrors, isRegistering, handleRegister } = props
+  const { firstName, setFirstName, lastName, setLastName, email, setEmail, phone, setPhone, password, setPassword, agreeTerms, setAgreeTerms, showPassword, setShowPassword, error, fieldErrors, isRegistering, handleRegister } = props
   return (
     <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {error && (
@@ -64,8 +103,12 @@ function RegisterForm(props: ReturnType<typeof useRegisterLogic>) {
         <Input id="reg-phone" value={phone} onChange={(e) => setPhone(e.target.value)} icon="phone" autoComplete="tel" />
       </Field>
       <Field label="Password" required htmlFor="reg-pw" hint="At least 8 characters with upper/lowercase, number, and symbol" error={fieldErrors.password}>
-        <Input id="reg-pw" value={password} onChange={(e) => setPassword(e.target.value)} icon="lock" type="password"
-          suffix={<Icon name="eye" size={16} color={MB.text3} />} autoComplete="new-password" />
+        <div style={{ position: 'relative' }}>
+          <Input id="reg-pw" value={password} onChange={(e) => setPassword(e.target.value)} icon="lock" type={showPassword ? 'text' : 'password'} autoComplete="new-password" />
+          <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} color={MB.text3} />
+          </button>
+        </div>
       </Field>
       <Checkbox checked={agreeTerms} onChange={() => setAgreeTerms((v) => !v)} label={
         <span>I agree to the <Link to="/terms" style={{ color: MB.primary }}>Terms</Link> and <Link to="/privacy" style={{ color: MB.primary }}>Privacy Policy</Link></span>

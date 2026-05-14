@@ -17,7 +17,7 @@ interface AuthState {
   status: AuthStatus;
   accessToken: string | null;
   refreshToken: string | null;
-  
+
   // Actions
   setAuthenticated: (user: User, accessToken: string, refreshToken: string) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
@@ -25,6 +25,7 @@ interface AuthState {
   set2FARequired: () => void;
   setLoading: () => void;
   updateUser: (user: Partial<User>) => void;
+  clearAllTokens: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -36,25 +37,31 @@ export const useAuthStore = create<AuthState>()(
         accessToken: null,
         refreshToken: null,
 
-        setAuthenticated: (user, accessToken, refreshToken) => 
+        setAuthenticated: (user, accessToken, refreshToken) =>
           set({ user, accessToken, refreshToken, status: 'authenticated' }, false, 'auth/setAuthenticated'),
 
         setTokens: (accessToken, refreshToken) =>
           set({ accessToken, refreshToken }, false, 'auth/setTokens'),
 
-        setUnauthenticated: () => 
+        setUnauthenticated: () =>
           set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/setUnauthenticated'),
 
-        set2FARequired: () => 
+        set2FARequired: () =>
           set({ status: '2fa_required' }, false, 'auth/set2FARequired'),
 
-        setLoading: () => 
+        setLoading: () =>
           set({ status: 'loading' }, false, 'auth/setLoading'),
 
-        updateUser: (updates) => 
+        updateUser: (updates) =>
           set((state) => ({
             user: state.user ? { ...state.user, ...updates } : null
           }), false, 'auth/updateUser'),
+
+        // Security: Clear all auth tokens and user data
+        // NOTE: localStorage is used for JWT access tokens (XSS vulnerability accepted as trade-off),
+        // but refresh tokens are separately stored. This function wipes all auth data on logout.
+        clearAllTokens: () =>
+          set({ user: null, accessToken: null, refreshToken: null, status: 'unauthenticated' }, false, 'auth/clearAllTokens'),
       }),
       {
         name: 'medibook-auth',

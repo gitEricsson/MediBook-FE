@@ -87,10 +87,10 @@ function AddLeaveDialog({ doctorId, onClose }: { doctorId: string; onClose: () =
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Start date" htmlFor="lt-start">
-              <Input id="lt-start" type="text" value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="YYYY-MM-DD" />
+              <Input id="lt-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </Field>
             <Field label="End date" htmlFor="lt-end">
-              <Input id="lt-end" type="text" value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="YYYY-MM-DD" />
+              <Input id="lt-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </Field>
           </div>
           <Field label="Reason (optional)" htmlFor="lt-reason">

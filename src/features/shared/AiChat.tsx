@@ -30,10 +30,13 @@ import { Skel } from '@/components/feedback/Skel'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChatService, MessageResponse, AiDraft, AiSummaryResponse, SenderRole } from '@/services/chat.service'
+import { TelemedicineService, type VideoCallSession } from '@/services/telemedicine.service'
 import { useAuthStore } from '@/store/authStore'
+import { useVideoCallStore } from '@/store/videoCallStore'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
+import { VideoRoomModal } from './video/VideoRoomModal'
 
 // ── Message bubble ─────────────────────────────────────────────────────────────
 
@@ -48,7 +51,18 @@ function MessageBubble({ msg, currentUserId }: { msg: MessageResponse; currentUs
   const isOwn = msg.senderId != null && String(msg.senderId) === currentUserId
   const style = ROLE_STYLE[msg.senderRole] ?? ROLE_STYLE.SYSTEM
   const isAi  = msg.senderRole === 'AI_ASSISTANT'
+  const isSystem = msg.senderRole === 'SYSTEM'
   const isUrgent = msg.body.includes('⚠') && isAi
+
+  if (isSystem) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
+        <div style={{ maxWidth: '82%', padding: '6px 10px', borderRadius: 999, background: MB.bg2, border: `1px solid ${MB.line2}`, color: MB.text3, fontSize: 12, lineHeight: 1.4, textAlign: 'center' }}>
+          {msg.body}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: isOwn ? 'row-reverse' : 'row', gap: 8, alignItems: 'flex-end', marginBottom: 10 }}>
@@ -84,6 +98,93 @@ function MessageBubble({ msg, currentUserId }: { msg: MessageResponse; currentUs
           {new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function CallBanner({ call, onJoinVideo, onJoinAudio, loading }: {
+  call: VideoCallSession
+  onJoinVideo: () => void
+  onJoinAudio: () => void
+  loading?: boolean
+}) {
+  const isActive = call.status === 'ACTIVE'
+  return (
+    <div style={{ margin: '0 16px 10px', padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>{isActive ? 'Video call is active' : 'Incoming video call'}</div>
+        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Join from this chat when you are ready.</div>
+      </div>
+      <Btn variant="secondary" size="sm" icon="phone" loading={loading} onClick={onJoinAudio}>
+        Audio only
+      </Btn>
+      <Btn variant="primary" size="sm" icon="camera" loading={loading} onClick={onJoinVideo}>
+        Join
+      </Btn>
+    </div>
+  )
+}
+
+function CallToolbar({ appointmentId, activeCall }: { appointmentId?: number; activeCall?: VideoCallSession | null }) {
+  const queryClient = useQueryClient()
+  const startCall = useVideoCallStore((s) => s.startCall)
+  const joinCall = useVideoCallStore((s) => s.joinCall)
+  const isConnecting = useVideoCallStore((s) => s.isConnecting)
+  const isInCall = useVideoCallStore((s) => s.isInCall)
+  const hasActiveCall = Boolean(activeCall && ['CREATED', 'RINGING', 'WAITING', 'ACTIVE'].includes(activeCall.status))
+
+  const refreshCallState = () => {
+    if (appointmentId) {
+      queryClient.invalidateQueries({ queryKey: ['telemedicine', 'active-call', appointmentId] })
+    }
+  }
+
+  const handleStart = async (audioOnly: boolean) => {
+    if (!appointmentId) return
+    try {
+      await startCall(appointmentId, audioOnly)
+      refreshCallState()
+      queryClient.invalidateQueries({ queryKey: ['chat', 'messages'] })
+    } catch (error) {
+      toast.error(parseApiError(error).message || 'Could not start call')
+    }
+  }
+
+  const handleJoin = async (audioOnly: boolean) => {
+    if (!activeCall) return
+    try {
+      await joinCall(activeCall, audioOnly)
+      refreshCallState()
+    } catch (error) {
+      toast.error(parseApiError(error).message || 'Could not join call')
+    }
+  }
+
+  return (
+    <div style={{ padding: '10px 16px', borderBottom: `1px solid ${MB.line2}`, background: MB.bg, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: MB.ink }}>Consultation chat</div>
+        <div style={{ fontSize: 12, color: MB.text3 }}>Video and audio stay inside this conversation.</div>
+      </div>
+      {hasActiveCall ? (
+        <>
+          <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
+            Audio only
+          </Btn>
+          <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(false)}>
+            Join call
+          </Btn>
+        </>
+      ) : (
+        <>
+          <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
+            Audio only
+          </Btn>
+          <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(false)}>
+            Video call
+          </Btn>
+        </>
+      )}
     </div>
   )
 }
@@ -280,6 +381,22 @@ function ChatView({ conversationId }: { conversationId: number }) {
     refetchInterval: 5_000,   // poll every 5s as lightweight fallback
   })
 
+  const { data: conversation } = useQuery({
+    queryKey: ['chat', 'conversation', conversationId],
+    queryFn: () => ChatService.getConversation(conversationId),
+  })
+
+  const appointmentId = conversation?.appointmentId
+  const { data: activeCall = null } = useQuery({
+    queryKey: ['telemedicine', 'active-call', appointmentId],
+    queryFn: () => TelemedicineService.getActiveCall(appointmentId as number),
+    enabled: Boolean(appointmentId),
+    refetchInterval: 5_000,
+  })
+
+  const joinCall = useVideoCallStore((s) => s.joinCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
+
   // Derive last patient message for AI draft context
   const lastPatientMsg = [...messages].reverse().find((m) => m.senderRole === 'PATIENT')?.body ?? ''
 
@@ -321,6 +438,16 @@ function ChatView({ conversationId }: { conversationId: number }) {
     if (text.trim()) sendMutation.mutate(text.trim())
   }
 
+  const handleBannerJoin = async (audioOnly: boolean) => {
+    if (!activeCall) return
+    try {
+      await joinCall(activeCall, audioOnly)
+      queryClient.invalidateQueries({ queryKey: ['telemedicine', 'active-call', appointmentId] })
+    } catch (error) {
+      toast.error(parseApiError(error).message || 'Could not join call')
+    }
+  }
+
   if (isLoading) return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       {[0, 1, 2, 3].map((i) => <Skel key={i} h={60} r={12} />)}
@@ -330,11 +457,22 @@ function ChatView({ conversationId }: { conversationId: number }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <CallToolbar appointmentId={appointmentId} activeCall={activeCall} />
+
       {/* Urgency banner */}
       {hasUrgent && (
         <div style={{ padding: '0 16px', paddingTop: 12 }}>
           <UrgencyBanner />
         </div>
+      )}
+
+      {activeCall && ['CREATED', 'RINGING', 'WAITING', 'ACTIVE'].includes(activeCall.status) && (
+        <CallBanner
+          call={activeCall}
+          loading={isConnectingCall}
+          onJoinAudio={() => handleBannerJoin(true)}
+          onJoinVideo={() => handleBannerJoin(false)}
+        />
       )}
 
       {/* Message list */}
@@ -405,6 +543,7 @@ function ChatView({ conversationId }: { conversationId: number }) {
           onDeclined={() => setShowConsent(false)}
         />
       )}
+      <VideoRoomModal />
     </div>
   )
 }

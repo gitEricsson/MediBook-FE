@@ -18,6 +18,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { id: 'docs',      label: 'Doctors',       icon: 'stethoscope' },
     { id: 'analytics', label: 'Analytics',     icon: 'chart'       },
     { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
+    { id: 'deleted',   label: 'Deleted Records', icon: 'trash'      },
     { id: 'settings',  label: 'Settings',      icon: 'settings'    },
   ],
   super_admin: [
@@ -27,6 +28,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { id: 'analytics', label: 'Analytics',     icon: 'chart'       },
     { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
     { id: 'admins',    label: 'Admins',         icon: 'shield'      },
+    { id: 'deleted',   label: 'Deleted Records', icon: 'trash'      },
     { id: 'settings',  label: 'Settings',      icon: 'settings'    },
   ],
   doctor: [
@@ -52,6 +54,7 @@ const NAV_PATHS: Record<UserRole, Record<string, string>> = {
     docs: '/admin/docs',
     analytics: '/admin/analytics',
     capacity: '/admin/capacity',
+    deleted: '/admin/deleted-records',
     settings: '/admin/settings',
   },
   super_admin: {
@@ -61,6 +64,7 @@ const NAV_PATHS: Record<UserRole, Record<string, string>> = {
     analytics: '/admin/analytics',
     capacity: '/admin/capacity',
     admins: '/admin/admins',
+    deleted: '/admin/deleted-records',
     settings: '/admin/settings',
   },
   doctor: {

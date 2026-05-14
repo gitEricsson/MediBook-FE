@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useState, useEffect } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -364,14 +364,24 @@ function MobileMyAppts() {
   const allItems = pages?.pages.flatMap((p) => p.items) ?? []
 
   // Scroll sentinel to trigger next page load
-  const sentinelRef = (node: HTMLDivElement | null) => {
-    if (!node || !hasNextPage) return
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage()
+  const [sentinelNode, setSentinelNode] = useState<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const sentinel = sentinelNode || document.getElementById('appts-sentinel') as HTMLDivElement | null
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage()
+      }
     }, { threshold: 0.1 })
-    obs.observe(node)
-    return () => obs.disconnect()
-  }
+
+    observer.observe(sentinel)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, sentinelNode])
 
   return (
     <MobScreen>
@@ -395,7 +405,7 @@ function MobileMyAppts() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {allItems.map((a) => <ApptCard key={a.id} appt={a} />)}
             {/* Infinite scroll sentinel */}
-            <div ref={sentinelRef} style={{ height: 1 }} />
+            <div id="appts-sentinel" ref={setSentinelNode} style={{ height: 1 }} />
             {isFetchingNextPage && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[0, 1].map((i) => <ApptSkel key={i} />)}

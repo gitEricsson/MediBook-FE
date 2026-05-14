@@ -113,7 +113,7 @@ export const UserService = {
   },
 
   enable2FA: async () => {
-    await apiClient.post('/api/v1/me/2fa/enable');
+    await apiClient.post('/api/v1/users/me/2fa/enable');
   },
 
   listUsers: async (page = 0, size = 50) => {

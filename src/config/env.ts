@@ -14,6 +14,14 @@ const _env = envSchema.safeParse({
   VITE_APP_NAME: import.meta.env.VITE_APP_NAME || 'MediBook',
 });
 
+if (!_env.success) {
+  if (import.meta.env.MODE === 'production') {
+    throw new Error('Invalid environment configuration: ' + JSON.stringify(_env.error));
+  }
+  // Dev fallback only
+  console.warn('Using dev defaults because env validation failed');
+}
+
 export const env = _env.data || {
   VITE_API_URL: 'http://localhost:8080',
   VITE_API_TIMEOUT_MS: 15000,

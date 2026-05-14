@@ -10,7 +10,9 @@ import { Icon } from '@/components/primitives/Icon'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { useAuth } from '@/hooks/useAuth'
 import { useViewport } from '@/hooks/useViewport'
+import { AuthService } from '@/services/auth.service'
 import { parseApiError } from '@/lib/api/contracts'
+import { validateEmail } from '@/lib/validation'
 
 // ── Shared form logic ─────────────────────────────────────────────────────────
 function useLoginLogic() {
@@ -22,13 +24,29 @@ function useLoginLogic() {
   const [rememberMe, setRememberMe] = useState(!!localStorage.getItem('medibook_remembered_email'))
   const [showPassword, setShowPassword] = useState(false)
   const [needs2FA, setNeeds2FA] = useState(false)
+  const [showVerifyPrompt, setShowVerifyPrompt] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Basic validation
+    if (!email || !password) {
+      setError('Email and password are required.')
+      return
+    }
+
+    // Validate email format
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+
     try {
-      const response = await login({ email, password })
+      const response = await login({ email: email.toLowerCase().trim(), password })
       if (response.requires2FA) { setNeeds2FA(true); return }
       if (response.user) {
         if (rememberMe) {
@@ -39,9 +57,28 @@ function useLoginLogic() {
         if (response.user.role === 'patient') navigate('/patient')
         else if (response.user.role === 'doctor') navigate('/doctor')
         else if (response.user.role === 'admin') navigate('/admin')
+        else if (response.user.role === 'super_admin') navigate('/admin')
       }
     } catch (err) {
-      setError(parseApiError(err).message || 'The email or password you entered is incorrect.')
+      const apiError = parseApiError(err)
+      if (apiError.code === 'EMAIL_NOT_VERIFIED') {
+        setShowVerifyPrompt(true)
+        setError('Please verify your email. Check your inbox or request a new link.')
+      } else {
+        setError(apiError.message || 'The email or password you entered is incorrect.')
+      }
+    }
+  }
+
+  const handleResendVerification = async () => {
+    setIsResending(true)
+    try {
+      await AuthService.resendVerification(email)
+      setError('Verification email sent! Check your inbox.')
+    } catch (err) {
+      setError('Failed to resend email. Try again.')
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -53,20 +90,21 @@ function useLoginLogic() {
         if (response.user.role === 'patient') navigate('/patient')
         else if (response.user.role === 'doctor') navigate('/doctor')
         else if (response.user.role === 'admin') navigate('/admin')
+        else if (response.user.role === 'super_admin') navigate('/admin')
       }
     } catch (err) {
       setError(parseApiError(err).message || 'Invalid verification code.')
     }
   }
 
-  return { email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, showPassword, setShowPassword, needs2FA, error, isLoggingIn, isVerifying2FA, handleLogin, handleVerify2FA }
+  return { email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, showPassword, setShowPassword, needs2FA, showVerifyPrompt, setShowVerifyPrompt, isResending, error, isLoggingIn, isVerifying2FA, handleLogin, handleVerify2FA, handleResendVerification }
 }
 
 // ── Shared form fields ────────────────────────────────────────────────────────
 function LoginForm({
   email, setEmail, password, setPassword, otp, setOtp, rememberMe, setRememberMe, showPassword, setShowPassword,
-  needs2FA, error, isLoggingIn, isVerifying2FA,
-  handleLogin, handleVerify2FA,
+  needs2FA, showVerifyPrompt, setShowVerifyPrompt, isResending, error, isLoggingIn, isVerifying2FA,
+  handleLogin, handleVerify2FA, handleResendVerification,
 }: ReturnType<typeof useLoginLogic>) {
   return (
     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -105,7 +143,50 @@ function LoginForm({
               inputMode="numeric" maxLength={6} autoComplete="one-time-code" />
           </Field>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -2 }}>
+        {showVerifyPrompt && (
+          <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '8px', marginBottom: 12 }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: 14, fontWeight: 500, color: '#333' }}>Email verification required</p>
+            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0' }}>
+              We sent a verification link to {email}
+            </p>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResending}
+              style={{
+                padding: '8px 12px',
+                background: MB.primary,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 4,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: isResending ? 'not-allowed' : 'pointer',
+                opacity: isResending ? 0.6 : 1,
+                marginRight: 8,
+              }}
+            >
+              {isResending ? 'Sending...' : 'Resend Verification Email'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowVerifyPrompt(false)}
+              style={{
+                padding: '8px 12px',
+                background: 'transparent',
+                color: MB.primary,
+                border: `1px solid ${MB.primary}`,
+                borderRadius: 4,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Back to Login
+            </button>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: showVerifyPrompt ? 8 : -2 }}>
           <Checkbox checked={rememberMe} onChange={(checked) => setRememberMe(checked)} label="Remember me" />
           <Link to="/forgot-password" style={{ fontSize: 13, color: MB.primary, fontWeight: 500 }}>Forgot password?</Link>
         </div>

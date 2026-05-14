@@ -13,6 +13,7 @@ import {
   useTypewriter, useCountUp, useScrollReveal, useStaggerReveal,
   useParallax, useScrollFill, useCarousel, prefersReducedMotion, useIsMobile,
 } from '@/hooks/useAnimation'
+import { ContactSection } from './ContactSection'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANIMATION CSS (injected once)
@@ -1027,72 +1028,6 @@ function SecuritySection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONTACT SECTION
-// ─────────────────────────────────────────────────────────────────────────────
-function ContactSection() {
-  const { ref, visible } = useScrollReveal(0)
-
-  return (
-    <section id="contact" style={{ background: MB.bg2, padding: '80px 24px' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 60, alignItems: 'center' }}>
-        <div ref={ref} className={cn('lp-reveal-left', visible && 'visible')}>
-          <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 800, color: MB.ink, letterSpacing: '-0.02em', margin: '0 0 16px' }}>Ready to transform your practice?</h2>
-          <p style={{ fontSize: 15, color: MB.text2, lineHeight: 1.65, margin: '0 0 32px', maxWidth: 460 }}>
-            Our team is here to help you set up MediBook for your clinic. Reach out for a tailored demo, pricing details, or any questions.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {[
-              { icon: 'mail', label: 'Email us', value: 'hello@medibook.health' },
-              { icon: 'phone', label: 'Call us', value: '+234 701 507 0004' },
-              { icon: 'pin', label: 'Visit us', value: 'Lekki gardens Phase 2, Lagos, Nigeria' },
-            ].map((c) => (
-              <div key={c.label} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: MB.bg, border: `1px solid ${MB.line}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={c.icon as never} size={18} color={MB.primary} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: MB.text3, marginBottom: 2 }}>{c.label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: MB.ink }}>{c.value}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={cn('lp-reveal-right', visible && 'visible')}>
-          <div style={{ background: MB.bg, borderRadius: 18, border: `1px solid ${MB.line}`, padding: 32, boxShadow: '0 8px 32px rgba(16,24,40,.06)' }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: MB.ink, margin: '0 0 24px' }}>Send us a message</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Full name</label>
-                <input type="text" placeholder="Dr. Jane Doe" style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', transition: 'border .2s' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Work email</label>
-                <input type="email" placeholder="jane@clinic.com" style={{ width: '100%', height: 44, padding: '0 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', transition: 'border .2s' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: MB.text2, marginBottom: 6 }}>Message</label>
-                <textarea rows={4} placeholder="How can we help?" style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1px solid ${MB.line}`, background: MB.bg2, fontSize: 14, color: MB.text, outline: 'none', resize: 'vertical', transition: 'border .2s' }} />
-              </div>
-              <button className="lp-liquid-btn" style={{
-                marginTop: 8, height: 48, background: MB.primary, color: '#fff', border: 'none', borderRadius: 10,
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(14,138,95,.25)', transition: 'background .15s, transform .12s'
-              }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = MB.primary600 }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = MB.primary }}>
-                Send message
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // KINETIC CTA — gradient + animated dots
 // ─────────────────────────────────────────────────────────────────────────────
 function CtaSection() {
@@ -1337,8 +1272,8 @@ export default memo(function LandingPage() {
       <AdminSection />
       <SecuritySection />
       <TextFillReveal />
-      <ContactSection />
       <CtaSection />
+      <ContactSection />
       <Footer />
     </div>
   )

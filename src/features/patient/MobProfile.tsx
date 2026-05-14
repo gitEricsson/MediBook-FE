@@ -17,6 +17,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useNavigate } from 'react-router-dom'
+import { AccessGrantList } from './AccessGrantList'
+import { ConsentsService } from '@/services/consents.service'
+import { sanitizeInput } from '@/lib/sanitize'
+import { validatePassword } from '@/lib/validation'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -48,7 +52,11 @@ function EditProfilePanel({ onClose }: { onClose: () => void }) {
   const [phone, setPhone] = useState(user?.phone ?? '')
 
   const mutation = useMutation({
-    mutationFn: () => UserService.updateMe({ firstName, lastName, phone }),
+    mutationFn: () => UserService.updateMe({
+      firstName: sanitizeInput(firstName),
+      lastName: sanitizeInput(lastName),
+      phone: phone.replace(/\s+/g, ''),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['me'] })
       toast.success('Profile updated')
@@ -91,6 +99,25 @@ function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
   const [next, setNext] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const handleChangePassword = () => {
+    setError(null)
+
+    // Validate inputs
+    if (!current || !next) {
+      setError('Please fill in both password fields')
+      return
+    }
+
+    // Validate new password strength
+    const passwordErrors = validatePassword(next)
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors[0])
+      return
+    }
+
+    mutation.mutate()
+  }
+
   const mutation = useMutation({
     mutationFn: () => UserService.changePassword({ currentPassword: current, newPassword: next }),
     onSuccess: () => { toast.success('Password changed'); onClose() },
@@ -117,7 +144,7 @@ function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Cancel</Btn>
-          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} loading={mutation.isPending} disabled={!current || !next} onClick={() => mutation.mutate()}>Update password</Btn>
+          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} loading={mutation.isPending} disabled={!current || !next} onClick={handleChangePassword}>Update password</Btn>
         </div>
       </div>
     </div>
@@ -134,7 +161,12 @@ function EditMedicalPanel({ profile, onClose }: { profile: PatientProfileRespons
   const [emergencyContact, setEmergencyContact] = useState(profile?.emergencyContact ?? '')
 
   const mutation = useMutation({
-    mutationFn: () => PatientProfileService.upsertMyProfile({ bloodGroup: bloodGroup || undefined, allergies, medicalHistory, emergencyContact }),
+    mutationFn: () => PatientProfileService.upsertMyProfile({
+      bloodGroup: sanitizeInput(bloodGroup) || undefined,
+      allergies: sanitizeInput(allergies),
+      medicalHistory: sanitizeInput(medicalHistory),
+      emergencyContact: sanitizeInput(emergencyContact),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient-profile'] })
       toast.success('Medical info updated')
@@ -173,9 +205,30 @@ function EditMedicalPanel({ profile, onClose }: { profile: PatientProfileRespons
   )
 }
 
+// ── Access Management panel ────────────────────────────────────────────────────
+
+function AccessManagementPanel({ patientId, onClose }: { patientId: number; onClose: () => void }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end' }}>
+      <div style={{ background: MB.bg, width: '100%', borderRadius: '20px 20px 0 0', padding: '20px 20px 32px', boxShadow: '0 -8px 32px rgba(0,0,0,0.12)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ width: 36, height: 4, background: MB.line, borderRadius: 2, margin: '0 auto 20px' }} aria-hidden="true" />
+        <h3 style={{ fontSize: 17, fontWeight: 700, color: MB.ink, margin: '0 0 16px' }}>Health Record Access</h3>
+        <p style={{ fontSize: 14, color: MB.text2, marginBottom: 20 }}>Manage which doctors can access your health records. You can grant or revoke access at any time.</p>
+        <div style={{ marginBottom: 20 }}>
+          <AccessGrantList patientId={patientId} />
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Done</Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────
 
-type Panel = 'edit' | 'password' | 'medical' | null
+
+type Panel = 'edit' | 'password' | 'medical' | 'access' | null
 
 export default memo(function MobProfile() {
   const { logout } = useAuth()
@@ -249,6 +302,23 @@ export default memo(function MobProfile() {
               <ProfileRow label="Emergency contact" value={profile?.emergencyContact ?? ''} last />
               <div style={{ padding: '10px 14px', borderTop: `1px solid ${MB.line2}`, display: 'flex', justifyContent: 'flex-end' }}>
                 <Btn variant="secondary" size="sm" icon="edit" onClick={() => setPanel('medical')}>Edit medical info</Btn>
+              </div>
+            </Card>
+          </Section>
+
+          <Section title="Access Management">
+            <Card padding={0}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setPanel('access')}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', cursor: 'pointer' }}
+              >
+                <div>
+                  <div style={{ fontSize: 14, color: MB.text }}>Manage Doctor Access</div>
+                  <div style={{ fontSize: 12, color: MB.text3, marginTop: 2 }}>Grant or revoke health record access.</div>
+                </div>
+                <Icon name="chevronRight" size={16} color={MB.text4} />
               </div>
             </Card>
           </Section>
@@ -338,6 +408,7 @@ export default memo(function MobProfile() {
       {panel === 'edit'     && <EditProfilePanel onClose={() => setPanel(null)} />}
       {panel === 'password' && <ChangePasswordPanel onClose={() => setPanel(null)} />}
       {panel === 'medical'  && <EditMedicalPanel profile={profile ?? null} onClose={() => setPanel(null)} />}
+      {panel === 'access'   && user && <AccessManagementPanel patientId={typeof user.id === 'number' ? user.id : parseInt(user.id)} onClose={() => setPanel(null)} />}
     </MobScreen>
   )
 })
