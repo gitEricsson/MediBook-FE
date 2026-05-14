@@ -70,6 +70,9 @@ export const mapDoctor = (doctor: DoctorApiResponse): Doctor => {
     seniorConsultant: doctor.seniorConsultant,
     averageRating: doctor.averageRating,
     reviewCount: doctor.reviewCount,
+    tone: 'primary',
+    next: '',
+    city: '',
   };
 };
 

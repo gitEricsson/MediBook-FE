@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: mode === 'production' ? false : true,
-      minify: 'esbuild',
+      minify: 'oxc',
       target: 'es2022',
       chunkSizeWarningLimit: 600,
       rollupOptions: {

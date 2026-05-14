@@ -8,7 +8,7 @@ interface InputProps {
   value?: string
   placeholder?: string
   icon?: IconName
-  type?: 'text' | 'email' | 'password' | 'tel' | 'number'
+  type?: 'text' | 'email' | 'password' | 'tel' | 'number' | 'date'
   error?: boolean | string | null
   disabled?: boolean
   suffix?: React.ReactNode
