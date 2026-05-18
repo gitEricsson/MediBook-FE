@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { NotificationService } from '@/services/notification.service'
 import type { NotificationItem } from '@/services/notification.service'
 import { useViewport } from '@/hooks/useViewport'
+import { useNotificationStore } from '@/store/notificationStore'
 
 type NotifState = 'default' | 'loading' | 'empty'
 
@@ -102,6 +103,7 @@ function NotifList({ items, state, onRetry, wide = false }: {
 export default memo(function MobNotifications({ state = 'default' }: MobNotificationsProps) {
   const { isWide } = useViewport()
   const queryClient = useQueryClient()
+  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount)
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => NotificationService.list(),
@@ -110,6 +112,18 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
     mutationFn: NotificationService.markAllRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
+
+  // Opening the panel counts as "viewed" — clear the badge immediately so the
+  // red ping disappears on the tab bar, then fire markAllRead asynchronously so
+  // the server state matches. Runs once per mount.
+  const clearedRef = useRef(false)
+  useEffect(() => {
+    if (clearedRef.current) return
+    clearedRef.current = true
+    setUnreadCount(0)
+    markAll.mutate(undefined, { onError: () => { /* server will catch up on next list refresh */ } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const items: NotifItem[] = (data ?? []).map((n: NotificationItem) => {
     const { icon, tone } = iconForType(n.type)

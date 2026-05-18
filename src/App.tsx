@@ -8,6 +8,8 @@ import { useAuthStore } from '@/store/authStore'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { UnauthorizedState } from '@/components/auth/UnauthorizedState'
 import { useIdleTimeout } from '@/hooks/useIdleTimeout'
+import { usePostPaymentVerify } from '@/hooks/usePostPaymentVerify'
+import { useAuthBootstrap } from '@/hooks/useAuthBootstrap'
 
 // ── Landing ───────────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
@@ -23,6 +25,7 @@ const MobVerifyEmail     = lazy(() => import('@/features/auth/MobVerifyEmail'))
 const MobSearch              = lazy(() => import('@/features/patient/MobSearch'))
 const MobDoctorDetail        = lazy(() => import('@/features/patient/MobDoctorDetail'))
 const MobBookReview          = lazy(() => import('@/features/patient/MobBookReview'))
+const MobPayment             = lazy(() => import('@/features/patient/MobPayment'))
 const MobMyAppts             = lazy(() => import('@/features/patient/MobMyAppts'))
 const MobProfile             = lazy(() => import('@/features/patient/MobProfile'))
 const MobNotifications       = lazy(() => import('@/features/patient/MobNotifications'))
@@ -38,6 +41,9 @@ const MobDocNote     = lazy(() => import('@/features/doctor/MobDocNote'))
 const MobDocHours    = lazy(() => import('@/features/doctor/MobDocHours'))
 const MobDocProfile  = lazy(() => import('@/features/doctor/MobDocProfile'))
 const MobDocLeave    = lazy(() => import('@/features/doctor/MobDocLeave'))
+const MobDocCopilot  = lazy(() => import('@/features/doctor/MobDocCopilot'))
+const MobDocPrescriptions = lazy(() => import('@/features/doctor/MobDocPrescriptions'))
+const MobPrescriptions    = lazy(() => import('@/features/patient/MobPrescriptions'))
 
 // ── Shared ────────────────────────────────────────────────────────────────
 const MobTelemedicine = lazy(() => import('@/features/shared/MobTelemedicine'))
@@ -62,10 +68,12 @@ const Spinner = (
 
 export default function App() {
   const authStatus = useAuthStore((s) => s.status)
+  useAuthBootstrap()
   useIdleTimeout(15 * 60 * 1000)
 
   return (
     <BrowserRouter>
+      <PostPaymentVerifyMount />
       <div className="mb" style={{ width: '100%', height: '100%', position: 'relative' }}>
         <Suspense fallback={Spinner}>
           <Routes>
@@ -82,7 +90,9 @@ export default function App() {
             <Route path="/patient/search"    element={<ProtectedRoute allowedRoles={['patient']}><MobSearch /></ProtectedRoute>} />
             <Route path="/patient/doctor/:id" element={<ProtectedRoute allowedRoles={['patient']}><MobDoctorDetail /></ProtectedRoute>} />
             <Route path="/patient/book/review" element={<ProtectedRoute allowedRoles={['patient']}><MobBookReview /></ProtectedRoute>} />
+            <Route path="/patient/pay/:appointmentId" element={<ProtectedRoute allowedRoles={['patient']}><MobPayment /></ProtectedRoute>} />
             <Route path="/patient/appts"     element={<ProtectedRoute allowedRoles={['patient']}><MobMyAppts /></ProtectedRoute>} />
+            <Route path="/patient/prescriptions" element={<ProtectedRoute allowedRoles={['patient']}><MobPrescriptions /></ProtectedRoute>} />
             <Route path="/patient/history"   element={<ProtectedRoute allowedRoles={['patient']}><MobConsultationHistory /></ProtectedRoute>} />
             <Route path="/patient/invoices"  element={<ProtectedRoute allowedRoles={['patient']}><MobInvoices /></ProtectedRoute>} />
             <Route path="/patient/notifications" element={<ProtectedRoute allowedRoles={['patient']}><MobNotifications /></ProtectedRoute>} />
@@ -97,10 +107,12 @@ export default function App() {
             <Route path="/doctor/schedule"    element={<ProtectedRoute allowedRoles={['doctor']}><MobDocSchedule /></ProtectedRoute>} />
             <Route path="/doctor/appt/:id"    element={<ProtectedRoute allowedRoles={['doctor']}><MobDocApptDetail /></ProtectedRoute>} />
             <Route path="/doctor/appt/:id/note" element={<ProtectedRoute allowedRoles={['doctor']}><MobDocNote /></ProtectedRoute>} />
+            <Route path="/doctor/appt/:id/prescriptions" element={<ProtectedRoute allowedRoles={['doctor']}><MobDocPrescriptions /></ProtectedRoute>} />
             <Route path="/doctor/hours"       element={<ProtectedRoute allowedRoles={['doctor']}><MobDocHours /></ProtectedRoute>} />
             <Route path="/doctor/profile"     element={<ProtectedRoute allowedRoles={['doctor']}><MobDocProfile /></ProtectedRoute>} />
             <Route path="/doctor/leave"       element={<ProtectedRoute allowedRoles={['doctor']}><MobDocLeave /></ProtectedRoute>} />
             <Route path="/doctor/telemedicine/:sessionId" element={<ProtectedRoute allowedRoles={['doctor']}><MobTelemedicine /></ProtectedRoute>} />
+            <Route path="/doctor/telemedicine/:sessionId/copilot" element={<ProtectedRoute allowedRoles={['doctor']}><MobDocCopilot /></ProtectedRoute>} />
             <Route path="/doctor/chat/:conversationId"   element={<ProtectedRoute allowedRoles={['doctor']}><AiChat /></ProtectedRoute>} />
 
             {/* ── Admin ──────────────────────────────────────────────── */}
@@ -126,4 +138,10 @@ export default function App() {
       </div>
     </BrowserRouter>
   )
+}
+
+/** Mount point for the global post-payment verifier — must live inside <BrowserRouter>. */
+function PostPaymentVerifyMount() {
+  usePostPaymentVerify()
+  return null
 }

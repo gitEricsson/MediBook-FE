@@ -315,6 +315,25 @@ function MobileDocApptDetail() {
             </Btn>
           </Section>
 
+          <Section title="Patient Chat & AI">
+            <Btn
+              variant="secondary"
+              full
+              icon="sparkle"
+              onClick={async () => {
+                try {
+                  const { ChatService } = await import('@/services/chat.service')
+                  const c = await ChatService.createConversation(Number(id))
+                  navigate(`/doctor/chat/${c.id}`)
+                } catch {
+                  toast.error('Unable to open chat right now.')
+                }
+              }}
+            >
+              Open chat with patient
+            </Btn>
+          </Section>
+
           <Section title="Patient Records">
             <PatientRecordsSection patientId={String(patientId)} />
           </Section>
@@ -337,8 +356,35 @@ function MobileDocApptDetail() {
               >
                 Start telemedicine session
               </Btn>
+              <Btn
+                variant="secondary"
+                full
+                icon="sparkle"
+                style={{ marginTop: 8 }}
+                onClick={async () => {
+                  try {
+                    const { TelemedicineService } = await import('@/services/telemedicine.service')
+                    const session = await TelemedicineService.createSession(Number(id))
+                    navigate(`/doctor/telemedicine/${session.id}/copilot`)
+                  } catch {
+                    toast.error('Could not start Co-Pilot')
+                  }
+                }}
+              >
+                Open Visit Co-Pilot
+              </Btn>
             </Section>
           )}
+          <Section title="Prescriptions">
+            <Btn
+              variant="secondary"
+              full
+              icon="document"
+              onClick={() => navigate(`/doctor/appt/${id}/prescriptions`)}
+            >
+              Manage prescriptions
+            </Btn>
+          </Section>
         </div>
       </div>
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>

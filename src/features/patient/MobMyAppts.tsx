@@ -15,6 +15,8 @@ import { useMyAppointments, useMyAppointmentsCursor } from '@/hooks/useAppointme
 import { BookingService } from '@/services/booking.service'
 import { AppointmentsService } from '@/services/appointments.service'
 import { ReviewsService } from '@/services/reviews.service'
+import { ChatService } from '@/services/chat.service'
+import { TelemedicineService } from '@/services/telemedicine.service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
@@ -143,19 +145,89 @@ function ApptCard({ appt }: { appt: Appointment }) {
           )}
         </div>
       </div>
-      {(isCancelable || appt.status === 'CONFIRMED' || isCompleted) && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
-          <Btn variant="secondary" size="sm" icon="download" style={{ flex: 1 }} onClick={downloadICS}>Calendar</Btn>
-          {isCompleted && (
-            <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => setShowReview(true)}>Rate visit</Btn>
-          )}
-          {isCancelable && (
-            <>
-              <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
-              <Btn variant="secondary" size="sm" style={{ flex: 1, color: MB.danger }} loading={cancelMutation.isPending} onClick={() => setConfirmCancel(true)}>Cancel</Btn>
-            </>
-          )}
+      {/* PENDING (unpaid) — primary CTA is finish payment. We don't show Chat/Video
+          buttons here because the backend rejects them with APPOINTMENT_NOT_CONFIRMED. */}
+      {appt.status === 'PENDING' && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}` }}>
+          <Btn
+            variant="primary"
+            size="sm"
+            icon="creditCard"
+            full
+            onClick={() => navigate(`/patient/pay/${appt.id}`)}
+          >
+            Complete payment to confirm
+          </Btn>
+          <div style={{ fontSize: 11, color: MB.text3, marginTop: 6, textAlign: 'center' }}>
+            Unpaid slots are auto-released after 30 min.
+          </div>
         </div>
+      )}
+      {(isCancelable || appt.status === 'CONFIRMED' || isCompleted) && (
+        <>
+          {/* TODO[REMOVE-BEFORE-PROD]: Chat + video row was restricted to CONFIRMED only;
+              widened to CONFIRMED + PENDING for local testing so chat is discoverable
+              without a real payment flow. Before shipping, revert this condition to
+              `appt.status === 'CONFIRMED'` and re-enable the matching backend gate in
+              ChatService.createConversation. See also MobDocApptDetail. */}
+          {(appt.status === 'CONFIRMED' || appt.status === 'PENDING') && (
+            <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
+              <Btn
+                variant="secondary"
+                size="sm"
+                icon="sparkle"
+                style={{ flex: 1 }}
+                onClick={async () => {
+                  try {
+                    const c = await ChatService.createConversation(Number(appt.id))
+                    navigate(`/patient/chat/${c.id}`)
+                  } catch {
+                    toast.error('Unable to open chat right now.')
+                  }
+                }}
+              >
+                Chat & AI
+              </Btn>
+              {(appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH') && (
+                <Btn
+                  variant="primary"
+                  size="sm"
+                  icon="video"
+                  style={{ flex: 1 }}
+                  onClick={async () => {
+                    try {
+                      const s = await TelemedicineService.startVideoCall(Number(appt.id))
+                      navigate(`/patient/telemedicine/${s.sessionId}`)
+                    } catch (err) {
+                      const code = (err as { errorCode?: string })?.errorCode
+                      if (code === 'APPOINTMENT_NOT_CONFIRMED') {
+                        toast.error('Complete payment to join the call.')
+                      } else if (code === 'TELEMEDICINE_NOT_CONFIGURED') {
+                        toast.error('Telemedicine is not enabled on this environment.')
+                      } else {
+                        toast.error('Unable to start video call.')
+                      }
+                    }
+                  }}
+                >
+                  Join call
+                </Btn>
+              )}
+            </div>
+          )}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
+            <Btn variant="secondary" size="sm" icon="download" style={{ flex: 1 }} onClick={downloadICS}>Calendar</Btn>
+            {isCompleted && (
+              <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => setShowReview(true)}>Rate visit</Btn>
+            )}
+            {isCancelable && (
+              <>
+                <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
+                <Btn variant="secondary" size="sm" style={{ flex: 1, color: MB.danger }} loading={cancelMutation.isPending} onClick={() => setConfirmCancel(true)}>Cancel</Btn>
+              </>
+            )}
+          </div>
+        </>
       )}
       {showReview && <ReviewDialog appt={appt} onClose={() => setShowReview(false)} />}
       {confirmCancel && (
@@ -421,6 +493,14 @@ function MobileMyAppts() {
     </MobScreen>
   )
 }
+
+/**
+ * If the user just returned from a payment gateway, MobPayment stashed the paymentId.
+ * Verify it server-side (which also flips the appointment to CONFIRMED on success)
+ * and toast the outcome. This is the safety-net against missed webhooks.
+ */
+// Post-payment verify now lives in src/hooks/usePostPaymentVerify.ts and is mounted
+// globally from App.tsx so it works regardless of which page the gateway redirects to.
 
 export default memo(function MobMyAppts() {
   const { isWide } = useViewport()

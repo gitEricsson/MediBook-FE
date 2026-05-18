@@ -19,10 +19,10 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { DepartmentsService } from '@/services/departments.service'
 import { LookupsService } from '@/services/lookups.service'
 import { IntelligenceService, TriageResult } from '@/services/intelligence.service'
+import { useAuthStore } from '@/store/authStore'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useNavigate } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
-import { useAuthStore } from '@/store/authStore'
 import { parseApiError } from '@/lib/api/contracts'
 import type { Doctor } from '@/types/domain'
 
@@ -322,8 +322,12 @@ function DesktopFilterSidebar({
 
 // ── Desktop layout ────────────────────────────────────────────────────────────
 function DesktopSearch() {
-  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'public'], queryFn: DepartmentsService.getActiveDepartments, staleTime: 10 * 60 * 1000 })
-  const { data: specializations = [] } = useQuery({ queryKey: ['specializations'], queryFn: LookupsService.getSpecialisations, staleTime: 60 * 60 * 1000 })
+  // Gate both queries on auth bootstrap completion. Without this, a hard refresh
+  // fires these requests before the access token is restored → 401 → React Query
+  // caches an empty array → filter dropdowns silently show nothing.
+  const authReady = useAuthStore((s) => s.status === 'authenticated')
+  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'public'], queryFn: DepartmentsService.getActiveDepartments, staleTime: 10 * 60 * 1000, enabled: authReady, retry: 1 })
+  const { data: specializations = [] } = useQuery({ queryKey: ['specializations'], queryFn: LookupsService.getSpecialisations, staleTime: 60 * 60 * 1000, enabled: authReady, retry: 1 })
 
   const state = useSearchState(departments)
   const { query, setQuery, dept, setDept, spec, setSpec, acceptingNew, setAcceptingNew, doctors, isLoading, isError, refetch, clearAll, hasFilters } = state
@@ -381,8 +385,9 @@ function DesktopSearch() {
 
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 function MobileSearch() {
-  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'public'], queryFn: DepartmentsService.getActiveDepartments, staleTime: 10 * 60 * 1000 })
-  const { data: specializations = [] } = useQuery({ queryKey: ['specializations'], queryFn: LookupsService.getSpecialisations, staleTime: 60 * 60 * 1000 })
+  const authReady = useAuthStore((s) => s.status === 'authenticated')
+  const { data: departments = [] } = useQuery({ queryKey: ['departments', 'public'], queryFn: DepartmentsService.getActiveDepartments, staleTime: 10 * 60 * 1000, enabled: authReady, retry: 1 })
+  const { data: specializations = [] } = useQuery({ queryKey: ['specializations'], queryFn: LookupsService.getSpecialisations, staleTime: 60 * 60 * 1000, enabled: authReady, retry: 1 })
 
   const state = useSearchState(departments)
   const { query, setQuery, dept, setDept, spec, setSpec, acceptingNew, setAcceptingNew, doctors, isLoading, isError, refetch, clearAll, hasFilters } = state

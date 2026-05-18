@@ -44,7 +44,7 @@ const STATUS_TONE: Record<string, 'primary' | 'warn' | 'neutral' | 'success'> = 
   REJECTED: 'neutral',
 }
 
-function AddLeaveDialog({ doctorId, onClose }: { doctorId: string; onClose: () => void }) {
+function AddLeaveDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -52,8 +52,11 @@ function AddLeaveDialog({ doctorId, onClose }: { doctorId: string; onClose: () =
   const [leaveType, setLeaveType] = useState<LeaveType>('PERSONAL')
 
   const mutation = useMutation({
+    // /me/leaves resolves the Doctor PK from the JWT — the FE only has user.id and
+    // those two ids are different (User.id != Doctor.id), so the older
+    // /doctors/{userId}/leaves path 404s for every doctor.
     mutationFn: async () => {
-      const response = await apiClient.post(`/api/v1/doctors/${doctorId}/leaves`, {
+      const response = await apiClient.post('/api/v1/me/leaves', {
         startDate,
         endDate,
         reason,
@@ -62,7 +65,7 @@ function AddLeaveDialog({ doctorId, onClose }: { doctorId: string; onClose: () =
       return unwrapApiResponse(response.data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['doctor', 'leaves', doctorId] })
+      queryClient.invalidateQueries({ queryKey: ['doctor', 'leaves', 'me'] })
       toast.success('Leave request submitted')
       onClose()
     },
@@ -123,16 +126,17 @@ function LeaveCard({ leave }: { leave: DoctorLeave }) {
   )
 }
 
-function LeaveContent({ doctorId }: { doctorId: string }) {
+function LeaveContent() {
   const [showAdd, setShowAdd] = useState(false)
+  const authReady = useAuthStore((s) => s.status === 'authenticated')
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['doctor', 'leaves', doctorId],
+    queryKey: ['doctor', 'leaves', 'me'],
     queryFn: async () => {
-      const response = await apiClient.get(`/api/v1/doctors/${doctorId}/leaves`)
+      const response = await apiClient.get('/api/v1/me/leaves')
       return unwrapApiResponse<DoctorLeave[]>(response.data)
     },
-    enabled: !!doctorId,
+    enabled: authReady,
   })
 
   return (
@@ -160,21 +164,19 @@ function LeaveContent({ doctorId }: { doctorId: string }) {
         </div>
       )}
 
-      {showAdd && <AddLeaveDialog doctorId={doctorId} onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddLeaveDialog onClose={() => setShowAdd(false)} />}
     </div>
   )
 }
 
 export default memo(function MobDocLeave() {
   const { isWide } = useViewport()
-  const user = useAuthStore((s) => s.user)
-  const doctorId = user?.id ?? ''
 
   if (isWide) {
     return (
       <DeskShell active="leave">
         <DeskTopbar title="Leave management" subtitle="Block out dates when you're unavailable" />
-        <LeaveContent doctorId={doctorId} />
+        <LeaveContent />
       </DeskShell>
     )
   }
@@ -182,7 +184,7 @@ export default memo(function MobDocLeave() {
   return (
     <MobScreen>
       <MobTopBar title="Leave management" back />
-      <LeaveContent doctorId={doctorId} />
+      <LeaveContent />
     </MobScreen>
   )
 })

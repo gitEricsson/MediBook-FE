@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=${_VITE_API_URL}'
+      - '--build-arg'
+      - 'VITE_ENV=production'
+      - '--build-arg'
+      - 'VITE_APP_NAME=MediBook'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/medibook-repo/medibook-fe:latest'
+      - '.'
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/medibook-repo/medibook-fe:latest'
+
+substitutions:
+  _VITE_API_URL: 'https://api.dreammedibook.com'

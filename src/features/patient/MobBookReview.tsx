@@ -34,7 +34,7 @@ function formatTime(iso: string) {
 export default memo(function MobBookReview() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { hold, doctor, scheduledAt } = location.state || {}
+  const { hold, doctor, scheduledAt, durationMins } = location.state || {}
   const [reason, setReason] = useState('')
   const [success, setSuccess] = useState(false)
   const [appointment, setAppointment] = useState<Appointment | null>(null)
@@ -56,19 +56,40 @@ export default memo(function MobBookReview() {
   }, [hold?.expiresAt])
 
   const handleConfirm = async () => {
+    // 1) Create the appointment in PENDING. Slot is reserved but not confirmed —
+    //    the payment webhook flips status to CONFIRMED. Stale pending appts are
+    //    auto-cancelled by a scheduled job.
+    let appt
     try {
-      const appt = await confirmBooking({
+      appt = await confirmBooking({
         holdId: hold.holdId,
         doctorId: Number(doctor.id),
         scheduledAt,
+        // Manual start/end picker supplies its own duration; falls back to the
+        // doctor's default slot length when unset.
+        durationMins,
         type: 'IN_PERSON',
         reason,
       })
       setAppointment(appt)
-      setSuccess(true)
     } catch {
       toast.error('Booking failed. Please try again.')
+      return
     }
+
+    // 2) If the consultation is free (amount = 0), skip the payment step entirely.
+    const amount = Number(doctor.consultationFee ?? 0)
+    if (amount <= 0) {
+      setSuccess(true)
+      return
+    }
+
+    // 3) Hand off to the dedicated payment page. The user sees what they owe and picks
+    //    a gateway before being redirected off-site. Pass appt + fee + doctor in state
+    //    because the appointment DTO itself doesn't carry the fee.
+    navigate(`/patient/pay/${appt.id}`, {
+      state: { appt, fee: amount, doctorName: doctor.name, doctorSpecialization: doctor.specialization, departmentName: doctor.department },
+    })
   }
 
   const handleAddToCalendar = async () => {
