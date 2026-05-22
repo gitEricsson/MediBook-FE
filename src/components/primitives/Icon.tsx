@@ -54,6 +54,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
   star:         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>,
   menu:         <path d="M3 12h18M3 6h18M3 18h18"/>,
   close:        <path d="M6 6l12 12M18 6L6 18"/>,
+  document:     <><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></>,
+  pause:        <><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></>,
+  mic:          <><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3M8 21h8"/></>,
 }
 
 export const Icon = memo(function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.75, style }: IconProps) {

@@ -14,7 +14,6 @@ export interface AccessGrantResponse {
   revokedAt?: string
   reason?: string
 }
-
 export const AccessGrantService = {
   // ── Patient: direct grant ────────────────────────────────────────────────
   grantPatientAccess: async (patientId: number, doctorId: number, reason?: string): Promise<AccessGrantResponse> => {

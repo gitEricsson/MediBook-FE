@@ -40,7 +40,7 @@ export interface FinalizeRequest {
   followUpDate?: string
 }
 
-const unwrap = <T>(r: { data: unknown }) => unwrapApiResponse<T>(r.data)
+const unwrap = <T>(r: { data: unknown }) => unwrapApiResponse<T>(r.data as T)
 
 export const CopilotService = {
   async start(telemedicineSessionId: number) {

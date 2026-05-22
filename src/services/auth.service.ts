@@ -53,7 +53,8 @@ export const AuthService = {
   refresh: async (data?: RefreshTokenRequest) => {
     const payload = data ?? { refreshToken: useAuthStore.getState().refreshToken ?? '' };
     const response = await apiClient.post('/api/v1/auth/refresh', payload);
-    return unwrapApiResponse<LoginResponse>(response.data);
+    const result = unwrapApiResponse<LoginResponse>(response.data);
+    return { ...result, user: result.user ? mapUser(result.user) : undefined };
   },
 
   logout: async () => {

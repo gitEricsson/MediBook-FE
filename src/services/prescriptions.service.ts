@@ -40,7 +40,7 @@ interface Page<T> {
   size: number
 }
 
-const u = <T>(r: { data: unknown }) => unwrapApiResponse<T>(r.data)
+const u = <T>(r: { data: unknown }) => unwrapApiResponse<T>(r.data as T)
 
 export const PrescriptionsService = {
   create:  async (body: CreatePrescription)         => u<Prescription>(await apiClient.post('/api/v1/prescriptions', body)),
