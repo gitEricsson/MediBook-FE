@@ -350,6 +350,22 @@ body {
   .mb-mobile-only { display: none !important; }
 }
 
+.mb-mobile-screen-frame {
+  max-width: none;
+}
+
+@media (min-width: 768px) {
+  .mb-mobile-screen {
+    align-items: stretch;
+  }
+
+  .mb-mobile-screen-frame {
+    max-width: 520px;
+    margin: 0 auto;
+    box-shadow: 0 0 0 1px var(--mb-line-2);
+  }
+}
+
 /* page container: centered max-width with horizontal padding */
 .mb-page {
   max-width: 1120px;
