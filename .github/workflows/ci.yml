@@ -42,11 +42,6 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # NOTE: ~50 service tests currently fail because the FE service-layer
-    # method signatures drifted ahead of the tests. They run in CI for
-    # visibility but don't block deploys until the tests are updated.
-    # Track in a separate cleanup task; do NOT silently delete this job.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -118,9 +113,12 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
       - name: Trivy scan
+        id: trivy
+        if: github.event_name == 'push'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          # Use the tag docker/metadata-action actually produced (short SHA).
+          image-ref: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
@@ -128,10 +126,12 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy SARIF
-        if: always()
+        # Only upload if Trivy actually produced the file.
+        if: github.event_name == 'push' && hashFiles('trivy-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results.sarif
+        continue-on-error: true
 
   deploy:
     name: Deploy to Cloud Run
