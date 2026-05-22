@@ -193,9 +193,9 @@ export const AdminService = {
   // Department CSV export
   exportDepartmentsCsv: async () => {
     const response = await apiClient.get('/api/v1/admin/departments/export.csv', {
-      responseType: 'blob',
+      responseType: 'text',
     });
-    return response.data as Blob;
+    return new Blob([response.data], { type: 'text/csv' });
   },
 
   // Doctor Leave (admin view)

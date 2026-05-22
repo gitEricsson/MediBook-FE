@@ -113,7 +113,7 @@ describe('Appointment Booking Integration Tests', () => {
   describe('Confirm Booking', () => {
     it('should confirm booking with valid hold', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -149,7 +149,7 @@ describe('Appointment Booking Integration Tests', () => {
 
     it('should reject booking without valid hold', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json(
             { success: false, error: 'Hold expired or invalid' },
             { status: 400 }
@@ -174,7 +174,7 @@ describe('Appointment Booking Integration Tests', () => {
 
     it('should reject double-booking', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json(
             { success: false, error: 'Slot already booked' },
             { status: 409 }

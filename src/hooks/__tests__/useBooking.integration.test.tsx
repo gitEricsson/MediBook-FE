@@ -123,7 +123,7 @@ describe('useBooking Hook Integration Tests', () => {
   describe('Confirm Booking', () => {
     it('should confirm appointment with valid hold', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -163,7 +163,7 @@ describe('useBooking Hook Integration Tests', () => {
 
     it('should transition from hold to confirmed state', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {

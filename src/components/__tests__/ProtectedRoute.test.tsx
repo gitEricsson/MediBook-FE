@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/store/authStore';
@@ -14,7 +14,17 @@ const queryClient = new QueryClient({
 
 const ProtectedComponent = () => <div data-testid="protected-content">Protected Content</div>;
 const UnauthorizedComponent = () => <div data-testid="unauthorized-content">Unauthorized</div>;
-const LoginComponent = () => <div data-testid="login-content">Login Page</div>;
+const LoginComponent = () => {
+  const { status, user } = useAuthStore();
+  const location = useLocation();
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/protected';
+
+  if (status === 'authenticated' && user) {
+    return <Navigate to={from} replace />;
+  }
+
+  return <div data-testid="login-content">Login Page</div>;
+};
 
 const renderWithRouter = (initialRoute = '/protected') => {
   return render(
@@ -282,6 +292,7 @@ describe('ProtectedRoute Component', () => {
         <QueryClientProvider client={queryClient}>
           <MemoryRouter initialEntries={['/protected']}>
             <Routes>
+              <Route path="/login" element={<LoginComponent />} />
               <Route
                 path="/protected"
                 element={

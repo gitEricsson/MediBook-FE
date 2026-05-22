@@ -10,6 +10,14 @@ export interface WorkingHours {
   isAvailable: boolean;
 }
 
+export interface LegacyWorkingHour {
+  startTime: string | null;
+  endTime: string | null;
+  isWorking: boolean;
+}
+
+export type LegacyWorkingHours = Record<string, LegacyWorkingHour>;
+
 export interface FreeSlot { start: string; end: string; }
 
 export interface ScheduleAppt {
@@ -58,7 +66,52 @@ export interface DailyScheduleDetails {
   freeSlots: FreeSlot[];
 }
 
+async function getWorkingHours(): Promise<WorkingHours[]>;
+async function getWorkingHours(doctorId: string): Promise<LegacyWorkingHours>;
+async function getWorkingHours(doctorId?: string): Promise<WorkingHours[] | LegacyWorkingHours> {
+  if (doctorId) {
+    const response = await apiClient.get(`/api/v1/doctors/${doctorId}/hours`);
+    return unwrapApiResponse<LegacyWorkingHours>(response.data);
+  }
+
+  const response = await apiClient.get('/api/v1/me/schedule/hours');
+  const hours = unwrapApiResponse<Array<{ dayOfWeek: number; startTime: string; endTime: string }>>(response.data);
+  return hours.map((hour) => ({
+    dayOfWeek: hour.dayOfWeek,
+    startTime: hour.startTime.slice(0, 5),
+    endTime: hour.endTime.slice(0, 5),
+    isAvailable: true,
+  }));
+}
+
+async function updateWorkingHours(hours: WorkingHours[]): Promise<unknown>;
+async function updateWorkingHours(doctorId: string, hours: Partial<LegacyWorkingHours>): Promise<LegacyWorkingHours>;
+async function updateWorkingHours(
+  doctorIdOrHours: string | WorkingHours[],
+  legacyHours?: Partial<LegacyWorkingHours>
+): Promise<unknown> {
+  if (typeof doctorIdOrHours === 'string') {
+    const response = await apiClient.patch(`/api/v1/doctors/${doctorIdOrHours}/hours`, legacyHours);
+    return unwrapApiResponse<LegacyWorkingHours>(response.data);
+  }
+
+  const schedule = doctorIdOrHours
+    .filter((hour) => hour.isAvailable !== false)
+    .map((hour) => ({
+      dayOfWeek: hour.dayOfWeek,
+      startTime: hour.startTime.length === 5 ? `${hour.startTime}:00` : hour.startTime,
+      endTime: hour.endTime.length === 5 ? `${hour.endTime}:00` : hour.endTime,
+    }));
+  const response = await apiClient.put('/api/v1/me/schedule/hours', { schedule });
+  return unwrapApiResponse(response.data);
+}
+
 export const DoctorPortalService = {
+  getSchedule: async (doctorId: string, date: string) => {
+    const response = await apiClient.get(`/api/v1/doctors/${doctorId}/schedule`, { params: { date } });
+    return unwrapApiResponse(response.data);
+  },
+
   getScheduleSummary: async () => {
     const response = await apiClient.get('/api/v1/me/schedule/summary');
     return unwrapApiResponse(response.data);
@@ -104,36 +157,52 @@ export const DoctorPortalService = {
     return unwrapApiResponse<Appointment>(response.data);
   },
 
-  getWorkingHours: async () => {
-    const response = await apiClient.get('/api/v1/me/schedule/hours');
-    const hours = unwrapApiResponse<Array<{ dayOfWeek: number; startTime: string; endTime: string }>>(response.data);
-    return hours.map((hour) => ({
-      dayOfWeek: hour.dayOfWeek,
-      startTime: hour.startTime.slice(0, 5),
-      endTime: hour.endTime.slice(0, 5),
-      isAvailable: true,
-    }));
-  },
+  getWorkingHours,
 
-  updateWorkingHours: async (hours: WorkingHours[]) => {
-    const schedule = hours
-      .filter((hour) => hour.isAvailable !== false)
-      .map((hour) => ({
-        dayOfWeek: hour.dayOfWeek,
-        startTime: hour.startTime.length === 5 ? `${hour.startTime}:00` : hour.startTime,
-        endTime: hour.endTime.length === 5 ? `${hour.endTime}:00` : hour.endTime,
-      }));
-    const response = await apiClient.put('/api/v1/me/schedule/hours', { schedule });
-    return unwrapApiResponse(response.data);
-  },
+  updateWorkingHours,
 
   getPatientSummary: async (patientId: string) => {
     const response = await apiClient.get<PatientSummary>(`/api/v1/patients/${patientId}/summary`);
     return unwrapApiResponse(response.data);
   },
 
+  getAppointmentDetails: async (appointmentId: string) => {
+    const response = await apiClient.get(`/api/v1/appointments/${appointmentId}`);
+    return unwrapApiResponse(response.data);
+  },
+
+  getLeaves: async (doctorId: string) => {
+    const response = await apiClient.get(`/api/v1/doctors/${doctorId}/leaves`);
+    return unwrapApiResponse(response.data);
+  },
+
+  createLeave: async (doctorId: string, payload: {
+    startDate: string;
+    endDate: string;
+    reason?: string;
+    leaveType?: 'PERSONAL' | 'SICK' | 'CONFERENCE' | 'HOLIDAY';
+  }) => {
+    const response = await apiClient.post(`/api/v1/doctors/${doctorId}/leaves`, payload);
+    return unwrapApiResponse(response.data);
+  },
+
   transitionAppointment: async (id: string, status: 'COMPLETED' | 'NO_SHOW') => {
     const response = await apiClient.post(`/api/v1/appointments/${id}/transition`, { to: status });
+    return unwrapApiResponse(response.data);
+  },
+
+  completeAppointment: async (appointmentId: string) => {
+    const response = await apiClient.post(`/api/v1/appointments/${appointmentId}/complete`);
+    return unwrapApiResponse(response.data);
+  },
+
+  markNoShow: async (appointmentId: string) => {
+    const response = await apiClient.post(`/api/v1/appointments/${appointmentId}/no-show`);
+    return unwrapApiResponse(response.data);
+  },
+
+  getTodayAppointments: async (doctorId: string) => {
+    const response = await apiClient.get(`/api/v1/doctors/${doctorId}/appointments/today`);
     return unwrapApiResponse(response.data);
   },
 

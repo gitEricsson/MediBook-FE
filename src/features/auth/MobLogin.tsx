@@ -140,7 +140,7 @@ function LoginForm({
         {needs2FA && (
           <Field label="Verification code" htmlFor="login-otp">
             <Input id="login-otp" value={otp} onChange={(e) => setOtp(e.target.value)}
-              inputMode="numeric" maxLength={6} autoComplete="one-time-code" />
+              inputMode="numeric" maxLength={6} autoComplete="one-time-code" placeholder="6 digit code" />
           </Field>
         )}
         {showVerifyPrompt && (
