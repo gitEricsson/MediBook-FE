@@ -12,6 +12,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts
 
+# lightningcss (used by Vite v8 / rolldown for CSS minification) ships native
+# binaries per-platform as optional deps. When the lockfile is generated on
+# Windows/macOS, npm filters out the Alpine (musl) binary as non-matching, so
+# `npm ci` on this Alpine builder leaves it missing. Install it explicitly so
+# the build doesn't blow up with "Cannot find module ../lightningcss.linux-x64-musl.node".
+RUN LIGHTNINGCSS_VERSION=$(node -p "require('./node_modules/lightningcss/package.json').version") && \
+    npm install --no-save --ignore-scripts "lightningcss-linux-x64-musl@${LIGHTNINGCSS_VERSION}"
+
 COPY . .
 
 ENV VITE_API_URL=${VITE_API_URL} \
