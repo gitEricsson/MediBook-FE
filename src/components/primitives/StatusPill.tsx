@@ -8,11 +8,12 @@ interface StatusPillProps {
 }
 
 const STATUS_MAP: Record<AppointmentStatus, { tone: BadgeTone; label: string }> = {
-  PENDING:   { tone: 'warn',    label: 'Pending'   },
-  CONFIRMED: { tone: 'primary', label: 'Confirmed' },
-  COMPLETED: { tone: 'success', label: 'Completed' },
-  CANCELLED: { tone: 'neutral', label: 'Cancelled' },
-  NO_SHOW:   { tone: 'danger',  label: 'No-show'   },
+  PENDING:                       { tone: 'warn',    label: 'Pending'        },
+  CONFIRMED:                     { tone: 'primary', label: 'Confirmed'      },
+  COMPLETED:                     { tone: 'success', label: 'Completed'      },
+  CANCELLED:                     { tone: 'neutral', label: 'Cancelled'      },
+  NO_SHOW:                       { tone: 'danger',  label: 'No-show'        },
+  EMERGENCY_PENDING_SETTLEMENT:  { tone: 'warn',    label: 'Payment due'    },
 }
 
 export const StatusPill = memo(function StatusPill({ status }: StatusPillProps) {

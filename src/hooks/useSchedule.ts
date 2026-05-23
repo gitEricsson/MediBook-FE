@@ -1,42 +1,29 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { DoctorPortalService } from '@/services/doctor-portal.service'
+import type {
+  DailyScheduleDetails as ServiceDailyScheduleDetails,
+  ScheduleAppt as ServiceScheduleAppt,
+  FreeSlot as ServiceFreeSlot,
+} from '@/services/doctor-portal.service'
 
-export interface FreeSlot { start: string; end: string; }
-
-// Define the structure that getDailySchedule will now return
-export interface DailyScheduleDetails {
-  appointments: Record<string, ScheduleAppt>;
-  workStart: string;
-  workEnd: string;
-  freeSlots: FreeSlot[];
-}
-
-export interface ScheduleAppt {
-  id?: string
-  name: string
-  reason: string
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
-  tone: string
-  dur?: number
-  next?: boolean
-  patientId?: string
-  /** The medium the patient booked (PHYSICAL | AUDIO | VIDEO). Drives the consultation-type tag. */
-  consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO'
-  /** Appointment type — used as fallback when medium is absent (e.g. TELEMEDICINE). */
-  type?: string
-}
+// Re-export the canonical types from the service so downstream components
+// only ever see one shape (was previously duplicated here with a narrower
+// status union, which broke type-checking once new statuses were added).
+export type FreeSlot = ServiceFreeSlot
+export type ScheduleAppt = ServiceScheduleAppt
+export type DailyScheduleDetails = ServiceDailyScheduleDetails
 
 /**
- * useSchedule Hook - Refactored to use DoctorPortalService with fallback
+ * useSchedule Hook - delegates to DoctorPortalService.
  */
 export function useSchedule(doctorId: string, date: string) {
-  return useQuery<DailyScheduleDetails, Error>({ // Changed return type
+  return useQuery<DailyScheduleDetails, Error>({
     queryKey: ['schedule', doctorId, date],
     queryFn: async () => {
       try {
-        return DoctorPortalService.getDailySchedule(date);
+        return await DoctorPortalService.getDailySchedule(date)
       } catch (error) {
-        throw error instanceof Error ? error : new Error('Unable to load schedule');
+        throw error instanceof Error ? error : new Error('Unable to load schedule')
       }
     },
     staleTime: 1000 * 60 * 1,
@@ -52,8 +39,8 @@ export function useUpNext() {
   return useQuery({
     queryKey: ['schedule', 'up-next'],
     queryFn: DoctorPortalService.getUpNext,
-    staleTime: 1000 * 30, // 30 seconds
-  });
+    staleTime: 1000 * 30,
+  })
 }
 
 /**
@@ -64,5 +51,5 @@ export function usePatientSummary(patientId: string) {
     queryKey: ['patients', patientId, 'summary'],
     queryFn: () => DoctorPortalService.getPatientSummary(patientId),
     enabled: !!patientId,
-  });
+  })
 }
