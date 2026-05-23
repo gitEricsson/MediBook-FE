@@ -13,6 +13,10 @@ import { usePostPaymentVerify } from '@/hooks/usePostPaymentVerify'
 // ── Landing ───────────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
 
+// ── Legal (public static pages) ───────────────────────────────────────────
+const MobTerms   = lazy(() => import('@/features/legal/MobTerms'))
+const MobPrivacy = lazy(() => import('@/features/legal/MobPrivacy'))
+
 // ── Auth ──────────────────────────────────────────────────────────────────
 const MobLogin           = lazy(() => import('@/features/auth/MobLogin'))
 const MobRegister        = lazy(() => import('@/features/auth/MobRegister'))
@@ -140,6 +144,10 @@ export default function App() {
             <Route path="/admin/settings"  element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DeskSettings /></ProtectedRoute>} />
             <Route path="/admin/admins"    element={<ProtectedRoute allowedRoles={['super_admin']}><DeskSuperAdmins /></ProtectedRoute>} />
             <Route path="/admin/deleted-records" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><MobDeletedRecords /></ProtectedRoute>} />
+
+            {/* ── Legal (public) ─────────────────────────────────────── */}
+            <Route path="/terms"   element={<MobTerms />} />
+            <Route path="/privacy" element={<MobPrivacy />} />
 
             {/* ── Default ────────────────────────────────────────────── */}
             <Route path="/"  element={<LandingPage />} />

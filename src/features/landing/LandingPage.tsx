@@ -1244,11 +1244,14 @@ function Footer() {
         <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 24, display: 'flex', justifyContent: isMobile ? 'center' : 'space-between', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textAlign: 'center' }}>© 2026 MediBook Health. All rights reserved.</div>
           <div style={{ display: 'flex', gap: 20 }}>
-            {['Privacy Policy', 'Terms of Service'].map((l) => (
-              <a key={l} href="#" style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textDecoration: 'none', transition: 'color .12s' }}
+            {[
+              { label: 'Privacy Policy',  href: '/privacy' },
+              { label: 'Terms of Service', href: '/terms'   },
+            ].map((l) => (
+              <a key={l.label} href={l.href} style={{ fontSize: 12, color: 'rgba(255,255,255,.3)', textDecoration: 'none', transition: 'color .12s' }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,.65)' }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,.3)' }}>
-                {l}
+                {l.label}
               </a>
             ))}
           </div>
