@@ -48,6 +48,7 @@ interface VideoCallState {
   isInCall: boolean;
   isMuted: boolean;
   isCameraOff: boolean;
+  isAudioOnlyMedium: boolean;  // true when the appointment medium is AUDIO — camera permanently blocked
   error: string | null;
   startCall: (appointmentId: number, audioOnly?: boolean) => Promise<void>;
   joinCall: (session: VideoCallSession, audioOnly?: boolean) => Promise<void>;
@@ -106,6 +107,7 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
   isInCall: false,
   isMuted: false,
   isCameraOff: false,
+  isAudioOnlyMedium: false,
   error: null,
 
   startCall: async (appointmentId, audioOnly = false) => {
@@ -120,7 +122,10 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
   },
 
   joinCall: async (session, audioOnly = false) => {
-    set({ isConnecting: true, error: null, activeCall: session, isCameraOff: audioOnly });
+    // If the appointment medium is AUDIO, force audio-only regardless of what was requested.
+    const mediumIsAudioOnly = Boolean(session.audioOnly);
+    const effectiveAudioOnly = audioOnly || mediumIsAudioOnly;
+    set({ isConnecting: true, error: null, activeCall: session, isCameraOff: effectiveAudioOnly, isAudioOnlyMedium: mediumIsAudioOnly });
     try {
       const [twilioVideo, tokenResponse] = await Promise.all([
         /* @vite-ignore */ import('twilio-video') as Promise<unknown>,
@@ -135,7 +140,7 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
       };
 
       const localTracks: TwilioTrack[] = [await createLocalAudioTrack()] as TwilioTrack[];
-      if (!audioOnly) {
+      if (!effectiveAudioOnly) {
         localTracks.push(await createLocalVideoTrack({ width: 960, height: 540 }) as TwilioTrack);
       }
 
@@ -166,10 +171,11 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
           isInCall: false,
           isMuted: false,
           isCameraOff: false,
+          isAudioOnlyMedium: false,
         });
       });
 
-      const joined = await TelemedicineService.joinCall(session.sessionId, !audioOnly, true);
+      const joined = await TelemedicineService.joinCall(session.sessionId, !effectiveAudioOnly, true);
       set({
         activeCall: { ...joined, token: tokenResponse.token, identity: tokenResponse.identity, tokenExpiresAt: tokenResponse.expiresAt },
         room,
@@ -177,7 +183,8 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
         isConnecting: false,
         isInCall: true,
         isMuted: false,
-        isCameraOff: audioOnly,
+        isCameraOff: effectiveAudioOnly,
+        isAudioOnlyMedium: mediumIsAudioOnly,
       });
     } catch (error) {
       get().cleanupRoom();
@@ -211,6 +218,8 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
   },
 
   toggleCamera: async () => {
+    // Block camera toggle entirely for AUDIO-medium appointments.
+    if (get().isAudioOnlyMedium) return;
     const nextCameraOff = !get().isCameraOff;
     const existingVideoTracks = get().localTracks.filter((track) => track.kind === 'video');
 
@@ -252,6 +261,7 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
       isInCall: false,
       isMuted: false,
       isCameraOff: false,
+      isAudioOnlyMedium: false,
     });
   },
 }));

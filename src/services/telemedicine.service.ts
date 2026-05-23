@@ -51,6 +51,7 @@ export interface VideoCallSession {
   acceptedAt?: string;
   endedAt?: string;
   durationSeconds?: number;
+  audioOnly?: boolean;
 }
 
 export interface VideoTokenResponse {

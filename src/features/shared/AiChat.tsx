@@ -40,7 +40,7 @@ import { useVideoCallStore } from '@/store/videoCallStore'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
-import { VideoRoomModal } from './video/VideoRoomModal'
+// VideoRoomModal is now mounted globally in App.tsx
 
 // ── Message bubble ─────────────────────────────────────────────────────────────
 
@@ -106,36 +106,27 @@ function MessageBubble({ msg, currentUserId }: { msg: MessageResponse; currentUs
   )
 }
 
-function CallBanner({ call, onJoinVideo, onJoinAudio, loading }: {
-  call: VideoCallSession
-  onJoinVideo: () => void
-  onJoinAudio: () => void
-  loading?: boolean
-}) {
+function CallBanner({ call }: { call: VideoCallSession }) {
   const isActive = call.status === 'ACTIVE'
   return (
-    <div style={{ margin: '0 16px 10px', padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 180 }}>
+    <div style={{ margin: '0 16px 10px', padding: '10px 12px', borderRadius: 10, background: '#ECFDF5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', flexShrink: 0, animation: isActive ? undefined : 'pulse 1.5s ease-in-out infinite' }} />
+      <div>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#065F46' }}>{isActive ? 'Video call is active' : 'Incoming video call'}</div>
-        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Join from this chat when you are ready.</div>
+        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>Use the buttons above to join.</div>
       </div>
-      <Btn variant="secondary" size="sm" icon="phone" loading={loading} onClick={onJoinAudio}>
-        Audio only
-      </Btn>
-      <Btn variant="primary" size="sm" icon="camera" loading={loading} onClick={onJoinVideo}>
-        Join
-      </Btn>
     </div>
   )
 }
 
-function CallToolbar({ appointmentId, activeCall }: { appointmentId?: number; activeCall?: VideoCallSession | null }) {
+function CallToolbar({ appointmentId, activeCall, medium }: { appointmentId?: number; activeCall?: VideoCallSession | null; medium?: string }) {
   const queryClient = useQueryClient()
   const startCall = useVideoCallStore((s) => s.startCall)
   const joinCall = useVideoCallStore((s) => s.joinCall)
   const isConnecting = useVideoCallStore((s) => s.isConnecting)
   const isInCall = useVideoCallStore((s) => s.isInCall)
   const hasActiveCall = Boolean(activeCall && ['CREATED', 'RINGING', 'WAITING', 'ACTIVE'].includes(activeCall.status))
+  const isAudioMedium = medium === 'AUDIO'
 
   const refreshCallState = () => {
     if (appointmentId) {
@@ -168,25 +159,43 @@ function CallToolbar({ appointmentId, activeCall }: { appointmentId?: number; ac
     <div style={{ padding: '10px 16px', borderBottom: `1px solid ${MB.line2}`, background: MB.bg, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 160 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: MB.ink }}>Consultation chat</div>
-        <div style={{ fontSize: 12, color: MB.text3 }}>Video and audio stay inside this conversation.</div>
+        <div style={{ fontSize: 12, color: MB.text3 }}>
+          {isAudioMedium ? 'Audio consultation — voice only.' : 'Video and audio stay inside this conversation.'}
+        </div>
       </div>
       {hasActiveCall ? (
         <>
-          <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
-            Audio only
-          </Btn>
-          <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(false)}>
-            Join call
-          </Btn>
+          {isAudioMedium ? (
+            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
+              Join call
+            </Btn>
+          ) : (
+            <>
+              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
+                Audio only
+              </Btn>
+              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(false)}>
+                Join call
+              </Btn>
+            </>
+          )}
         </>
       ) : (
         <>
-          <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
-            Audio only
-          </Btn>
-          <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(false)}>
-            Video call
-          </Btn>
+          {isAudioMedium ? (
+            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
+              Start call
+            </Btn>
+          ) : (
+            <>
+              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
+                Audio only
+              </Btn>
+              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(false)}>
+                Video call
+              </Btn>
+            </>
+          )}
         </>
       )}
     </div>
@@ -377,6 +386,7 @@ function ChatView({ conversationId }: { conversationId: number }) {
   const [text, setText] = useState('')
   const [showConsent, setShowConsent] = useState(false)
   const [consentGranted, setConsentGranted] = useState(false)
+  const [consentInitialized, setConsentInitialized] = useState(false)
   const [hasUrgent, setHasUrgent] = useState(false)
 
   const [liveMessages, setLiveMessages] = useState<MessageResponse[]>([])
@@ -466,9 +476,6 @@ function ChatView({ conversationId }: { conversationId: number }) {
     type: chatAppt?.type,
   })
 
-  const joinCall = useVideoCallStore((s) => s.joinCall)
-  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
-
   // Derive last patient message for AI draft context
   const lastPatientMsg = [...messages].reverse().find((m) => m.senderRole === 'PATIENT')?.body ?? ''
 
@@ -478,13 +485,26 @@ function ChatView({ conversationId }: { conversationId: number }) {
     setHasUrgent(urgent)
   }, [messages])
 
-  // Show consent dialog for first-time patient
+  // Seed consentGranted from the conversation's persisted aiEnabled flag so the
+  // dialog doesn't re-appear every time the patient opens the chat.
   useEffect(() => {
-    if (isPatient && messages.length > 0 && !consentGranted) {
+    if (conversation && !consentInitialized) {
+      setConsentGranted(conversation.aiEnabled)
+      setConsentInitialized(true)
+    }
+  }, [conversation, consentInitialized])
+
+  // Show consent dialog exactly once per conversation — never again after the
+  // patient grants OR declines. We track "already prompted" in localStorage so
+  // it survives page reloads / re-mounts.
+  useEffect(() => {
+    if (isPatient && consentInitialized && !consentGranted && messages.length > 0) {
+      const prompted = localStorage.getItem(`mb_ai_prompted_${conversationId}`)
+      if (prompted) return
       const hasAi = messages.some((m) => m.aiGenerated)
       if (!hasAi) setShowConsent(true)
     }
-  }, [isPatient, messages.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isPatient, consentInitialized, consentGranted, messages.length, conversationId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -506,16 +526,6 @@ function ChatView({ conversationId }: { conversationId: number }) {
     if (text.trim()) sendMutation.mutate(text.trim())
   }
 
-  const handleBannerJoin = async (audioOnly: boolean) => {
-    if (!activeCall) return
-    try {
-      await joinCall(activeCall, audioOnly)
-      queryClient.invalidateQueries({ queryKey: ['telemedicine', 'active-call', appointmentId] })
-    } catch (error) {
-      toast.error(parseApiError(error).message || 'Could not join call')
-    }
-  }
-
   if (isLoading) return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       {[0, 1, 2, 3].map((i) => <Skel key={i} h={60} r={12} />)}
@@ -525,7 +535,7 @@ function ChatView({ conversationId }: { conversationId: number }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <CallToolbar appointmentId={appointmentId} activeCall={activeCall} />
+      <CallToolbar appointmentId={appointmentId} activeCall={activeCall} medium={chatAppt?.consultationMedium} />
 
       {/* Urgency banner */}
       {hasUrgent && (
@@ -535,12 +545,7 @@ function ChatView({ conversationId }: { conversationId: number }) {
       )}
 
       {activeCall && ['CREATED', 'RINGING', 'WAITING', 'ACTIVE'].includes(activeCall.status) && (
-        <CallBanner
-          call={activeCall}
-          loading={isConnectingCall}
-          onJoinAudio={() => handleBannerJoin(true)}
-          onJoinVideo={() => handleBannerJoin(false)}
-        />
+        <CallBanner call={activeCall} />
       )}
 
       {/* Message list */}
@@ -624,11 +629,10 @@ function ChatView({ conversationId }: { conversationId: number }) {
       {showConsent && (
         <ConsentDialog
           conversationId={conversationId}
-          onGranted={() => { setConsentGranted(true); setShowConsent(false) }}
-          onDeclined={() => setShowConsent(false)}
+          onGranted={() => { setConsentGranted(true); setShowConsent(false); localStorage.setItem(`mb_ai_prompted_${conversationId}`, '1') }}
+          onDeclined={() => { setShowConsent(false); localStorage.setItem(`mb_ai_prompted_${conversationId}`, '1') }}
         />
       )}
-      <VideoRoomModal />
     </div>
   )
 }

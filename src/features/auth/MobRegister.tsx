@@ -71,7 +71,8 @@ function useRegisterLogic() {
       }
 
       await register(sanitizedData)
-      localStorage.removeItem('mb_tour_seen')
+      // Tour key is now user-scoped (mb_tour_seen_{userId}) so new users
+      // automatically see the tour — no need to clear anything.
       setRegistered(true)
     } catch (err) {
       const parsed = parseApiError(err)

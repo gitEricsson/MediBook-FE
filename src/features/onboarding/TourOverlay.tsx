@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useCallback } from 'react'
 import { MB } from '@/constants/tokens'
 import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
+import { useAuthStore } from '@/store/authStore'
 
 interface Step {
   title: string
@@ -27,20 +28,22 @@ const STEPS: Step[] = [
 export const TourOverlay = memo(function TourOverlay() {
   const [step, setStep] = useState(0)
   const [isVisible, setIsVisible] = useState(false)
+  const userId = useAuthStore((s) => s.user?.id)
 
   useEffect(() => {
-    const seen = localStorage.getItem('mb_tour_seen')
+    if (!userId) return
+    const key = `mb_tour_seen_${userId}`
+    const seen = localStorage.getItem(key)
     if (!seen) {
-      // Delay slightly to let the initial load finish
       const timer = setTimeout(() => setIsVisible(true), 1200)
       return () => clearTimeout(timer)
     }
-  }, [])
+  }, [userId])
 
   const finish = useCallback(() => {
-    localStorage.setItem('mb_tour_seen', 'true')
+    if (userId) localStorage.setItem(`mb_tour_seen_${userId}`, 'true')
     setIsVisible(false)
-  }, [])
+  }, [userId])
 
   const next = useCallback(() => {
     if (step < STEPS.length - 1) {

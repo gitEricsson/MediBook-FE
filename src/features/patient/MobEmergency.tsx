@@ -13,6 +13,7 @@ import { useViewport } from '@/hooks/useViewport'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
+import { useVideoCallStore } from '@/store/videoCallStore'
 import { toast } from 'sonner'
 import {
   EmergencyService,
@@ -41,6 +42,8 @@ export default memo(function MobEmergency() {
   const { isWide } = useViewport()
   const authReady = useAuthStore((s) => s.status === 'authenticated')
   const navigate = useNavigate()
+  const videoStartCall = useVideoCallStore((s) => s.startCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
   const [medium, setMedium] = useState<EmergencyMedium>('VIDEO')
   const [symptoms, setSymptoms] = useState('')
   const [departmentId, setDepartmentId] = useState<string>('')
@@ -115,7 +118,8 @@ export default memo(function MobEmergency() {
       <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
         {result.sessionId != null && result.medium !== 'PHYSICAL' && (
           <Btn variant="primary" size="lg" style={{ flex: 1 }} icon="video"
-            onClick={() => navigate(`/patient/telemedicine/${result.sessionId}`)}>
+            loading={isConnectingCall}
+            onClick={() => videoStartCall(result.appointmentId, result.medium === 'AUDIO')}>
             Join call now
           </Btn>
         )}

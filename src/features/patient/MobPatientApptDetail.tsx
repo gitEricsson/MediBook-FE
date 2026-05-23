@@ -18,7 +18,7 @@ import { useViewport } from '@/hooks/useViewport'
 import { useConsultationGating, type ConsultationGating } from '@/hooks/useConsultationGating'
 import { AppointmentsService } from '@/services/appointments.service'
 import { ChatService } from '@/services/chat.service'
-import { TelemedicineService } from '@/services/telemedicine.service'
+import { useVideoCallStore } from '@/store/videoCallStore'
 import { ReviewsService, type ReviewResponse } from '@/services/reviews.service'
 import { BookingService } from '@/services/booking.service'
 import { ConsultationNotesService, type ConsultationNoteResponse } from '@/services/consultation-notes.service'
@@ -247,10 +247,12 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
 
   const medium = appt.consultationMedium
   const isPhysical = medium === 'PHYSICAL' || (!medium && appt.type === 'IN_PERSON')
-  // Audio and video availability driven strictly by what the patient paid for
+  // Audio and video availability driven strictly by what the patient paid for.
+  // When consultationMedium is set, it takes priority over legacy type.
   const hasAudio = medium === 'AUDIO' || medium === 'VIDEO'
-    || appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH'
-  const hasVideo = medium === 'VIDEO' || appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH'
+    || (!medium && (appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH'))
+  const hasVideo = medium === 'VIDEO'
+    || (!medium && (appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH'))
 
   // Existing review for this appointment — used to render the rate-visit affordance.
   const { data: reviews } = useQuery({
@@ -286,21 +288,9 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
     },
   })
 
-  // Start / join telemedicine call.
-  const startCall = useMutation({
-    mutationFn: () => TelemedicineService.startVideoCall(Number(appt.id)),
-    onSuccess: (s) => navigate(`/patient/telemedicine/${s.sessionId}`),
-    onError: (err) => {
-      const code = (err as { errorCode?: string })?.errorCode
-      if (code === 'APPOINTMENT_NOT_CONFIRMED') {
-        toast.error('Complete payment to join the call.')
-      } else if (code === 'TELEMEDICINE_NOT_CONFIGURED') {
-        toast.error('Telemedicine is not enabled on this environment.')
-      } else {
-        toast.error(parseApiError(err).message || 'Unable to start video call.')
-      }
-    },
-  })
+  // Start / join telemedicine call — opens Twilio overlay directly.
+  const videoStartCall = useVideoCallStore((s) => s.startCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
 
   const cancelMutation = useMutation({
     mutationFn: () => BookingService.cancel(String(appt.id), 'Cancelled by patient'),
@@ -395,8 +385,8 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
                 icon="phone"
                 label="Audio call"
                 enabled={gating.telemedicineAvailable && !isPending}
-                loading={startCall.isPending}
-                onClick={() => startCall.mutate()}
+                loading={isConnectingCall}
+                onClick={() => videoStartCall(Number(appt.id), true)}
               />
             )}
             {hasVideo && (
@@ -404,8 +394,8 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
                 icon="video"
                 label="Video call"
                 enabled={gating.telemedicineAvailable && !isPending}
-                loading={startCall.isPending}
-                onClick={() => startCall.mutate()}
+                loading={isConnectingCall}
+                onClick={() => videoStartCall(Number(appt.id), false)}
               />
             )}
           </div>

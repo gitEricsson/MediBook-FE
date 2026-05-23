@@ -9,6 +9,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { UnauthorizedState } from '@/components/auth/UnauthorizedState'
 import { useIdleTimeout } from '@/hooks/useIdleTimeout'
 import { usePostPaymentVerify } from '@/hooks/usePostPaymentVerify'
+import { VideoRoomModal } from '@/features/shared/video/VideoRoomModal'
 
 // ── Landing ───────────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('@/features/landing/LandingPage'))
@@ -54,7 +55,6 @@ const MobDocPrescriptions = lazy(() => import('@/features/doctor/MobDocPrescript
 const MobPrescriptions    = lazy(() => import('@/features/patient/MobPrescriptions'))
 
 // ── Shared ────────────────────────────────────────────────────────────────
-const MobTelemedicine = lazy(() => import('@/features/shared/MobTelemedicine'))
 const AiChat          = lazy(() => import('@/features/shared/AiChat'))
 
 // ── Admin ─────────────────────────────────────────────────────────────────
@@ -111,7 +111,6 @@ export default function App() {
             <Route path="/patient/waitlist"  element={<ProtectedRoute allowedRoles={['patient']}><MobWaitlist /></ProtectedRoute>} />
             <Route path="/patient/recurring" element={<ProtectedRoute allowedRoles={['patient']}><MobRecurringAppts /></ProtectedRoute>} />
             <Route path="/patient/emergency" element={<ProtectedRoute allowedRoles={['patient']}><MobEmergency /></ProtectedRoute>} />
-            <Route path="/patient/telemedicine/:sessionId" element={<ProtectedRoute allowedRoles={['patient']}><MobTelemedicine /></ProtectedRoute>} />
             <Route path="/patient/chat/:conversationId"  element={<ProtectedRoute allowedRoles={['patient']}><AiChat /></ProtectedRoute>} />
 
             {/* ── Doctor ─────────────────────────────────────────────── */}
@@ -126,8 +125,6 @@ export default function App() {
             <Route path="/doctor/hours"       element={<ProtectedRoute allowedRoles={['doctor']}><MobDocHours /></ProtectedRoute>} />
             <Route path="/doctor/profile"     element={<ProtectedRoute allowedRoles={['doctor']}><MobDocProfile /></ProtectedRoute>} />
             <Route path="/doctor/leave"       element={<ProtectedRoute allowedRoles={['doctor']}><MobDocLeave /></ProtectedRoute>} />
-            <Route path="/doctor/telemedicine/:sessionId" element={<ProtectedRoute allowedRoles={['doctor']}><MobTelemedicine /></ProtectedRoute>} />
-            <Route path="/doctor/telemedicine/:sessionId/copilot" element={<ProtectedRoute allowedRoles={['doctor']}><MobDocCopilot /></ProtectedRoute>} />
             <Route path="/doctor/chat/:conversationId"   element={<ProtectedRoute allowedRoles={['doctor']}><AiChat /></ProtectedRoute>} />
 
             {/* ── Admin ──────────────────────────────────────────────── */}
@@ -156,6 +153,7 @@ export default function App() {
         </Suspense>
 
         {authStatus === 'authenticated' && <TourOverlay />}
+        <VideoRoomModal />
         <MediBookAssistantWidget />
       </div>
     </BrowserRouter>

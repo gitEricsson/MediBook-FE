@@ -15,7 +15,7 @@ import { useMyAppointments, useMyAppointmentsCursor } from '@/hooks/useAppointme
 import { BookingService } from '@/services/booking.service'
 import { AppointmentsService } from '@/services/appointments.service'
 import { ChatService } from '@/services/chat.service'
-import { TelemedicineService } from '@/services/telemedicine.service'
+import { useVideoCallStore } from '@/store/videoCallStore'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { toast } from 'sonner'
@@ -81,6 +81,8 @@ function ApptSkel() {
 
 function ApptCard({ appt }: { appt: Appointment }) {
   const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
+  const videoStartCall = useVideoCallStore((s) => s.startCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
   const { month, day, time } = formatDate(appt.scheduledAt)
   const scheduled = parseBackendDateTime(appt.scheduledAt)
 
@@ -154,31 +156,25 @@ function ApptCard({ appt }: { appt: Appointment }) {
               >
                 Chat & AI
               </Btn>
-              {(appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH') && (
-                <Btn
-                  variant="primary"
-                  size="sm"
-                  icon="video"
-                  style={{ flex: 1 }}
-                  onClick={async () => {
-                    try {
-                      const s = await TelemedicineService.startVideoCall(Number(appt.id))
-                      navigate(`/patient/telemedicine/${s.sessionId}`)
-                    } catch (err) {
-                      const code = (err as { errorCode?: string })?.errorCode
-                      if (code === 'APPOINTMENT_NOT_CONFIRMED') {
-                        toast.error('Complete payment to join the call.')
-                      } else if (code === 'TELEMEDICINE_NOT_CONFIGURED') {
-                        toast.error('Telemedicine is not enabled on this environment.')
-                      } else {
-                        toast.error('Unable to start video call.')
-                      }
-                    }
-                  }}
-                >
-                  Join call
-                </Btn>
-              )}
+              {(() => {
+                const med = appt.consultationMedium
+                const isRemote = med === 'AUDIO' || med === 'VIDEO'
+                  || (!med && (appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH'))
+                if (!isRemote) return null
+                const audioOnly = med === 'AUDIO'
+                return (
+                  <Btn
+                    variant="primary"
+                    size="sm"
+                    icon={audioOnly ? 'phone' : 'video'}
+                    style={{ flex: 1 }}
+                    loading={isConnectingCall}
+                    onClick={() => videoStartCall(Number(appt.id), audioOnly)}
+                  >
+                    {audioOnly ? 'Call' : 'Join call'}
+                  </Btn>
+                )
+              })()}
             </div>
           )}
           <div onClick={stop} style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>

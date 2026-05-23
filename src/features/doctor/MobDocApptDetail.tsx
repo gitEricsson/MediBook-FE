@@ -23,7 +23,7 @@ import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
 import { ChatService } from '@/services/chat.service'
-import { TelemedicineService } from '@/services/telemedicine.service'
+import { useVideoCallStore } from '@/store/videoCallStore'
 import type { IconName } from '@/types/ui'
 
 // ── Communication icon button (chat / audio / video) ─────────────────────────
@@ -255,6 +255,8 @@ function MobileDocApptDetail() {
   const queryClient = useQueryClient();
   const { appt, time } = location.state || {};
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const videoStartCall = useVideoCallStore((s) => s.startCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
 
   const patientId = appt?.patientId;
   const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '');
@@ -377,8 +379,8 @@ function MobileDocApptDetail() {
             const med = fullAppt?.consultationMedium
             const typ = fullAppt?.type ?? appt.type
             const isPhysical = med === 'PHYSICAL' || (!med && typ === 'IN_PERSON')
-            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
-            const hasVideo  = med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || (!med && (typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'))
+            const hasVideo  = med === 'VIDEO' || (!med && (typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'))
             if (isPhysical) return null
             return (
               <Section title="Communication">
@@ -400,12 +402,8 @@ function MobileDocApptDetail() {
                         icon="phone"
                         label="Audio call"
                         enabled={gating.telemedicineAvailable}
-                        onClick={async () => {
-                          try {
-                            const session = await TelemedicineService.startVideoCall(Number(id))
-                            navigate(`/doctor/telemedicine/${session.sessionId}`)
-                          } catch { toast.error('Could not start audio call.') }
-                        }}
+                        loading={isConnectingCall}
+                        onClick={() => videoStartCall(Number(id), true)}
                       />
                     )}
                     {hasVideo && (
@@ -413,12 +411,8 @@ function MobileDocApptDetail() {
                         icon="video"
                         label="Video call"
                         enabled={gating.telemedicineAvailable}
-                        onClick={async () => {
-                          try {
-                            const session = await TelemedicineService.startVideoCall(Number(id))
-                            navigate(`/doctor/telemedicine/${session.sessionId}`)
-                          } catch { toast.error('Could not start video call.') }
-                        }}
+                        loading={isConnectingCall}
+                        onClick={() => videoStartCall(Number(id), false)}
                       />
                     )}
                   </div>
@@ -506,6 +500,8 @@ function DesktopDocApptDetail() {
   const queryClient = useQueryClient()
   const { appt, time } = location.state || {}
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
+  const videoStartCall = useVideoCallStore((s) => s.startCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
   const patientId = appt?.patientId
   const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '')
 
@@ -602,8 +598,8 @@ function DesktopDocApptDetail() {
             const med = fullAppt?.consultationMedium
             const typ = fullAppt?.type ?? appt.type
             const isPhysical = med === 'PHYSICAL' || (!med && typ === 'IN_PERSON')
-            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
-            const hasVideo  = med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || (!med && (typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'))
+            const hasVideo  = med === 'VIDEO' || (!med && (typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'))
             if (isPhysical) return null
             return (
               <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
@@ -625,12 +621,8 @@ function DesktopDocApptDetail() {
                       icon="phone"
                       label="Audio call"
                       enabled={gating.telemedicineAvailable}
-                      onClick={async () => {
-                        try {
-                          const session = await TelemedicineService.startVideoCall(Number(id))
-                          navigate(`/doctor/telemedicine/${session.sessionId}`)
-                        } catch { toast.error('Could not start audio call.') }
-                      }}
+                      loading={isConnectingCall}
+                      onClick={() => videoStartCall(Number(id), true)}
                     />
                   )}
                   {hasVideo && (
@@ -638,12 +630,8 @@ function DesktopDocApptDetail() {
                       icon="video"
                       label="Video call"
                       enabled={gating.telemedicineAvailable}
-                      onClick={async () => {
-                        try {
-                          const session = await TelemedicineService.startVideoCall(Number(id))
-                          navigate(`/doctor/telemedicine/${session.sessionId}`)
-                        } catch { toast.error('Could not start video call.') }
-                      }}
+                      loading={isConnectingCall}
+                      onClick={() => videoStartCall(Number(id), false)}
                     />
                   )}
                 </div>

@@ -80,6 +80,7 @@ export const VideoRoomModal = memo(function VideoRoomModal() {
   const isConnecting = useVideoCallStore((s) => s.isConnecting);
   const error = useVideoCallStore((s) => s.error);
   const toggleMicrophone = useVideoCallStore((s) => s.toggleMicrophone);
+  const isAudioOnlyMedium = useVideoCallStore((s) => s.isAudioOnlyMedium);
   const toggleCamera = useVideoCallStore((s) => s.toggleCamera);
   const leaveCall = useVideoCallStore((s) => s.leaveCall);
   const endCall = useVideoCallStore((s) => s.endCall);
@@ -92,7 +93,7 @@ export const VideoRoomModal = memo(function VideoRoomModal() {
       <div style={{ width: 'min(980px, 100%)', maxHeight: '94vh', overflow: 'hidden', borderRadius: 10, background: '#0B1220', color: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.4)' }}>
         <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>Video consultation</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{isAudioOnlyMedium ? 'Audio consultation' : 'Video consultation'}</div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)' }}>{activeCall.roomName} · {duration}</div>
           </div>
           <Btn variant="secondary" size="sm" onClick={() => leaveCall()} style={{ background: '#111827', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }}>
@@ -121,9 +122,11 @@ export const VideoRoomModal = memo(function VideoRoomModal() {
           <Btn variant="secondary" size="sm" onClick={toggleMicrophone} style={{ background: isMuted ? '#374151' : MB.bg, color: isMuted ? '#fff' : MB.text }}>
             {isMuted ? 'Unmute' : 'Mute'}
           </Btn>
-          <Btn variant="secondary" size="sm" onClick={toggleCamera} style={{ background: isCameraOff ? '#374151' : MB.bg, color: isCameraOff ? '#fff' : MB.text }}>
-            {isCameraOff ? 'Camera on' : 'Camera off'}
-          </Btn>
+          {!isAudioOnlyMedium && (
+            <Btn variant="secondary" size="sm" onClick={toggleCamera} style={{ background: isCameraOff ? '#374151' : MB.bg, color: isCameraOff ? '#fff' : MB.text }}>
+              {isCameraOff ? 'Camera on' : 'Camera off'}
+            </Btn>
+          )}
           <Btn variant="danger" size="sm" onClick={() => endCall()}>
             End call
           </Btn>
