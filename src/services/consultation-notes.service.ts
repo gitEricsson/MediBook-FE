@@ -56,6 +56,11 @@ export const ConsultationNotesService = {
     return unwrapApiResponse<ConsultationNoteResponse>(response.data);
   },
 
+  /** Soft-deletes a consultation note. Backend honours @SQLDelete on the entity. */
+  deleteNote: async (noteId: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/consultation-notes/${noteId}`);
+  },
+
   /** Patient fetches the note for one of their own appointments.
    *  Returns null when no note has been written yet (BE returns 204 No Content). */
   getMyNoteForAppointment: async (appointmentId: string | number): Promise<ConsultationNoteResponse | null> => {
