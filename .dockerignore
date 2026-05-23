@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.env
+.env.local
+*.md
+playwright-report
+e2e
+google-cloud-cli-darwin-x86_64.tar.gz
+artifactregistry.googleapis.com
+cloudresourcemanager.googleapis.com
+compute.googleapis.com
+logging.googleapis.com
+monitoring.googleapis.com
+secretmanager.googleapis.com
+sqladmin.googleapis.com

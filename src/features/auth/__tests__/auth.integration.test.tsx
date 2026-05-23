@@ -44,16 +44,16 @@ describe('Authentication Integration Tests', () => {
     it('should render login form with email and password fields', () => {
       renderWithRouter(<MobLogin />);
 
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+      expect(screen.getByLabelText('Email')).toBeInTheDocument();
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
     });
 
     it('should login with valid credentials and redirect to /patient', async () => {
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'patient@test.com' } });
@@ -77,8 +77,8 @@ describe('Authentication Integration Tests', () => {
 
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
@@ -107,8 +107,8 @@ describe('Authentication Integration Tests', () => {
 
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
@@ -132,8 +132,8 @@ describe('Authentication Integration Tests', () => {
 
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'patient@test.com' } });
@@ -181,8 +181,8 @@ describe('Authentication Integration Tests', () => {
 
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'user@test.com' } });
@@ -243,8 +243,8 @@ describe('Authentication Integration Tests', () => {
 
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'admin@test.com' } });
@@ -262,8 +262,8 @@ describe('Authentication Integration Tests', () => {
       // First login
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'patient@test.com' } });
@@ -282,8 +282,8 @@ describe('Authentication Integration Tests', () => {
     it('should persist refresh token across sessions', async () => {
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const emailInput = screen.getByLabelText('Email');
+      const passwordInput = screen.getByLabelText('Password');
       const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'patient@test.com' } });
@@ -343,21 +343,21 @@ describe('Authentication Integration Tests', () => {
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+        expect(screen.getByLabelText('Email')).toBeInTheDocument();
       });
     });
 
     it('should require password field', async () => {
       renderWithRouter(<MobLogin />);
 
-      const emailInput = screen.getByLabelText(/email/i);
+      const emailInput = screen.getByLabelText('Email');
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
       const loginButton = screen.getByRole('button', { name: /sign in/i });
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+        expect(screen.getByLabelText('Password')).toBeInTheDocument();
       });
     });
   });

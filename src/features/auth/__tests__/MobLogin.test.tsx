@@ -35,16 +35,16 @@ describe('MobLogin Integration', () => {
   it('should render the login form', () => {
     renderLogin();
     expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
   });
 
   it('should log in and redirect to dashboard', async () => {
     renderLogin();
 
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password123' } });
-    
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+
     fireEvent.click(screen.getByRole('button', { name: /Sign in/i }));
 
     await waitFor(() => {

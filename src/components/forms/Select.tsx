@@ -2,6 +2,8 @@ import { memo } from 'react'
 import { MB } from '@/constants/tokens'
 import { Icon } from '@/components/primitives/Icon'
 
+type SelectOption = string | { value: string; label: string }
+
 interface SelectProps {
   value?: string
   placeholder?: string
@@ -9,7 +11,7 @@ interface SelectProps {
   disabled?: boolean
   full?: boolean
   onChange?: (value: string) => void
-  options?: string[]
+  options?: SelectOption[]
   'aria-label'?: string
 }
 

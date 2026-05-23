@@ -45,7 +45,7 @@ export default memo(function MobResetPassword() {
     return (
       <MobScreen bg={MB.bg}>
         <MobTopBar title="" back transparent />
-        <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+        <div style={{ flex: 1, width: '100%', maxWidth: 420, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: MB.dangerBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <Icon name="alert" size={26} color={MB.danger} />
           </div>
@@ -61,7 +61,7 @@ export default memo(function MobResetPassword() {
     return (
       <MobScreen bg={MB.bg}>
         <MobTopBar title="" transparent />
-        <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+        <div style={{ flex: 1, width: '100%', maxWidth: 420, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: MB.successBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
             <Icon name="check" size={32} color={MB.success} strokeWidth={2.5} />
           </div>
@@ -82,7 +82,7 @@ export default memo(function MobResetPassword() {
   return (
     <MobScreen bg={MB.bg}>
       <MobTopBar title="" back transparent />
-      <form onSubmit={handleSubmit} style={{ flex: 1, padding: '8px 24px 24px', display: 'flex', flexDirection: 'column' }}>
+      <form onSubmit={handleSubmit} style={{ flex: 1, width: '100%', maxWidth: 420, margin: '0 auto', padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ width: 48, height: 48, borderRadius: 14, background: MB.primary50, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <Icon name="lock" size={22} color={MB.primary} />
         </div>

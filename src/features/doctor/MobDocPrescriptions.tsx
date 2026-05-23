@@ -47,7 +47,7 @@ export default memo(function MobDocPrescriptions() {
 
   return (
     <MobScreen>
-      <MobTopBar title="Prescriptions" back onBack={() => navigate(-1)} />
+      <MobTopBar title="Prescriptions" back />
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
         {list.isLoading && <div style={{ color: MB.text3 }}>Loading…</div>}
         {list.isError && <div style={{ color: MB.danger }}>Could not load prescriptions.</div>}
@@ -110,10 +110,10 @@ function IssueForm({ appointmentId, onDone, onCancel }: { appointmentId: number;
   return (
     <Card padding={14} style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <Field label="Drug name" required>
-        <Input value={drugName} onChange={setDrugName} placeholder="e.g. Amoxicillin" />
+        <Input value={drugName} onChange={(e) => setDrugName(e.target.value)} placeholder="e.g. Amoxicillin" />
       </Field>
       <Field label="Dosage" required>
-        <Input value={dosage} onChange={setDosage} placeholder="e.g. 500mg" />
+        <Input value={dosage} onChange={(e) => setDosage(e.target.value)} placeholder="e.g. 500mg" />
       </Field>
       <Field label="Route">
         <Select
@@ -130,12 +130,15 @@ function IssueForm({ appointmentId, onDone, onCancel }: { appointmentId: number;
         />
       </Field>
       <Field label="Frequency" required>
-        <Input value={frequency} onChange={setFrequency} placeholder="e.g. Every 8 hours" />
+        <Input value={frequency} onChange={(e) => setFrequency(e.target.value)} placeholder="e.g. Every 8 hours" />
       </Field>
       <Field label="Duration (days)" optional>
         <Input
           value={durationDays === '' ? '' : String(durationDays)}
-          onChange={(v) => setDurationDays(v === '' ? '' : Number(v.replace(/[^0-9]/g, '')))}
+          onChange={(e) => {
+            const v = e.target.value
+            setDurationDays(v === '' ? '' : Number(v.replace(/[^0-9]/g, '')))
+          }}
           placeholder="e.g. 7"
         />
       </Field>
@@ -183,7 +186,7 @@ function RxCard({ rx, onCancel }: { rx: Prescription; onCancel: (reason: string)
       )}
       {isActive && confirming && (
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Input value={reason} onChange={setReason} placeholder="Reason (optional)" />
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" />
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => { setConfirming(false); setReason('') }}>Keep</Btn>
             <Btn variant="primary"   size="sm" style={{ flex: 1, background: MB.danger }} onClick={() => onCancel(reason || undefined as never)}>Confirm cancel</Btn>

@@ -9,6 +9,7 @@ export type IconName =
   | 'lock' | 'mail' | 'phone' | 'building' | 'users' | 'logout'
   | 'camera' | 'eye-off' | 'shield' | 'crown'
   | 'video' | 'creditCard' | 'star' | 'menu' | 'close'
+  | 'document' | 'pause' | 'mic'
 
 
 // ─── Button variants ──────────────────────────────────────────────────────

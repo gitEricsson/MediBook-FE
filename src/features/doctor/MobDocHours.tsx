@@ -20,9 +20,9 @@ const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 
 function useHoursLogic() {
   const queryClient = useQueryClient()
-  const { data: serverHours, isLoading } = useQuery({
+  const { data: serverHours, isLoading } = useQuery<WorkingHours[]>({
     queryKey: ['doctor', 'hours'],
-    queryFn: DoctorPortalService.getWorkingHours,
+    queryFn: () => DoctorPortalService.getWorkingHours(),
   })
   const [hours, setHours] = useState<WorkingHours[]>([])
 
@@ -34,7 +34,7 @@ function useHoursLogic() {
   }, [serverHours])
 
   const saveMutation = useMutation({
-    mutationFn: DoctorPortalService.updateWorkingHours,
+    mutationFn: (nextHours: WorkingHours[]) => DoctorPortalService.updateWorkingHours(nextHours),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['doctor', 'hours'] }); toast.success('Working hours saved') },
     onError: () => toast.error('Failed to save working hours'),
   })

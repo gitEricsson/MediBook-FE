@@ -8,6 +8,7 @@ import type { IconName } from '@/types/ui'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
+import { useViewport } from '@/hooks/useViewport'
 
 interface NavItem { id: string; label: string; icon: IconName }
 
@@ -191,14 +192,71 @@ interface DeskShellProps {
 
 export const DeskShell = memo(function DeskShell({ children, active: activeProp, role: roleProp }: DeskShellProps) {
   const navigate = useNavigate()
+  const { isMobile } = useViewport()
   const authUser = useAuthStore((s) => s.user)
   const role = (roleProp ?? (authUser?.role as UserRole) ?? 'admin')
   const derivedActive = useActiveNavId(role)
   const active = activeProp ?? derivedActive
 
   const items = NAV_BY_ROLE[role]
+  const paths = NAV_PATHS[role]
   const displayName = authUser ? `${authUser.firstName} ${authUser.lastName}` : 'Account'
   const displaySub = authUser?.email ?? ''
+
+  if (isMobile) {
+    return (
+      <div className="mb" style={{ width: '100%', minHeight: '100vh', height: '100%', display: 'flex', flexDirection: 'column', background: MB.bg2, overflow: 'hidden' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {children}
+        </div>
+        <nav
+          aria-label="Admin navigation"
+          style={{
+            height: 64,
+            flexShrink: 0,
+            background: MB.bg,
+            borderTop: `1px solid ${MB.line2}`,
+            display: 'flex',
+            gap: 4,
+            overflowX: 'auto',
+            padding: '6px 8px calc(6px + env(safe-area-inset-bottom))',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {items.map((it) => {
+            const isActive = active === it.id
+            return (
+              <button
+                key={it.id}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => navigate(paths[it.id] || '/admin/patients')}
+                style={{
+                  minWidth: 74,
+                  flex: '0 0 74px',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: isActive ? MB.primary50 : 'transparent',
+                  color: isActive ? MB.primary600 : MB.text3,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 3,
+                  fontSize: 10,
+                  fontWeight: isActive ? 700 : 600,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <Icon name={it.icon} size={17} color={isActive ? MB.primary600 : MB.text3} />
+                <span style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.label}</span>
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+    )
+  }
 
   return (
     <div className="mb" style={{ width: '100%', height: '100%', display: 'flex', background: MB.bg2, overflow: 'hidden' }}>
@@ -225,7 +283,7 @@ export const DeskShell = memo(function DeskShell({ children, active: activeProp,
               <button
                 key={it.id}
                 aria-current={isActive ? 'page' : undefined}
-                onClick={() => navigate(NAV_PATHS[role][it.id] || '/')}
+                onClick={() => navigate(paths[it.id] || '/')}
                 style={{
                   padding: '8px 10px', borderRadius: 8, marginBottom: 2,
                   display: 'flex', alignItems: 'center', gap: 10,

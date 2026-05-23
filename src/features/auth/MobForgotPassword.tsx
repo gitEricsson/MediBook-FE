@@ -34,7 +34,7 @@ export default memo(function MobForgotPassword() {
     return (
       <MobScreen bg={MB.bg}>
         <MobTopBar title="" back transparent />
-        <div style={{ flex: 1, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+        <div style={{ flex: 1, width: '100%', maxWidth: 420, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: MB.primary50, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
             <Icon name="mail" size={28} color={MB.primary} />
           </div>
@@ -56,7 +56,7 @@ export default memo(function MobForgotPassword() {
   return (
     <MobScreen bg={MB.bg}>
       <MobTopBar title="" back transparent />
-      <form onSubmit={handleSubmit} style={{ flex: 1, padding: '8px 24px 24px', display: 'flex', flexDirection: 'column' }}>
+      <form onSubmit={handleSubmit} style={{ flex: 1, width: '100%', maxWidth: 420, margin: '0 auto', padding: '8px 24px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ width: 48, height: 48, borderRadius: 14, background: MB.primary50, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <Icon name="lock" size={22} color={MB.primary} />
         </div>

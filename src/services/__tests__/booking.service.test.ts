@@ -60,7 +60,7 @@ describe('BookingService Unit Tests', () => {
   describe('Confirm Booking', () => {
     it('should confirm appointment with hold', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -90,7 +90,7 @@ describe('BookingService Unit Tests', () => {
 
     it('should include all appointment details', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {
@@ -424,7 +424,7 @@ describe('BookingService Unit Tests', () => {
   describe('Response Parsing', () => {
     it('should handle appointment with all fields', async () => {
       server.use(
-        http.post('*/api/v1/appointments$', () => {
+        http.post('*/api/v1/appointments', () => {
           return HttpResponse.json({
             success: true,
             data: {
