@@ -96,8 +96,8 @@ export const ContactSection = memo(function ContactSection() {
                     fontSize: 14,
                     fontWeight: 400,
                     color: MB.text,
-                    outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
                   }}
                 />
               </Field>
@@ -117,8 +117,8 @@ export const ContactSection = memo(function ContactSection() {
                     fontSize: 14,
                     fontWeight: 400,
                     color: MB.text,
-                    outline: 'none',
-                    boxSizing: 'border-box'
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit',
                   }}
                 />
               </Field>
@@ -138,8 +138,8 @@ export const ContactSection = memo(function ContactSection() {
                   fontSize: 14,
                   fontWeight: 400,
                   color: MB.text,
-                  outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
                 }}
               />
             </Field>
@@ -161,8 +161,7 @@ export const ContactSection = memo(function ContactSection() {
                   color: MB.text,
                   resize: 'vertical',
                   minHeight: 120,
-                  outline: 'none',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
                 }}
               />
             </Field>

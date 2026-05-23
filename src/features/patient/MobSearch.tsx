@@ -29,10 +29,10 @@ import type { Doctor } from '@/types/domain'
 // ── Symptom triage sheet ───────────────────────────────────────────────────────
 
 const URGENCY_STYLE: Record<string, { bg: string; color: string }> = {
-  LOW:       { bg: '#D1FAE5', color: '#065F46' },
-  MEDIUM:    { bg: '#FEF3C7', color: '#92400E' },
-  HIGH:      { bg: '#FEE2E2', color: '#991B1B' },
-  EMERGENCY: { bg: '#DC2626', color: '#fff'    },
+  LOW: { bg: '#D1FAE5', color: '#065F46' },
+  MEDIUM: { bg: '#FEF3C7', color: '#92400E' },
+  HIGH: { bg: '#FEE2E2', color: '#991B1B' },
+  EMERGENCY: { bg: '#DC2626', color: '#fff' },
 }
 
 function SymptomTriageSheet({ onClose, onSpecialize }: { onClose: () => void; onSpecialize: (spec: string) => void }) {
@@ -187,8 +187,6 @@ function FilterDropdown({ title, options, selected, onSelect, onClose }: {
 // ── Doctor card (shared) ──────────────────────────────────────────────────────
 function DocCard({ doc, wide = false }: { doc: Doctor; wide?: boolean }) {
   const navigate = useNavigate()
-  const fee = doc.consultationFee
-  const rating = doc.averageRating
   const isSenior = doc.seniorConsultant
   const label = `DR · ${doc.name.split(' ')[1]?.slice(0, 3).toUpperCase() || 'DOC'}`
 
@@ -205,24 +203,14 @@ function DocCard({ doc, wide = false }: { doc: Doctor; wide?: boolean }) {
           <div style={{ fontSize: 11, color: MB.text3, marginTop: 1 }}>{doc.dept || doc.department}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
             {doc.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
-            {doc.yearsOfExperience && <span style={{ fontSize: 11, color: MB.text3 }}>{doc.yearsOfExperience} yrs exp.</span>}
             {doc.telemedicineEnabled && <Badge tone="primary" size="sm">Telehealth</Badge>}
           </div>
         </div>
-      </div>
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {rating != null && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: MB.text2 }}>
-              <span style={{ color: '#F59E0B' }}>★</span>
-              <span style={{ fontWeight: 600 }}>{rating.toFixed(1)}</span>
-              {doc.reviewCount != null && <span style={{ color: MB.text3 }}>({doc.reviewCount})</span>}
-            </div>
-          )}
-          {fee != null && <span style={{ fontSize: 12, fontWeight: 600, color: MB.text2 }}>₦{fee.toLocaleString()}</span>}
-        </div>
         <Btn size="sm" onClick={() => navigate(`/patient/doctor/${doc.id}`)}>Book →</Btn>
+
       </div>
+      {/* <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+      </div> */}
     </Card>
   )
 }

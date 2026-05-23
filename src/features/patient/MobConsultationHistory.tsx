@@ -3,10 +3,11 @@ import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
 import { MobTabBar } from '@/components/layout/MobTabBar'
+import { PatientShell } from '@/components/layout/PatientShell'
+import { Btn } from '@/components/primitives/Btn'
 import { Card } from '@/components/primitives/Card'
 import { Icon } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
-import { Btn } from '@/components/primitives/Btn'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -14,6 +15,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ConsultationNotesService, ConsultationNoteResponse } from '@/services/consultation-notes.service'
 import { AccessGrantService, AccessGrantResponse } from '@/services/access-grant.service'
 import { useAuthStore } from '@/store/authStore'
+import { useViewport } from '@/hooks/useViewport'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 
@@ -168,8 +171,38 @@ function RequestsTab() {
   )
 }
 
+type Tab = 'history' | 'requests'
+
+function TabBar({ tab, setTab, pendingCount, style }: { tab: Tab; setTab: (t: Tab) => void; pendingCount: number; style?: React.CSSProperties }) {
+  return (
+    <div style={{ display: 'flex', background: MB.bg, flexShrink: 0, ...style }} role="tablist">
+      {(['history', 'requests'] as const).map((t) => (
+        <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} style={{
+          flex: 1, padding: '12px 8px', fontSize: 13, fontWeight: tab === t ? 600 : 500,
+          color: tab === t ? MB.primary : MB.text3, background: 'transparent', border: 'none',
+          borderBottom: tab === t ? `2px solid ${MB.primary}` : 'none', cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        }}>
+          {t === 'history' ? 'My history' : (
+            <>
+              Doctor requests
+              {pendingCount > 0 && (
+                <span style={{ background: MB.danger, color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>
+                  {pendingCount}
+                </span>
+              )}
+            </>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default memo(function MobConsultationHistory() {
-  const [tab, setTab] = useState<'history' | 'requests'>('history')
+  const { isWide } = useViewport()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<Tab>('history')
 
   const { data: requestsData } = useQuery({
     queryKey: ['access-requests', 'incoming'],
@@ -177,35 +210,33 @@ export default memo(function MobConsultationHistory() {
   })
   const pendingCount = requestsData?.content?.length ?? 0
 
+  const tabContent = tab === 'history' ? <HistoryTab /> : <RequestsTab />
+
+  if (isWide) {
+    return (
+      <PatientShell title="Consultation history" actions={
+        <Btn variant="secondary" size="sm" icon="chevronLeft" onClick={() => navigate(-1)}>Back</Btn>
+      }>
+        <div style={{ flex: 1, padding: 28, display: 'flex', justifyContent: 'center', overflow: 'auto' }}>
+          <div style={{ width: '100%', maxWidth: 880, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
+              <TabBar tab={tab} setTab={setTab} pendingCount={pendingCount} style={{ borderBottom: `1px solid ${MB.line}` }} />
+              <div style={{ padding: 24 }}>
+                {tabContent}
+              </div>
+            </div>
+          </div>
+        </div>
+      </PatientShell>
+    )
+  }
+
   return (
     <MobScreen>
       <MobTopBar title="Consultation history" back />
-
-      {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: `1px solid ${MB.line}`, background: MB.bg, flexShrink: 0 }}>
-        {(['history', 'requests'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            flex: 1, padding: '12px 8px', fontSize: 13, fontWeight: tab === t ? 600 : 500,
-            color: tab === t ? MB.primary : MB.text3, background: 'transparent', border: 'none',
-            borderBottom: tab === t ? `2px solid ${MB.primary}` : 'none', cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            {t === 'history' ? 'My history' : (
-              <>
-                Doctor requests
-                {pendingCount > 0 && (
-                  <span style={{ background: MB.danger, color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 999, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>
-                    {pendingCount}
-                  </span>
-                )}
-              </>
-            )}
-          </button>
-        ))}
-      </div>
-
+      <TabBar tab={tab} setTab={setTab} pendingCount={pendingCount} style={{ borderBottom: `1px solid ${MB.line}` }} />
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {tab === 'history' ? <HistoryTab /> : <RequestsTab />}
+        {tabContent}
       </div>
       <MobTabBar active="appts" />
     </MobScreen>

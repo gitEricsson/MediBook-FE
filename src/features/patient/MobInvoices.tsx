@@ -3,13 +3,19 @@ import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
 import { MobTabBar } from '@/components/layout/MobTabBar'
+import { PatientShell } from '@/components/layout/PatientShell'
 import { Card } from '@/components/primitives/Card'
 import { Badge } from '@/components/primitives/Badge'
+import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { Skel } from '@/components/feedback/Skel'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { Th } from '@/components/table/Th'
+import { Td } from '@/components/table/Td'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { useViewport } from '@/hooks/useViewport'
 import { apiClient } from '@/lib/api/client'
 import { unwrapApiResponse, PageResponse, toPageableParams } from '@/lib/api/contracts'
 import type { BadgeTone } from '@/types/ui'
@@ -99,11 +105,116 @@ function InvoiceCard({ invoice }: { invoice: Invoice }) {
   )
 }
 
+// ── Desktop table ────────────────────────────────────────────────────────
+
+function InvoicesTable({ rows }: { rows: Invoice[] }) {
+  return (
+    <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }} aria-label="My invoices">
+        <thead style={{ background: MB.bg2, borderBottom: `1px solid ${MB.line}` }}>
+          <tr>
+            <Th>Issued</Th>
+            <Th>Invoice #</Th>
+            <Th>Doctor</Th>
+            <Th align="right">Subtotal</Th>
+            <Th align="right">Discount</Th>
+            <Th align="right">Total</Th>
+            <Th>Status</Th>
+            <Th>Paid</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((inv) => (
+            <tr key={inv.id} style={{ borderBottom: `1px solid ${MB.line2}` }}>
+              <Td>
+                <div style={{ fontSize: 13, color: MB.text }}>
+                  {new Date(inv.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              </Td>
+              <Td mono>{inv.invoiceNumber}</Td>
+              <Td>{inv.doctorName}</Td>
+              <Td align="right">
+                <span style={{ fontFamily: 'var(--mb-font-mono),monospace' }}>
+                  {inv.currency} {inv.subtotal.toLocaleString()}
+                </span>
+              </Td>
+              <Td align="right">
+                <span style={{ fontFamily: 'var(--mb-font-mono),monospace', color: inv.discount > 0 ? MB.success : MB.text3 }}>
+                  {inv.discount > 0 ? `−${inv.currency} ${inv.discount.toLocaleString()}` : '—'}
+                </span>
+              </Td>
+              <Td align="right">
+                <span style={{ fontFamily: 'var(--mb-font-mono),monospace', fontWeight: 700, color: MB.ink }}>
+                  {inv.currency} {inv.total.toLocaleString()}
+                </span>
+              </Td>
+              <Td>
+                <Badge tone={STATUS_TONE[inv.status]} size="sm" dot>{inv.status}</Badge>
+              </Td>
+              <Td>
+                {inv.status === 'PAID' && inv.paidAt
+                  ? <span style={{ fontSize: 12, color: MB.success }}>
+                      {new Date(inv.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  : <span style={{ fontSize: 12, color: MB.text3 }}>—</span>}
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default memo(function MobInvoices() {
+  const { isWide } = useViewport()
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['invoices', 'my'],
     queryFn: fetchMyInvoices,
   })
+
+  const paidCount   = data?.filter((i) => i.status === 'PAID').length ?? 0
+  const unpaidCount = data?.filter((i) => i.status === 'UNPAID').length ?? 0
+
+  if (isWide) {
+    return (
+      <PatientShell title="Invoices"
+        actions={<Btn variant="secondary" size="sm" icon="chevronLeft" onClick={() => navigate(-1)}>Back</Btn>}>
+        <div style={{ flex: 1, padding: 28, overflow: 'auto' }}>
+          {/* Headline counts — quick "what's outstanding" cue. */}
+          {!isLoading && !isError && data && data.length > 0 && (
+            <div style={{ fontSize: 13, color: MB.text3, marginBottom: 14 }}>
+              <strong style={{ color: MB.text }}>{data.length}</strong> invoice{data.length === 1 ? '' : 's'} ·{' '}
+              <span style={{ color: MB.success, fontWeight: 600 }}>{paidCount} paid</span> ·{' '}
+              <span style={{ color: MB.warn, fontWeight: 600 }}>{unpaidCount} unpaid</span>
+            </div>
+          )}
+          {isLoading && (
+            <div style={{ background: MB.bg, borderRadius: 12, border: `1px solid ${MB.line}`, padding: 0, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {[0, 1, 2, 3].map((i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid ${MB.line2}` }}>
+                      {[140, 120, 180, 90, 90, 110, 80, 80].map((w, j) => (
+                        <td key={j} style={{ padding: '14px 16px' }}><Skel w={w} h={12} /></td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {isError && <ErrorState title="Couldn't load invoices" onRetry={() => refetch()} />}
+          {!isLoading && !isError && (!data || data.length === 0) && (
+            <EmptyState icon="inbox" title="No invoices yet"
+              body="Invoices for your appointments will appear here." />
+          )}
+          {!isLoading && !isError && data && data.length > 0 && <InvoicesTable rows={data} />}
+        </div>
+      </PatientShell>
+    )
+  }
 
   return (
     <MobScreen>

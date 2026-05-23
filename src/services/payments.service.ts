@@ -53,4 +53,15 @@ export const PaymentsService = {
     });
     return unwrapApiResponse<PageResponse<PaymentResponse>>(response.data);
   },
+
+  /**
+   * Returns the payment gateways currently wired into the backend. Each provider
+   * class is `@ConditionalOnProperty`-gated server-side, so this is effectively
+   * the deployment's enabled-providers allow-list. Pull this first to avoid
+   * rendering a gateway that would 503 with PROVIDER_NOT_CONFIGURED on click.
+   */
+  listProviders: async (): Promise<PaymentProvider[]> => {
+    const response = await apiClient.get('/api/v1/payments/providers');
+    return unwrapApiResponse<PaymentProvider[]>(response.data);
+  },
 };

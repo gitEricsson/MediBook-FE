@@ -16,25 +16,27 @@ interface Tab {
 
 const TABS: Record<UserRole, Tab[]> = {
   patient: [
-    { id: 'search',        label: 'Find',         icon: 'search',    path: '/patient/search'        },
-    { id: 'appts',         label: 'Visits',        icon: 'calendar',  path: '/patient/appts'         },
-    { id: 'notifications', label: 'Alerts',        icon: 'bell',      path: '/patient/notifications', badge: true },
-    { id: 'profile',       label: 'Profile',       icon: 'user',      path: '/patient/profile'       },
+    { id: 'search',        label: 'Find',          icon: 'search',    path: '/patient/search'        },
+    { id: 'appts',         label: 'Visits',         icon: 'calendar',  path: '/patient/appts'         },
+    { id: 'emergency',     label: 'Emergency',      icon: 'alert',     path: '/patient/emergency'     },
+    { id: 'notifications', label: 'Alerts',         icon: 'bell',      path: '/patient/notifications', badge: true },
+    { id: 'profile',       label: 'Profile',        icon: 'user',      path: '/patient/profile'       },
   ],
   doctor: [
-    { id: 'schedule', label: 'Schedule', icon: 'calendar', path: '/doctor/schedule' },
-    { id: 'hours',    label: 'Hours',    icon: 'clock',    path: '/doctor/hours'    },
-    { id: 'profile',  label: 'Profile',  icon: 'user',     path: '/doctor/profile'  },
+    { id: 'dashboard',     label: 'Home',         icon: 'grid',     path: '/doctor/dashboard'     },
+    { id: 'schedule',      label: 'Schedule',     icon: 'calendar', path: '/doctor/schedule'      },
+    { id: 'notifications', label: 'Alerts',       icon: 'bell',     path: '/doctor/notifications', badge: true },
+    { id: 'profile',       label: 'Profile',      icon: 'user',     path: '/doctor/profile'       },
   ],
   admin: [
+    { id: 'overview',  label: 'Overview', icon: 'grid',        path: '/admin/overview'  },
     { id: 'patients',  label: 'Patients', icon: 'users',       path: '/admin/patients'  },
-    { id: 'depts',     label: 'Depts',    icon: 'building',    path: '/admin/depts'     },
     { id: 'docs',      label: 'Doctors',  icon: 'stethoscope', path: '/admin/docs'      },
     { id: 'analytics', label: 'Analytics',icon: 'chart',       path: '/admin/analytics' },
   ],
   super_admin: [
+    { id: 'overview',  label: 'Overview', icon: 'grid',        path: '/admin/overview'  },
     { id: 'patients',  label: 'Patients', icon: 'users',       path: '/admin/patients'  },
-    { id: 'depts',     label: 'Depts',    icon: 'building',    path: '/admin/depts'     },
     { id: 'docs',      label: 'Doctors',  icon: 'stethoscope', path: '/admin/docs'      },
     { id: 'admins',    label: 'Admins',   icon: 'shield',      path: '/admin/admins'    },
   ],
@@ -51,8 +53,18 @@ export const MobTabBar = memo(function MobTabBar({ active: activeProp, role = 'p
   const unreadCount = useNotificationStore((s) => s.unreadCount)
   const tabs = TABS[role]
 
-  // Derive active from URL when not provided explicitly
-  const active = activeProp ?? tabs.find((t) => pathname.startsWith(t.path))?.id ?? tabs[0].id
+  // Derive active from URL when not provided explicitly.
+  // Special-case routes that don't live under one of the top-level tab paths
+  // but are still conceptually "inside" a tab (consultation detail + payment
+  // hand-off both belong under My visits for patients).
+  const derivedActive = (() => {
+    if (role === 'patient') {
+      if (pathname.startsWith('/patient/appt/')) return 'appts'
+      if (pathname.startsWith('/patient/pay/'))  return 'appts'
+    }
+    return tabs.find((t) => pathname.startsWith(t.path))?.id ?? tabs[0].id
+  })()
+  const active = activeProp ?? derivedActive
 
   return (
     <nav

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import type { IconName } from '@/types/ui'
 import type { BadgeTone } from '@/types/ui'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { NotificationService } from '@/services/notification.service'
 import type { NotificationItem } from '@/services/notification.service'
 import { useViewport } from '@/hooks/useViewport'
@@ -108,22 +108,42 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
     queryKey: ['notifications'],
     queryFn: () => NotificationService.list(),
   })
-  const markAll = useMutation({
-    mutationFn: NotificationService.markAllRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
-  })
+
+  // Track click-pending separately so the button spinner ONLY reflects
+  // user-initiated clicks. The auto-mount markAll runs in the background and
+  // must not visually wedge the button — that was the "spinner never clears"
+  // bug (a slow auto-mount call would leave loading=true even after the user
+  // gave up and moved on).
+  const [clickPending, setClickPending] = useState(false)
+
+  const handleMarkAll = async () => {
+    if (clickPending) return
+    setClickPending(true)
+    try {
+      await NotificationService.markAllRead()
+      setUnreadCount(0)
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch {
+      /* server will catch up on next list refresh */
+    } finally {
+      setClickPending(false)
+    }
+  }
 
   // Opening the panel counts as "viewed" — clear the badge immediately so the
-  // red ping disappears on the tab bar, then fire markAllRead asynchronously so
-  // the server state matches. Runs once per mount.
+  // red ping disappears on the tab bar, then fire markAllRead in the
+  // background so server state matches. Runs once per mount; the network call
+  // is fire-and-forget and its lifecycle is decoupled from the button's
+  // loading state.
   const clearedRef = useRef(false)
   useEffect(() => {
     if (clearedRef.current) return
     clearedRef.current = true
     setUnreadCount(0)
-    markAll.mutate(undefined, { onError: () => { /* server will catch up on next list refresh */ } })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    NotificationService.markAllRead()
+      .then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
+      .catch(() => { /* server will catch up on next list refresh */ })
+  }, [setUnreadCount, queryClient])
 
   const items: NotifItem[] = (data ?? []).map((n: NotificationItem) => {
     const { icon, tone } = iconForType(n.type)
@@ -137,12 +157,15 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
       unread: !n.read,
     }
   })
+  const hasUnread = items.some((i) => i.unread)
   const resolvedState: NotifState | 'error' = isLoading ? 'loading' : isError ? 'error' : items.length === 0 ? 'empty' : state
 
   if (isWide) {
     return (
       <PatientShell title="Notifications" actions={
-        items.length > 0 ? <Btn variant="secondary" size="sm" icon="check" onClick={() => markAll.mutate()} loading={markAll.isPending}>Mark all read</Btn> : undefined
+        hasUnread
+          ? <Btn variant="secondary" size="sm" icon="check" onClick={handleMarkAll} loading={clickPending}>Mark all read</Btn>
+          : undefined
       }>
         <NotifList items={items} state={resolvedState} onRetry={() => refetch()} wide />
       </PatientShell>
@@ -152,9 +175,13 @@ export default memo(function MobNotifications({ state = 'default' }: MobNotifica
   return (
     <MobScreen>
       <MobTopBar title="Notifications" right={
-        <button className="mb-icon-btn" aria-label="Mark all as read" onClick={() => markAll.mutate()} disabled={markAll.isPending}>
-          <Icon name="check" size={18} color={MB.text2} />
-        </button>
+        hasUnread
+          ? (
+            <button className="mb-icon-btn" aria-label="Mark all as read" onClick={handleMarkAll} disabled={clickPending}>
+              <Icon name="check" size={18} color={MB.text2} />
+            </button>
+          )
+          : undefined
       } />
       <NotifList items={items} state={resolvedState} onRetry={() => refetch()} />
     </MobScreen>

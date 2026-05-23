@@ -7,15 +7,21 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useViewport } from '@/hooks/useViewport'
+import { useNotificationStore } from '@/store/notificationStore'
 import type { IconName } from '@/types/ui'
 
 interface NavItem { id: string; label: string; icon: IconName; path: string }
 
-const NAV_ITEMS: NavItem[] = [
-  { id: 'schedule', label: 'My schedule',    icon: 'calendar', path: '/doctor/schedule' },
-  { id: 'hours',    label: 'Working hours',  icon: 'clock',    path: '/doctor/hours'    },
-  { id: 'leave',    label: 'Leave',           icon: 'calendar', path: '/doctor/leave'    },
-  { id: 'profile',  label: 'Profile',        icon: 'user',     path: '/doctor/profile'  },
+interface NavItemEx extends NavItem { badge?: boolean }
+
+const NAV_ITEMS: NavItemEx[] = [
+  { id: 'dashboard',     label: 'Dashboard',      icon: 'grid',     path: '/doctor/dashboard'     },
+  { id: 'schedule',      label: 'My schedule',    icon: 'calendar', path: '/doctor/schedule'      },
+  { id: 'hours',         label: 'Working hours',  icon: 'clock',    path: '/doctor/hours'         },
+  { id: 'leave',         label: 'Leave',          icon: 'calendar', path: '/doctor/leave'         },
+  { id: 'notifications', label: 'Notifications',  icon: 'bell',     path: '/doctor/notifications', badge: true },
+  { id: 'profile',       label: 'Profile',        icon: 'user',     path: '/doctor/profile'       },
+  { id: 'settings',      label: 'Settings',       icon: 'settings', path: '/doctor/settings'      },
 ]
 
 function useActiveId(): string {
@@ -23,8 +29,11 @@ function useActiveId(): string {
   // appointment detail pages are part of "schedule"
   if (pathname.startsWith('/doctor/appt')) return 'schedule'
   if (pathname.startsWith('/doctor/leave')) return 'leave'
+  if (pathname.startsWith('/doctor/notifications')) return 'notifications'
+  if (pathname.startsWith('/doctor/dashboard')) return 'dashboard'
+  if (pathname.startsWith('/doctor/settings')) return 'settings'
   const found = NAV_ITEMS.find((n) => pathname.startsWith(n.path))
-  return found?.id ?? 'schedule'
+  return found?.id ?? 'dashboard'
 }
 
 interface DoctorShellProps {
@@ -51,6 +60,7 @@ function DesktopDoctorLayout({
   const activeId = useActiveId()
   const authUser = useAuthStore((s) => s.user)
   const { logout } = useAuth()
+  const unreadCount = useNotificationStore((s) => s.unreadCount)
   const displayName = authUser ? `${authUser.firstName} ${authUser.lastName}` : 'Doctor'
 
   return (
@@ -74,9 +84,10 @@ function DesktopDoctorLayout({
           </div>
         </div>
 
-        <div style={{ padding: 8, flex: 1 }}>
+        <div style={{ padding: 8, flex: 1, overflowY: 'auto' }}>
           {NAV_ITEMS.map((item) => {
             const isActive = activeId === item.id
+            const hasBadge = item.badge && unreadCount > 0
             return (
               <button
                 key={item.id}
@@ -94,7 +105,20 @@ function DesktopDoctorLayout({
                 onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = MB.bg3 }}
                 onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
               >
-                <Icon name={item.icon} size={16} color={isActive ? MB.primary600 : MB.text3} />
+                <div style={{ position: 'relative' }}>
+                  <Icon name={item.icon} size={16} color={isActive ? MB.primary600 : MB.text3} />
+                  {hasBadge && (
+                    <span style={{
+                      position: 'absolute', top: -4, right: -5,
+                      minWidth: 14, height: 14, borderRadius: 7,
+                      background: MB.danger, color: '#fff',
+                      fontSize: 8, fontWeight: 700, lineHeight: '14px',
+                      textAlign: 'center', padding: '0 2px',
+                    }}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </div>
                 {item.label}
               </button>
             )

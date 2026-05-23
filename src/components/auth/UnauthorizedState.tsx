@@ -5,9 +5,9 @@ import { Icon } from '@/components/primitives/Icon'
 import { useAuthStore } from '@/store/authStore'
 
 const ROLE_HOME: Record<string, string> = {
-  admin: '/admin/patients',
-  super_admin: '/admin/patients',
-  doctor: '/doctor/schedule',
+  admin: '/admin/overview',
+  super_admin: '/admin/overview',
+  doctor: '/doctor/dashboard',
   patient: '/patient/search',
 }
 
@@ -33,7 +33,7 @@ export function UnauthorizedState() {
         aria-labelledby="unauthorized-title"
         style={{
           width: 'min(100%, 420px)',
-          padding: 24,
+          padding: 32,
           textAlign: 'center',
         }}
       >
@@ -56,9 +56,9 @@ export function UnauthorizedState() {
         <p className="mb-body" style={{ marginTop: 8 }}>
           Your account does not have permission to open this workspace.
         </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20 }}>
           <Btn variant="secondary" onClick={() => navigate(-1)}>Go back</Btn>
-          <Btn onClick={() => navigate(home, { replace: true })}>Open home</Btn>
+          <Btn variant="primary" onClick={() => navigate(home, { replace: true })}>Open home</Btn>
         </div>
       </section>
     </main>

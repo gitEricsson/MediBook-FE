@@ -23,6 +23,13 @@ export default defineConfig(({ mode }) => {
         '@': resolve(__dirname, 'src'),
       },
     },
+    optimizeDeps: {
+      // twilio-video is loaded via a lazy dynamic import (/* @vite-ignore */)
+      // only when a video/audio call is actually started. Exclude it from the
+      // pre-bundler so Vite never crawls it during cold start — the package
+      // may not be installed in environments that don't use Twilio.
+      exclude: ['twilio-video'],
+    },
     build: {
       sourcemap: mode === 'production' ? false : true,
       minify: 'oxc',

@@ -13,30 +13,35 @@ interface NavItem { id: string; label: string; icon: IconName }
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   admin: [
-    { id: 'home',      label: 'Overview',      icon: 'grid'        },
-    { id: 'depts',     label: 'Departments',   icon: 'building'    },
-    { id: 'docs',      label: 'Doctors',       icon: 'stethoscope' },
-    { id: 'analytics', label: 'Analytics',     icon: 'chart'       },
-    { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
-    { id: 'deleted',   label: 'Deleted Records', icon: 'trash'      },
-    { id: 'settings',  label: 'Settings',      icon: 'settings'    },
+    { id: 'overview',     label: 'Overview',        icon: 'grid'        },
+    { id: 'patients',     label: 'Patients',        icon: 'users'       },
+    { id: 'depts',        label: 'Departments',     icon: 'building'    },
+    { id: 'docs',         label: 'Doctors',         icon: 'stethoscope' },
+    { id: 'leaves',       label: 'Leave requests',  icon: 'clock'       },
+    { id: 'performance',  label: 'Performance',     icon: 'sparkle'     },
+    { id: 'analytics',    label: 'Analytics',       icon: 'chart'       },
+    { id: 'capacity',     label: 'Capacity',        icon: 'calendar'    },
+    { id: 'deleted',      label: 'Deleted Records', icon: 'trash'       },
+    { id: 'settings',     label: 'Settings',        icon: 'settings'    },
   ],
   super_admin: [
-    { id: 'home',      label: 'Overview',      icon: 'grid'        },
-    { id: 'depts',     label: 'Departments',   icon: 'building'    },
-    { id: 'docs',      label: 'Doctors',       icon: 'stethoscope' },
-    { id: 'analytics', label: 'Analytics',     icon: 'chart'       },
-    { id: 'capacity',  label: 'Capacity',      icon: 'calendar'    },
-    { id: 'admins',    label: 'Admins',         icon: 'shield'      },
-    { id: 'deleted',   label: 'Deleted Records', icon: 'trash'      },
-    { id: 'settings',  label: 'Settings',      icon: 'settings'    },
+    { id: 'overview',     label: 'Overview',        icon: 'grid'        },
+    { id: 'patients',     label: 'Patients',        icon: 'users'       },
+    { id: 'depts',        label: 'Departments',     icon: 'building'    },
+    { id: 'docs',         label: 'Doctors',         icon: 'stethoscope' },
+    { id: 'leaves',       label: 'Leave requests',  icon: 'clock'       },
+    { id: 'performance',  label: 'Performance',     icon: 'sparkle'     },
+    { id: 'analytics',    label: 'Analytics',       icon: 'chart'       },
+    { id: 'capacity',     label: 'Capacity',        icon: 'calendar'    },
+    { id: 'admins',       label: 'Admins',          icon: 'shield'      },
+    { id: 'deleted',      label: 'Deleted Records', icon: 'trash'       },
+    { id: 'settings',     label: 'Settings',        icon: 'settings'    },
   ],
-  doctor: [
-    { id: 'schedule', label: 'Schedule',       icon: 'calendar' },
-    { id: 'hours',    label: 'Working hours',  icon: 'clock'    },
-    { id: 'leave',    label: 'Leave',          icon: 'calendar' },
-    { id: 'profile',  label: 'Profile',        icon: 'user'     },
-  ],
+  // Doctor pages live in `DoctorShell` (src/components/layout/DoctorShell.tsx);
+  // this entry is intentionally empty so a stray DeskShell mount under the
+  // doctor role doesn't render half the navigation. Surfaces the misuse as a
+  // missing sidebar rather than a misleading partial one.
+  doctor: [],
   patient: [
     { id: 'home',   label: 'Home',             icon: 'home'     },
     { id: 'search', label: 'Find a doctor',    icon: 'search'   },
@@ -49,30 +54,32 @@ const ROLE_LABEL: Record<UserRole, string> = { admin: 'Admin', super_admin: 'Sup
 
 const NAV_PATHS: Record<UserRole, Record<string, string>> = {
   admin: {
-    home: '/admin/patients',
+    overview: '/admin/overview',
+    patients: '/admin/patients',
     depts: '/admin/depts',
     docs: '/admin/docs',
+    leaves: '/admin/leaves',
+    performance: '/admin/performance',
     analytics: '/admin/analytics',
     capacity: '/admin/capacity',
     deleted: '/admin/deleted-records',
     settings: '/admin/settings',
   },
   super_admin: {
-    home: '/admin/patients',
+    overview: '/admin/overview',
+    patients: '/admin/patients',
     depts: '/admin/depts',
     docs: '/admin/docs',
+    leaves: '/admin/leaves',
+    performance: '/admin/performance',
     analytics: '/admin/analytics',
     capacity: '/admin/capacity',
     admins: '/admin/admins',
     deleted: '/admin/deleted-records',
     settings: '/admin/settings',
   },
-  doctor: {
-    schedule: '/doctor/schedule',
-    hours: '/doctor/hours',
-    leave: '/doctor/leave',
-    profile: '/doctor/profile',
-  },
+  // See note on `NAV_BY_ROLE.doctor` — doctor pages use DoctorShell, not DeskShell.
+  doctor: {},
   patient: {
     home: '/patient/search',
     search: '/patient/search',
@@ -87,7 +94,12 @@ function useActiveNavId(role: UserRole): string {
   const paths = NAV_PATHS[role]
   // find the most specific match first
   const entry = Object.entries(paths).find(([, path]) => pathname.startsWith(path))
-  return entry ? entry[0] : 'home'
+  // Default fallback: admins land on the overview dashboard, others on the
+  // first item in their nav. The old fallback was `home`, which no longer
+  // exists in the admin sidebar.
+  if (entry) return entry[0]
+  if (role === 'admin' || role === 'super_admin') return 'overview'
+  return 'home'
 }
 
 // ── User menu ─────────────────────────────────────────────────────────────────
@@ -194,7 +206,7 @@ export const DeskShell = memo(function DeskShell({ children, active: activeProp,
       <nav
         className="mb-desk-sidebar"
         aria-label="Sidebar navigation"
-        style={{ width: 240, background: MB.bg, borderRight: `1px solid ${MB.line2}`, display: 'flex', flexDirection: 'column', flexShrink: 0, transition: 'width 0.2s ease' }}
+        style={{ width: 240, background: MB.bg, borderRight: `1px solid ${MB.line2}`, display: 'flex', flexDirection: 'column', flexShrink: 0 }}
       >
         {/* Logo / branding */}
         <div style={{ padding: '18px 16px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: `1px solid ${MB.line2}` }}>

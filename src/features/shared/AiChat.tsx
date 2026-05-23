@@ -30,7 +30,9 @@ import { Skel } from '@/components/feedback/Skel'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ChatService, MessageResponse, AiDraft, AiSummaryResponse, SenderRole } from '@/services/chat.service'
+import { AppointmentsService } from '@/services/appointments.service'
 import { TelemedicineService, type VideoCallSession } from '@/services/telemedicine.service'
+import { useConsultationGating } from '@/hooks/useConsultationGating'
 import { Client, type IMessage } from '@stomp/stompjs'
 import { useAuthStore } from '@/store/authStore'
 import { env as appEnv } from '@/config/env'
@@ -442,6 +444,27 @@ function ChatView({ conversationId }: { conversationId: number }) {
     refetchInterval: 5_000,
   })
 
+  // Fetch the linked appointment so the chat composer can disable itself when
+  // the consultation window is closed (≥10 min after end) or the appointment
+  // has been COMPLETED. Historical messages stay visible either way.
+  // Use role-appropriate endpoint: patients are forbidden from the generic
+  // /appointments/{id} route; doctors are forbidden from /me/appointments/{id}.
+  const { data: chatAppt } = useQuery({
+    queryKey: ['appointment', 'for-chat', appointmentId],
+    queryFn: () => isDoctor
+      ? AppointmentsService.getById(String(appointmentId))
+      : AppointmentsService.getMyAppointmentById(String(appointmentId)),
+    enabled: Boolean(appointmentId),
+    staleTime: 30_000,
+  })
+  const gating = useConsultationGating({
+    scheduledAt: chatAppt?.scheduledAt,
+    durationMins: chatAppt?.durationMins,
+    status: chatAppt?.status,
+    consultationMedium: chatAppt?.consultationMedium,
+    type: chatAppt?.type,
+  })
+
   const joinCall = useVideoCallStore((s) => s.joinCall)
   const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
 
@@ -565,19 +588,36 @@ function ChatView({ conversationId }: { conversationId: number }) {
         </div>
       )}
 
-      {/* Message input */}
-      <div style={{ padding: '10px 16px', borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8, background: MB.bg }}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-          placeholder="Type a message…"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: `1px solid ${MB.line}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', color: MB.text, background: MB.bg }}
-        />
-        <Btn variant="primary" size="sm" disabled={!text.trim()} loading={sendMutation.isPending} onClick={handleSend}>
-          <Icon name="arrowRight" size={16} color="#fff" />
-        </Btn>
-      </div>
+      {/* Message input — read-only when the consultation window has closed or
+          the appointment is COMPLETED. Historical messages above remain visible. */}
+      {chatAppt && !gating.chatWritable ? (
+        <div style={{
+          padding: '12px 16px', borderTop: `1px solid ${MB.line2}`, background: MB.bg2,
+          display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: MB.text3,
+        }}>
+          <Icon name="lock" size={14} color={MB.text3} />
+          <span>
+            {gating.isCompleted
+              ? 'Consultation completed — this chat is read-only. You can scroll through history.'
+              : !gating.isActionable
+              ? 'Chat opens once the consultation is confirmed.'
+              : `Chat is read-only · ${gating.label.toLowerCase()}`}
+          </span>
+        </div>
+      ) : (
+        <div style={{ padding: '10px 16px', borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8, background: MB.bg }}>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="Type a message…"
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: `1px solid ${MB.line}`, fontSize: 14, fontFamily: 'inherit', outline: 'none', color: MB.text, background: MB.bg }}
+          />
+          <Btn variant="primary" size="sm" disabled={!text.trim()} loading={sendMutation.isPending} onClick={handleSend}>
+            <Icon name="arrowRight" size={16} color="#fff" />
+          </Btn>
+        </div>
+      )}
 
       {/* Consent dialog */}
       {showConsent && (

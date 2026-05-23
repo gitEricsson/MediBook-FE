@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AdminService, Department } from '@/services/admin.service';
+import { AdminService, DepartmentInput } from '@/services/admin.service';
 import { UserRole } from '@/types/domain';
 
 export const useAppointmentAnalytics = (from: string, to: string) =>
@@ -53,7 +53,7 @@ export const useAdminActions = () => {
   });
 
   const updateDeptMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Department> }) => 
+    mutationFn: ({ id, data }: { id: string; data: DepartmentInput }) =>
       AdminService.updateDepartment(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'departments'] }),
   });

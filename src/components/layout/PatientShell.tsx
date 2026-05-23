@@ -13,15 +13,22 @@ import type { IconName } from '@/types/ui'
 interface NavItem { id: string; label: string; icon: IconName; path: string; badge?: boolean }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'search',        label: 'Find a doctor',   icon: 'search',   path: '/patient/search'        },
-  { id: 'appts',         label: 'My visits',        icon: 'calendar', path: '/patient/appts'         },
-  { id: 'history',       label: 'History',          icon: 'clock',    path: '/patient/history'       },
-  { id: 'notifications', label: 'Notifications',    icon: 'bell',     path: '/patient/notifications', badge: true },
-  { id: 'profile',       label: 'Profile',          icon: 'user',     path: '/patient/profile'       },
+  { id: 'search',        label: 'Find a doctor',    icon: 'search',   path: '/patient/search'        },
+  { id: 'appts',         label: 'My visits',         icon: 'calendar', path: '/patient/appts'         },
+  { id: 'emergency',     label: 'Emergency',         icon: 'alert',    path: '/patient/emergency'     },
+  { id: 'history',       label: 'History',           icon: 'clock',    path: '/patient/history'       },
+  { id: 'notifications', label: 'Notifications',     icon: 'bell',     path: '/patient/notifications', badge: true },
+  { id: 'profile',       label: 'Profile',           icon: 'user',     path: '/patient/profile'       },
 ]
 
 function useActiveId(): string {
   const { pathname } = useLocation()
+  // The consultation detail route uses /patient/appt/:id (singular). Map it
+  // to the "appts" nav so the sidebar highlight stays on "My visits" while the
+  // user is reading a specific appointment.
+  if (pathname.startsWith('/patient/appt/')) return 'appts'
+  // Same for the in-app payment hand-off — the user is mid-visit-management.
+  if (pathname.startsWith('/patient/pay/')) return 'appts'
   const found = NAV_ITEMS.find((n) => pathname.startsWith(n.path))
   return found?.id ?? 'search'
 }

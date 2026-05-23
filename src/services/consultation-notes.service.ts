@@ -36,6 +36,16 @@ export const ConsultationNotesService = {
     return unwrapApiResponse<ConsultationNoteResponse>(response.data);
   },
 
+  /** Patient fetches the note for one of their own appointments.
+   *  Returns null when no note has been written yet (BE returns 204 No Content). */
+  getMyNoteForAppointment: async (appointmentId: string | number): Promise<ConsultationNoteResponse | null> => {
+    const response = await apiClient.get(
+      `/api/v1/consultation-notes/my-note/appointment/${appointmentId}`,
+    );
+    if (response.status === 204) return null;
+    return unwrapApiResponse<ConsultationNoteResponse>(response.data);
+  },
+
   getMyHistory: async () => {
     const response = await apiClient.get('/api/v1/consultation-notes/my-history');
     return unwrapApiResponse<ConsultationNoteResponse[]>(response.data);

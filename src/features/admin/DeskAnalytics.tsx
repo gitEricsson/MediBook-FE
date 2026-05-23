@@ -97,8 +97,10 @@ function HBar({ value, max, color = MB.primary }: { value: number; max: number; 
   return (
     <div style={{ flex: 1, height: 6, background: MB.line2, borderRadius: 999, overflow: 'hidden' }}>
       <div style={{
-        height: '100%', width: `${w}%`, background: color,
-        borderRadius: 999, transition: 'width 0.45s ease',
+        height: '100%', width: '100%', background: color,
+        borderRadius: 999,
+        transform: `scaleX(${w / 100})`, transformOrigin: 'left center',
+        transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
       }} />
     </div>
   )
@@ -151,7 +153,7 @@ function UtilBar({ rate }: { rate: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
       <div style={{ flex: 1, height: 6, background: MB.line, borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${rate * 100}%`, background: color, borderRadius: 999, transition: 'width 0.45s ease' }} />
+        <div style={{ height: '100%', width: '100%', background: color, borderRadius: 999, transform: `scaleX(${rate})`, transformOrigin: 'left center', transition: 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)' }} />
       </div>
     </div>
   )

@@ -3,6 +3,31 @@ import { UserRole } from '@/types/domain';
 import { PageResponse, normalizeUserRole, toPageableParams, unwrapApiResponse } from '@/lib/api/contracts';
 import type { DoctorResponse } from '@/types/api';
 
+interface RawDepartment {
+  id: number;
+  name: string;
+  code?: string;
+  description?: string;
+  isActive?: boolean;
+  active?: boolean;
+  slotDurationMins?: number;
+  bufferMins?: number;
+  baseConsultationFee?: number | string;
+}
+
+function mapDept(dept: RawDepartment): Department {
+  return {
+    id: String(dept.id),
+    name: dept.name,
+    code: dept.code,
+    description: dept.description,
+    isActive: dept.isActive ?? dept.active ?? true,
+    slotDurationMins: dept.slotDurationMins,
+    bufferMins: dept.bufferMins,
+    baseConsultationFee: dept.baseConsultationFee != null ? Number(dept.baseConsultationFee) : undefined,
+  };
+}
+
 export interface Department {
   id: string;
   name: string;
@@ -11,6 +36,38 @@ export interface Department {
   isActive: boolean;
   code?: string;
   description?: string;
+  slotDurationMins?: number;
+  bufferMins?: number;
+  baseConsultationFee?: number;
+}
+
+export interface DepartmentInput {
+  name: string;
+  code: string;
+  description?: string;
+  slotDurationMins?: number;
+  bufferMins?: number;
+  baseConsultationFee?: number;
+}
+
+export interface PricingPolicy {
+  emergencyMultiplierPct: number;
+  followUpDiscountPct: number;
+  experiencePremiumPct: number;
+  experienceThresholdYears: number;
+  mediumSurchargePct: number;
+  updatedAt: string;
+  updatedBy: number | null;
+}
+
+export interface PricingPolicyInput {
+  emergencyMultiplierPct?: number;
+  followUpDiscountPct?: number;
+  experiencePremiumPct?: number;
+  experienceThresholdYears?: number;
+  mediumSurchargePct?: number;
+  /** Optimistic lock token — pass the `updatedAt` from the last GET. */
+  ifUnchangedSince: string;
 }
 
 export interface AdminUser {
@@ -42,6 +99,22 @@ export interface RevenueAnalytics {
   refundedPayments: number;
 }
 
+export interface AdminLeave {
+  id: number;
+  doctorId: number;
+  doctorName: string | null;
+  doctorEmail: string | null;
+  departmentName: string | null;
+  startDate: string;
+  endDate: string;
+  reason: string | null;
+  leaveType: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdByName: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+}
+
 export interface DoctorUtilizationEntry {
   doctorId: number;
   doctorName: string;
@@ -49,6 +122,10 @@ export interface DoctorUtilizationEntry {
   totalSlots: number;
   bookedSlots: number;
   utilizationRate: number;
+  totalAppointments: number;
+  completedAppointments: number;
+  cancelledAppointments: number;
+  averageRating: number;
 }
 
 export const AdminService = {
@@ -57,42 +134,49 @@ export const AdminService = {
     const response = await apiClient.get('/api/v1/admin/departments', {
       params: toPageableParams({ page: 0, size: 50 }),
     });
-    const page = unwrapApiResponse<PageResponse<{ id: number; name: string; code: string; doctorsCount: number; apptCount90d: number; status: boolean }>>(response.data);
-    return page.content.map((dept) => ({
+    const page = unwrapApiResponse<PageResponse<{
+      id: number; name: string; code: string;
+      doctorsCount: number; apptCount90d: number; status: boolean;
+      slotDurationMins?: number; bufferMins?: number; baseConsultationFee?: number;
+    }>>(response.data);
+    return page.content.map<Department>((dept) => ({
       id: String(dept.id),
       name: dept.name,
       code: dept.code,
       doctorCount: dept.doctorsCount,
       appointmentCount: dept.apptCount90d,
       isActive: dept.status,
+      slotDurationMins: dept.slotDurationMins,
+      bufferMins: dept.bufferMins,
+      baseConsultationFee: dept.baseConsultationFee != null ? Number(dept.baseConsultationFee) : undefined,
     }));
   },
 
-  createDepartment: async (data: Partial<Department> & { name: string; code: string }) => {
+  createDepartment: async (data: DepartmentInput) => {
     const response = await apiClient.post('/api/v1/admin/departments', {
       name: data.name,
       code: data.code,
       description: data.description,
+      slotDurationMins: data.slotDurationMins,
+      bufferMins: data.bufferMins,
+      baseConsultationFee: data.baseConsultationFee,
     });
-    const dept = unwrapApiResponse<{ id: number; name: string; code: string; isActive?: boolean; active?: boolean }>(response.data);
-    return {
-      id: String(dept.id),
-      name: dept.name,
-      code: dept.code,
-      isActive: dept.isActive ?? dept.active ?? true,
-    };
+    return mapDept(unwrapApiResponse(response.data));
   },
 
-  updateDepartment: async (id: string, data: Partial<Department>) => {
-    const response = await apiClient.patch(`/api/v1/admin/departments/${id}`, data);
-    const dept = unwrapApiResponse<{ id: number; name: string; code: string; isActive?: boolean; active?: boolean }>(response.data);
-    return {
-      id: String(dept.id),
-      name: dept.name,
-      code: dept.code,
-      isActive: dept.isActive ?? dept.active ?? true,
+  updateDepartment: async (id: string, data: DepartmentInput) => {
+    // The backend's update endpoint is a full replace (PATCH semantically, but the
+    // DTO requires name/code). Send the whole payload so unspecified fields don't
+    // get reset to the @Builder.Default.
+    const response = await apiClient.patch(`/api/v1/admin/departments/${id}`, {
+      name: data.name,
+      code: data.code,
       description: data.description,
-    };
+      slotDurationMins: data.slotDurationMins,
+      bufferMins: data.bufferMins,
+      baseConsultationFee: data.baseConsultationFee,
+    });
+    return mapDept(unwrapApiResponse(response.data));
   },
 
   deactivateDepartment: async (id: string) => {
@@ -141,6 +225,77 @@ export const AdminService = {
     return unwrapApiResponse<DoctorResponse>(response.data);
   },
 
+  /**
+   * Update a doctor's profile fields. `userId` and `departmentId` are required by
+   * the backend DTO; the rest are optional and will overwrite existing values.
+   */
+  updateDoctor: async (id: string, data: {
+    userId: number;
+    departmentId: number;
+    specialization?: string;
+    licenseNumber: string;
+    bio?: string;
+    slotDurationMins?: number;
+    yearsOfExperience?: number;
+    consultationFee?: number;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER';
+    languages?: string;
+  }) => {
+    const response = await apiClient.put(`/api/v1/doctors/${id}`, data);
+    return unwrapApiResponse<DoctorResponse>(response.data);
+  },
+
+  /** Soft-delete equivalent — stops the doctor from accepting new appointments. */
+  deactivateDoctor: async (id: string) => {
+    const response = await apiClient.post(`/api/v1/admin/doctors/${id}/deactivate`);
+    return unwrapApiResponse<DoctorResponse>(response.data);
+  },
+
+  reactivateDoctor: async (id: string) => {
+    const response = await apiClient.post(`/api/v1/admin/doctors/${id}/activate`);
+    return unwrapApiResponse<DoctorResponse>(response.data);
+  },
+
+  /** Re-send the welcome / set-up-password email to a doctor account. */
+  resendDoctorInvite: async (id: string) => {
+    await apiClient.post(`/api/v1/admin/doctors/${id}/resend-invite`);
+  },
+
+  // ── Doctor leave (admin review) ─────────────────────────────────────────
+  getPendingLeaves: async (): Promise<AdminLeave[]> => {
+    const response = await apiClient.get('/api/v1/admin/leaves/pending');
+    return unwrapApiResponse<AdminLeave[]>(response.data);
+  },
+
+  /** All leave requests with optional status filter (PENDING / APPROVED / REJECTED). */
+  listLeaves: async (status?: 'PENDING' | 'APPROVED' | 'REJECTED'): Promise<AdminLeave[]> => {
+    const response = await apiClient.get('/api/v1/admin/leaves', {
+      params: status ? { status } : undefined,
+    });
+    return unwrapApiResponse<AdminLeave[]>(response.data);
+  },
+
+  approveLeave: async (leaveId: number): Promise<AdminLeave> => {
+    const response = await apiClient.post(`/api/v1/admin/leaves/${leaveId}/approve`);
+    return unwrapApiResponse<AdminLeave>(response.data);
+  },
+
+  rejectLeave: async (leaveId: number): Promise<AdminLeave> => {
+    const response = await apiClient.post(`/api/v1/admin/leaves/${leaveId}/reject`);
+    return unwrapApiResponse<AdminLeave>(response.data);
+  },
+
+  // ── Pricing policy (hospital-wide knobs) ────────────────────────────────
+  getPricingPolicy: async (): Promise<PricingPolicy> => {
+    const response = await apiClient.get('/api/v1/admin/pricing-policy');
+    return unwrapApiResponse<PricingPolicy>(response.data);
+  },
+
+  updatePricingPolicy: async (data: PricingPolicyInput): Promise<PricingPolicy> => {
+    const response = await apiClient.patch('/api/v1/admin/pricing-policy', data);
+    return unwrapApiResponse<PricingPolicy>(response.data);
+  },
+
   updateUserRole: async (id: string, role: UserRole) => {
     const roleMap: Record<UserRole, string> = {
       patient: 'ROLE_PATIENT',
@@ -172,14 +327,20 @@ export const AdminService = {
   getDoctorUtilization: async (from: string, to: string): Promise<DoctorUtilizationEntry[]> => {
     const formatDateTime = (date: string) => date.includes('T') ? date : `${date}T00:00:00`;
     const response = await apiClient.get('/api/v1/admin/analytics/doctor-utilization', { params: { from: formatDateTime(from), to: formatDateTime(to) } });
-    const raw = unwrapApiResponse<{ doctors: Array<{ doctorId: number; doctorName: string; specialization: string; totalAppointments: number; completedAppointments: number; utilizationPercent: number }> }>(response.data);
-    const transformed = (raw.doctors || []).map((doc) => ({
+    const raw = unwrapApiResponse<{ doctors: Array<{ doctorId: number; doctorName: string; specialization: string; totalAppointments: number; completedAppointments: number; cancelledAppointments?: number; utilizationPercent: number; averageRating?: number }> }>(response.data);
+    const transformed = (raw.doctors || []).map<DoctorUtilizationEntry>((doc) => ({
       doctorId: doc.doctorId,
       doctorName: doc.doctorName,
       department: doc.specialization,
+      // Keep the legacy field aliases for the analytics screen, but also expose
+      // the raw counts so the performance dashboard has the full picture.
       totalSlots: doc.totalAppointments,
       bookedSlots: doc.completedAppointments,
       utilizationRate: doc.utilizationPercent,
+      totalAppointments: doc.totalAppointments,
+      completedAppointments: doc.completedAppointments,
+      cancelledAppointments: doc.cancelledAppointments ?? 0,
+      averageRating: doc.averageRating ?? 0,
     }));
     return transformed;
   },

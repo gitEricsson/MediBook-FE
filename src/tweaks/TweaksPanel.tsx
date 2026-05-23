@@ -30,7 +30,7 @@ export const TweaksPanel = memo(function TweaksPanel({ title = 'Design Tweaks', 
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10000,
-          transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}

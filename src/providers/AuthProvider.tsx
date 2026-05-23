@@ -8,6 +8,40 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
+/**
+ * Standard JWT bootstrap — the canonical "access + refresh" pattern.
+ *
+ * Reload behaviour:
+ *
+ *   1. Only the refresh token is persisted (XSS hardening — see authStore).
+ *      The access token lives in memory and is gone after reload.
+ *
+ *   2. On reload, if there is no persisted refresh token → log out
+ *      immediately, no network call.
+ *
+ *   3. Otherwise just call {@code GET /api/v1/me}. The access token is
+ *      missing, so the server returns 401. The {@code apiClient} response
+ *      interceptor (src/lib/api/client.ts) catches it, calls
+ *      {@code /auth/refresh} **once** — its `isRefreshing` + `failedQueue`
+ *      pair ensures that even in StrictMode (where this effect mounts → run →
+ *      cleanup → run again twice) and even with concurrent requests, exactly
+ *      one rotation happens per access-token-expiry event — stores the
+ *      rotated tokens, and retries /me transparently. The promise resolves
+ *      with the user payload.
+ *
+ *   4. We **never** call {@code /auth/refresh} eagerly. A refresh token
+ *      exists to rescue a failing request, not to drive every cold start.
+ *      Eager refresh is what previously tripped the backend's reuse
+ *      detector when StrictMode double-mounted in dev — the production
+ *      behaviour was the same logical mistake, just less visible because
+ *      effects don't run twice. The fix is structural: only the interceptor
+ *      ever talks to /auth/refresh, gated by its single-rotation lock.
+ *
+ *   5. The interceptor distinguishes auth failures from transport failures
+ *      when refresh fails: only an actual 401/403 from /auth/refresh
+ *      dispatches {@code auth:logout} ("Session expired"). Network errors
+ *      reject quietly so we don't kick the user out for a flaky uplink.
+ */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { setAuthenticated, setUnauthenticated, clearAllTokens, setLoading } = useAuthStore();
   const queryClient = useQueryClient();
@@ -16,7 +50,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearAllTokens();
     queryClient.clear();
 
-    // If logout event contains a message, show it as a toast
     const customEvent = event as CustomEvent | undefined;
     if (customEvent?.detail?.message) {
       toast.info(customEvent.detail.message);
@@ -37,36 +70,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     setLoading();
-
-    // Retry up to 2 times on transient network failures
-    const MAX_RETRIES = 2;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const data = await AuthService.refresh({ refreshToken });
-        const userData = await AuthService.getCurrentUser();
-        setAuthenticated(userData, data.accessToken, data.refreshToken || refreshToken);
-        return; // success — exit
-      } catch (err: unknown) {
-        const isLastAttempt = attempt === MAX_RETRIES;
-        // Only retry on network errors, not on 401/403 (invalid token)
-        const isNetworkError =
-          err instanceof Error &&
-          (err.message === 'Network Error' || ('code' in err && (err as Record<string, unknown>).code === 'ERR_NETWORK'));
-
-        if (isLastAttempt || !isNetworkError) {
-          setUnauthenticated();
-          return;
-        }
-        // Brief delay before retry
-        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
-      }
+    try {
+      // Single call. The 401-refresh-retry dance is handled by the apiClient
+      // interceptor — see src/lib/api/client.ts. If the refresh token is
+      // revoked/expired the interceptor dispatches `auth:logout`, our listener
+      // above catches it and clears the store.
+      const user = await AuthService.getCurrentUser();
+      const { accessToken, refreshToken: latestRefresh } = useAuthStore.getState();
+      // accessToken is populated by the interceptor's rotation. Fall back to
+      // the persisted refresh token (which may have been rotated to a new
+      // value during the /me flow) so the next request keeps working.
+      setAuthenticated(user, accessToken ?? '', latestRefresh ?? refreshToken);
+    } catch {
+      // Either the refresh token was bad (interceptor already cleared via
+      // auth:logout) or /me itself failed for a non-auth reason. Either way,
+      // treat as logged out.
+      setUnauthenticated();
     }
   }, [setAuthenticated, setUnauthenticated, setLoading]);
 
   useEffect(() => {
     initAuth();
 
-    // Listen for global logout events (e.g. from API interceptors on 401 with SESSION_EXPIRED code)
     const logoutListener = (event: Event) => handleLogout(event);
     const accessDeniedListener = (event: Event) => handleAccessDenied(event);
 

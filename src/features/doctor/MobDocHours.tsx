@@ -102,7 +102,7 @@ function DesktopDocHours() {
         <div style={{ maxWidth: 760 }}>
           <div style={{ padding: '12px 16px', background: MB.primary50, borderRadius: 10, fontSize: 13, color: MB.primary600, marginBottom: 20, display: 'flex', gap: 8, alignItems: 'center' }}>
             <Icon name="info" size={15} color={MB.primary600} />
-            Appointment slots are auto-generated in 30-minute intervals based on these hours.
+            Appointment slots are auto-generated in intervals based on these hours.
           </div>
 
           {isLoading ? (

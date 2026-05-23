@@ -277,7 +277,7 @@ export default memo(function MobDocCopilot() {
 
         {/* Red flag banner */}
         {redFlags.length > 0 && (
-          <Card padding={12} style={{ marginBottom: 14, background: MB.dangerBg, borderLeft: `3px solid ${MB.danger}` }}>
+          <Card padding={12} style={{ marginBottom: 14, background: MB.dangerBg, borderTop: `2px solid ${MB.danger}` }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
               <Icon name="alert" size={16} color={MB.danger} />
               <div>

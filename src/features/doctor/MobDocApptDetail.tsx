@@ -11,7 +11,9 @@ import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { usePatientSummary } from '@/hooks/useSchedule'
+import { useConsultationGating } from '@/hooks/useConsultationGating'
 import { DoctorPortalService } from '@/services/doctor-portal.service'
+import { AppointmentsService } from '@/services/appointments.service'
 import { AccessGrantService, AccessGrantResponse } from '@/services/access-grant.service'
 import { ConsultationNotesService, ConsultationNoteResponse } from '@/services/consultation-notes.service'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -20,7 +22,38 @@ import { SafeHtml } from '@/components/feedback/SafeHtml'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
+import { ChatService } from '@/services/chat.service'
+import { TelemedicineService } from '@/services/telemedicine.service'
 import type { IconName } from '@/types/ui'
+
+// ── Communication icon button (chat / audio / video) ─────────────────────────
+function CommIconBtn({ icon, label, enabled, loading, onClick }: {
+  icon: IconName; label: string; enabled: boolean; loading?: boolean; onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={!enabled || loading}
+      onClick={enabled && !loading ? onClick : undefined}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+        background: 'transparent', border: 'none', fontFamily: 'inherit',
+        cursor: enabled && !loading ? 'pointer' : 'not-allowed',
+        opacity: enabled ? 1 : 0.35, padding: '8px 14px', borderRadius: 10,
+        transition: 'opacity .15s',
+      }}
+    >
+      <div style={{
+        width: 52, height: 52, borderRadius: '50%',
+        background: enabled ? MB.primary50 : MB.bg3,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon name={icon} size={22} color={enabled ? MB.primary : MB.text4} />
+      </div>
+      <span style={{ fontSize: 11, fontWeight: 500, color: enabled ? MB.text2 : MB.text4 }}>{label}</span>
+    </button>
+  )
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><div className="mb-eyebrow" style={{ marginBottom: 8 }}>{title}</div>{children}</div>
@@ -226,6 +259,22 @@ function MobileDocApptDetail() {
   const patientId = appt?.patientId;
   const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '');
 
+  // Pull the full appointment to drive the time-window gating on chat + telehealth.
+  // The location-state `appt` (ScheduleAppt) doesn't carry durationMins / medium.
+  const { data: fullAppt } = useQuery({
+    queryKey: ['appointment', 'detail', id],
+    queryFn: () => AppointmentsService.getById(String(id)),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+  const gating = useConsultationGating({
+    scheduledAt: fullAppt?.scheduledAt ?? appt?.scheduledAt,
+    durationMins: fullAppt?.durationMins,
+    status: fullAppt?.status ?? appt?.status,
+    consultationMedium: fullAppt?.consultationMedium,
+    type: fullAppt?.type,
+  })
+
   const transitionMutation = useMutation({
     mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
       DoctorPortalService.transitionAppointment(id!, status as 'COMPLETED' | 'NO_SHOW'),
@@ -280,9 +329,16 @@ function MobileDocApptDetail() {
             <PhotoBlock w={44} h={44} label={`PT · ${appt.name.split(' ')[1]?.toUpperCase() || 'PT'}`} tone="slate" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 500 }}>{appt.name}</div>
-              <div style={{ fontSize: 11, color: MB.text3 }}>Contact via Secure Messenger</div>
+              {(() => {
+                const m = fullAppt?.consultationMedium
+                const t = fullAppt?.type ?? appt.type
+                if (m === 'VIDEO' || t === 'TELEMEDICINE' || t === 'TELEHEALTH')
+                  return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#EEF2FF', color: '#6366F1', display: 'inline-block', marginTop: 3 }}>Telemedicine · Video</span>
+                if (m === 'AUDIO')
+                  return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#F0FDF4', color: '#16A34A', display: 'inline-block', marginTop: 3 }}>Telemedicine · Audio</span>
+                return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: MB.bg3, color: MB.text3, display: 'inline-block', marginTop: 3 }}>Physical</span>
+              })()}
             </div>
-            <Btn variant="secondary" size="sm" icon="phone">Call</Btn>
           </div>
         </div>
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -315,66 +371,73 @@ function MobileDocApptDetail() {
             </Btn>
           </Section>
 
-          <Section title="Patient Chat & AI">
-            <Btn
-              variant="secondary"
-              full
-              icon="sparkle"
-              onClick={async () => {
-                try {
-                  const { ChatService } = await import('@/services/chat.service')
-                  const c = await ChatService.createConversation(Number(id))
-                  navigate(`/doctor/chat/${c.id}`)
-                } catch {
-                  toast.error('Unable to open chat right now.')
-                }
-              }}
-            >
-              Open chat with patient
-            </Btn>
-          </Section>
+          {/* Communication icons — absent for physical; icons gated by medium paid for */}
+          {(() => {
+            const med = fullAppt?.consultationMedium
+            const typ = fullAppt?.type ?? appt.type
+            const isPhysical = med === 'PHYSICAL' || (!med && typ === 'IN_PERSON')
+            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            const hasVideo  = med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            if (isPhysical) return null
+            return (
+              <Section title="Communication">
+                <Card padding={12}>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <CommIconBtn
+                      icon="mail"
+                      label="Chat"
+                      enabled={gating.chatReadable}
+                      onClick={async () => {
+                        try {
+                          const c = await ChatService.createConversation(Number(id))
+                          navigate(`/doctor/chat/${c.id}`)
+                        } catch { toast.error('Unable to open chat right now.') }
+                      }}
+                    />
+                    {hasAudio && (
+                      <CommIconBtn
+                        icon="phone"
+                        label="Audio call"
+                        enabled={gating.telemedicineAvailable}
+                        onClick={async () => {
+                          try {
+                            const session = await TelemedicineService.createSession(Number(id))
+                            navigate(`/doctor/telemedicine/${session.id}`)
+                          } catch { toast.error('Could not start audio call.') }
+                        }}
+                      />
+                    )}
+                    {hasVideo && (
+                      <CommIconBtn
+                        icon="video"
+                        label="Video call"
+                        enabled={gating.telemedicineAvailable}
+                        onClick={async () => {
+                          try {
+                            const session = await TelemedicineService.createSession(Number(id))
+                            navigate(`/doctor/telemedicine/${session.id}`)
+                          } catch { toast.error('Could not start video call.') }
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: MB.text3, marginTop: 8 }}>
+                    {gating.isCompleted
+                      ? 'Chat is read-only — history always accessible'
+                      : gating.windowOpen
+                      ? 'Live · closes 10 min after scheduled end'
+                      : !gating.isActionable
+                      ? 'Available once the appointment is confirmed'
+                      : gating.label}
+                  </div>
+                </Card>
+              </Section>
+            )
+          })()}
 
           <Section title="Patient Records">
             <PatientRecordsSection patientId={String(patientId)} />
           </Section>
-
-          {(appt.type === 'TELEMEDICINE' || appt.type === 'TELEHEALTH') && (
-            <Section title="Telemedicine">
-              <Btn
-                variant="primary"
-                full
-                icon="phone"
-                onClick={async () => {
-                  try {
-                    const { TelemedicineService } = await import('@/services/telemedicine.service')
-                    const session = await TelemedicineService.createSession(Number(id))
-                    navigate(`/doctor/telemedicine/${session.id}`)
-                  } catch {
-                    toast.error('Could not create telemedicine session')
-                  }
-                }}
-              >
-                Start telemedicine session
-              </Btn>
-              <Btn
-                variant="secondary"
-                full
-                icon="sparkle"
-                style={{ marginTop: 8 }}
-                onClick={async () => {
-                  try {
-                    const { TelemedicineService } = await import('@/services/telemedicine.service')
-                    const session = await TelemedicineService.createSession(Number(id))
-                    navigate(`/doctor/telemedicine/${session.id}/copilot`)
-                  } catch {
-                    toast.error('Could not start Co-Pilot')
-                  }
-                }}
-              >
-                Open Visit Co-Pilot
-              </Btn>
-            </Section>
-          )}
           <Section title="Prescriptions">
             <Btn
               variant="secondary"
@@ -445,6 +508,20 @@ function DesktopDocApptDetail() {
   const patientId = appt?.patientId
   const { data: summary, isLoading: isSummaryLoading } = usePatientSummary(patientId || '')
 
+  const { data: fullAppt } = useQuery({
+    queryKey: ['appointment', 'detail', id],
+    queryFn: () => AppointmentsService.getById(String(id)),
+    enabled: !!id,
+    staleTime: 30_000,
+  })
+  const gating = useConsultationGating({
+    scheduledAt: fullAppt?.scheduledAt ?? appt?.scheduledAt,
+    durationMins: fullAppt?.durationMins,
+    status: fullAppt?.status ?? appt?.status,
+    consultationMedium: fullAppt?.consultationMedium,
+    type: fullAppt?.type,
+  })
+
   const transitionMutation = useMutation({
     mutationFn: (status: 'COMPLETED' | 'NO_SHOW' | 'CANCELLED') =>
       DoctorPortalService.transitionAppointment(id!, status as 'COMPLETED' | 'NO_SHOW'),
@@ -473,6 +550,15 @@ function DesktopDocApptDetail() {
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>{appt.name}</div>
                 <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{time} PT</div>
+                {(() => {
+                  const m = fullAppt?.consultationMedium
+                  const t = fullAppt?.type ?? appt.type
+                  if (m === 'VIDEO' || t === 'TELEMEDICINE' || t === 'TELEHEALTH')
+                    return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#EEF2FF', color: '#6366F1', display: 'inline-block', marginTop: 4 }}>Telemedicine · Video</span>
+                  if (m === 'AUDIO')
+                    return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#F0FDF4', color: '#16A34A', display: 'inline-block', marginTop: 4 }}>Telemedicine · Audio</span>
+                  return <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: MB.bg3, color: MB.text3, display: 'inline-block', marginTop: 4 }}>Physical</span>
+                })()}
               </div>
             </div>
             <StatusPill status={appt.status} />
@@ -509,6 +595,68 @@ function DesktopDocApptDetail() {
             <div className="mb-eyebrow" style={{ marginBottom: 10 }}>Patient records</div>
             <PatientRecordsSection patientId={String(patientId)} />
           </div>
+          {/* Communication icons — absent for physical */}
+          {(() => {
+            const med = fullAppt?.consultationMedium
+            const typ = fullAppt?.type ?? appt.type
+            const isPhysical = med === 'PHYSICAL' || (!med && typ === 'IN_PERSON')
+            const hasAudio = med === 'AUDIO' || med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            const hasVideo  = med === 'VIDEO' || typ === 'TELEMEDICINE' || typ === 'TELEHEALTH'
+            if (isPhysical) return null
+            return (
+              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20 }}>
+                <div className="mb-eyebrow" style={{ marginBottom: 12 }}>Communication</div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <CommIconBtn
+                    icon="mail"
+                    label="Chat"
+                    enabled={gating.chatReadable}
+                    onClick={async () => {
+                      try {
+                        const c = await ChatService.createConversation(Number(id))
+                        navigate(`/doctor/chat/${c.id}`)
+                      } catch { toast.error('Unable to open chat right now.') }
+                    }}
+                  />
+                  {hasAudio && (
+                    <CommIconBtn
+                      icon="phone"
+                      label="Audio call"
+                      enabled={gating.telemedicineAvailable}
+                      onClick={async () => {
+                        try {
+                          const session = await TelemedicineService.createSession(Number(id))
+                          navigate(`/doctor/telemedicine/${session.id}`)
+                        } catch { toast.error('Could not start audio call.') }
+                      }}
+                    />
+                  )}
+                  {hasVideo && (
+                    <CommIconBtn
+                      icon="video"
+                      label="Video call"
+                      enabled={gating.telemedicineAvailable}
+                      onClick={async () => {
+                        try {
+                          const session = await TelemedicineService.createSession(Number(id))
+                          navigate(`/doctor/telemedicine/${session.id}`)
+                        } catch { toast.error('Could not start video call.') }
+                      }}
+                    />
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: MB.text3, marginTop: 8 }}>
+                  {gating.isCompleted
+                    ? 'Chat is read-only — history always accessible'
+                    : gating.windowOpen
+                    ? 'Live · closes 10 min after scheduled end'
+                    : !gating.isActionable
+                    ? 'Available once the appointment is confirmed'
+                    : gating.label}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

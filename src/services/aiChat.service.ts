@@ -7,6 +7,7 @@
  */
 import { apiClient } from '@/lib/api/client';
 import { unwrapApiResponse } from '@/lib/api/contracts';
+import { useAuthStore } from '@/store/authStore';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,18 @@ export interface SupportChatResponse {
 
 export const AiChatService = {
   async sendMessage(request: SupportChatRequest): Promise<SupportChatResponse> {
-    const response = await apiClient.post('/api/v1/ai/chat', request);
+    // /api/v1/ai/chat is in the backend's PUBLIC_ENDPOINTS allow-list — auth is
+    // optional. Sending a stale/expired access token would otherwise trip the
+    // response interceptor's refresh-on-401 path for what should be a fire-and-
+    // forget public call. Only attach the Bearer header if we actually have a
+    // token in memory (request interceptor would do this automatically — we
+    // pin it here so the behaviour is obvious to maintainers).
+    const accessToken = useAuthStore.getState().accessToken ?? undefined;
+    const response = await apiClient.post('/api/v1/ai/chat', request, {
+      headers: accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : { Authorization: '' },
+    });
     return unwrapApiResponse<SupportChatResponse>(response.data);
   },
 };

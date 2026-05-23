@@ -144,46 +144,19 @@ function LoginForm({
           </Field>
         )}
         {showVerifyPrompt && (
-          <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '8px', marginBottom: 12 }}>
-            <p style={{ margin: '0 0 8px 0', fontSize: 14, fontWeight: 500, color: '#333' }}>Email verification required</p>
-            <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0' }}>
-              We sent a verification link to {email}
+          <div role="status" style={{ padding: '14px', background: MB.warnBg, borderRadius: 8, border: `1px solid #D97706`, marginBottom: 12 }}>
+            <p style={{ margin: '0 0 4px 0', fontSize: 14, fontWeight: 600, color: MB.ink }}>Email verification required</p>
+            <p style={{ fontSize: 13, color: MB.text2, margin: '0 0 12px 0', lineHeight: 1.5 }}>
+              We sent a verification link to {email}.
             </p>
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              disabled={isResending}
-              style={{
-                padding: '8px 12px',
-                background: MB.primary,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 4,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: isResending ? 'not-allowed' : 'pointer',
-                opacity: isResending ? 0.6 : 1,
-                marginRight: 8,
-              }}
-            >
-              {isResending ? 'Sending...' : 'Resend Verification Email'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowVerifyPrompt(false)}
-              style={{
-                padding: '8px 12px',
-                background: 'transparent',
-                color: MB.primary,
-                border: `1px solid ${MB.primary}`,
-                borderRadius: 4,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Back to Login
-            </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Btn variant="primary" size="sm" type="button" loading={isResending} onClick={handleResendVerification}>
+                Resend verification email
+              </Btn>
+              <Btn variant="secondary" size="sm" type="button" onClick={() => setShowVerifyPrompt(false)}>
+                Back to sign in
+              </Btn>
+            </div>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: showVerifyPrompt ? 8 : -2 }}>
@@ -203,6 +176,74 @@ function LoginForm({
   )
 }
 
+// ── Appointment feed (desktop panel illustration) ─────────────────────────────
+const PANEL_APPTS = [
+  { time: '09:15', doctor: 'Dr. A. Chen', spec: 'Cardiology', patient: 'Sarah M.', type: 'Follow-up', status: 'done' },
+  { time: '09:30', doctor: 'Dr. O. Patel', spec: 'Neurology', patient: 'James K.', type: 'Initial consult', status: 'done' },
+  { time: '09:45', doctor: 'Dr. L. Nguyen', spec: 'Dermatology', patient: 'Emma R.', type: 'Check-up', status: 'active' },
+  { time: '10:00', doctor: 'Dr. A. Chen', spec: 'Cardiology', patient: 'David L.', type: 'Echo review', status: 'next' },
+  { time: '10:20', doctor: 'Dr. M. Osei', spec: 'Pediatrics', patient: 'Lily T.', type: 'Vaccination', status: 'upcoming' },
+  { time: '10:35', doctor: 'Dr. O. Patel', spec: 'Neurology', patient: 'Chris B.', type: 'MRI review', status: 'upcoming' },
+  { time: '10:50', doctor: 'Dr. L. Nguyen', spec: 'Dermatology', patient: 'Aisha F.', type: 'Consultation', status: 'upcoming' },
+  { time: '11:05', doctor: 'Dr. M. Osei', spec: 'Pediatrics', patient: 'Noah W.', type: 'Follow-up', status: 'upcoming' },
+] as const
+
+const FEED_CARD_H = 70 // card height (62px) + gap (8px) — must match marginBottom below
+const FEED_STRIP_H = FEED_CARD_H * PANEL_APPTS.length // translateY for seamless loop
+
+function PanelApptCard({ time, doctor, spec, patient, type, status }: typeof PANEL_APPTS[number]) {
+  const isActive = status === 'active'
+  const isDone = status === 'done'
+  const isNext = status === 'next'
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px', borderRadius: 10, marginBottom: 8,
+      background: isActive
+        ? 'rgba(255,255,255,0.16)'
+        : isDone ? 'rgba(255,255,255,0.04)'
+        : isNext ? 'rgba(255,255,255,0.11)'
+        : 'rgba(255,255,255,0.07)',
+      boxShadow: isActive
+        ? 'inset 0 0 0 1px rgba(255,255,255,0.28)'
+        : `inset 0 0 0 1px rgba(255,255,255,${isDone ? '0.07' : isNext ? '0.17' : '0.11'})`,
+    }}>
+      <div style={{ flexShrink: 0, width: 36, textAlign: 'right' }}>
+        <span style={{
+          fontSize: 12, fontWeight: 600, letterSpacing: '0.01em', fontVariantNumeric: 'tabular-nums',
+          color: isDone ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.65)',
+        }}>{time}</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          color: isDone ? 'rgba(255,255,255,0.35)' : '#fff',
+        }}>{doctor} · {spec}</div>
+        <div style={{
+          fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          color: isDone ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.52)',
+        }}>{patient} · {type}</div>
+      </div>
+      <div style={{ flexShrink: 0 }}>
+        {isActive && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span className="mb-panel-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff', display: 'block' }} />
+            <span style={{ fontSize: 11, color: '#fff', fontWeight: 600, letterSpacing: '0.01em' }}>In progress</span>
+          </span>
+        )}
+        {isNext && (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.88)', fontWeight: 600, background: 'rgba(255,255,255,0.14)', padding: '2px 8px', borderRadius: 20, letterSpacing: '0.01em' }}>
+            Next
+          </span>
+        )}
+        {isDone && (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', fontWeight: 500 }}>Done</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Mobile layout ─────────────────────────────────────────────────────────────
 function MobileLogin(props: ReturnType<typeof useLoginLogic>) {
   return (
@@ -213,7 +254,7 @@ function MobileLogin(props: ReturnType<typeof useLoginLogic>) {
           <span style={{ fontSize: 17, fontWeight: 700, color: MB.ink }}>MediBook</span>
         </div>
         <h1 className="mb-h1" style={{ fontSize: 26, marginBottom: 6 }}>Welcome back</h1>
-        <p className="mb-small" style={{ marginBottom: 28 }}>Sign in to manage your appointments.</p>
+        <p className="mb-small" style={{ marginBottom: 28 }}>Sign in to your MediBook account.</p>
         <LoginForm {...props} />
         <div style={{ marginTop: 'auto', paddingTop: 24, textAlign: 'center', fontSize: 13, color: MB.text3 }}>
           New to MediBook?{' '}
@@ -226,6 +267,7 @@ function MobileLogin(props: ReturnType<typeof useLoginLogic>) {
 
 // ── Desktop split layout ──────────────────────────────────────────────────────
 function DesktopLogin(props: ReturnType<typeof useLoginLogic>) {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', background: MB.bg, overflow: 'hidden' }}>
       {/* Left: form panel */}
@@ -240,7 +282,7 @@ function DesktopLogin(props: ReturnType<typeof useLoginLogic>) {
             Welcome back
           </h1>
           <p style={{ fontSize: 15, color: MB.text2, margin: '0 0 32px', lineHeight: 1.6 }}>
-            Sign in to manage your appointments.
+            Sign in to your MediBook account.
           </p>
           <LoginForm {...props} />
         </div>
@@ -252,12 +294,30 @@ function DesktopLogin(props: ReturnType<typeof useLoginLogic>) {
       </div>
 
       {/* Right: visual panel */}
-      <div style={{
+      <div aria-hidden="true" style={{
         flex: 1, background: `linear-gradient(135deg, ${MB.primary} 0%, ${MB.primary700} 100%)`,
         position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 56,
       }}>
-        {/* Dot pattern */}
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.08, pointerEvents: 'none' }} viewBox="0 0 600 800">
+        {/* Keyframe animations */}
+        <style>{`
+          @keyframes mb-appt-scroll {
+            0%   { transform: translateY(0) }
+            100% { transform: translateY(-${FEED_STRIP_H}px) }
+          }
+          @keyframes mb-appt-pulse {
+            0%, 100% { opacity: 1; transform: scale(1) }
+            50%       { opacity: 0.35; transform: scale(0.6) }
+          }
+          .mb-panel-dot  { animation: mb-appt-pulse 1.8s ease-in-out infinite; }
+          .mb-appt-feed  { animation: mb-appt-scroll ${Math.round(FEED_STRIP_H / 13)}s linear infinite; }
+          @media (prefers-reduced-motion: reduce) {
+            .mb-appt-feed { animation: none !important; }
+            .mb-panel-dot { animation: none !important; }
+          }
+        `}</style>
+
+        {/* Background texture */}
+        <svg aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.05, pointerEvents: 'none' }} viewBox="0 0 600 800">
           <defs>
             <pattern id="login-dots" width="24" height="24" patternUnits="userSpaceOnUse">
               <circle cx="2" cy="2" r="1.5" fill="#fff" />
@@ -265,41 +325,28 @@ function DesktopLogin(props: ReturnType<typeof useLoginLogic>) {
           </defs>
           <rect width="100%" height="100%" fill="url(#login-dots)" />
         </svg>
-        {/* Decorative circle */}
-        <svg viewBox="0 0 240 240" width={260} height={260}
-          style={{ position: 'absolute', top: 60, right: 60, opacity: 0.15 }}>
-          <circle cx="120" cy="120" r="100" stroke="#fff" strokeWidth="1.5" fill="none" />
-          <circle cx="120" cy="120" r="70" stroke="#fff" strokeWidth="1.5" fill="none" />
-          <path d="M120 40v160M40 120h160" stroke="#fff" strokeWidth="1.5" />
-        </svg>
 
-        {/* Small stats bar */}
-        <div style={{ display: 'flex', gap: 20, marginBottom: 28, position: 'relative' }}>
-          {[
-            { label: 'Appointments', value: '148 today' },
-            { label: 'Active doctors', value: '24' },
-            { label: 'No-show rate', value: '4.2%' },
-          ].map((s) => (
-            <div key={s.label} style={{
-              background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px 16px',
-              border: '1px solid rgba(255,255,255,0.2)',
-            }}>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{s.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginTop: 3 }}>{s.value}</div>
+        {/* Appointment feed */}
+        <div style={{ position: 'absolute', top: 52, left: 56, right: 56, bottom: 224 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.42)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              Today's schedule
+            </span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', fontVariantNumeric: 'tabular-nums' }}>{today}</span>
+          </div>
+          <div style={{
+            height: 'calc(100% - 30px)', overflow: 'hidden',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 14%, black 80%, transparent 100%)',
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 14%, black 80%, transparent 100%)',
+          }}>
+            <div className="mb-appt-feed">
+              {[...PANEL_APPTS, ...PANEL_APPTS].map((a, i) => <PanelApptCard key={i} {...a} />)}
             </div>
-          ))}
+          </div>
         </div>
 
         {/* Headline */}
         <div style={{ position: 'relative', maxWidth: 520 }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '5px 12px', background: 'rgba(255,255,255,0.15)',
-            borderRadius: 999, fontSize: 11, fontWeight: 600, color: '#fff',
-            letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 18,
-          }}>
-            <Icon name="sparkle" size={11} color="#fff" /> Healthcare, simplified
-          </div>
           <h2 style={{ fontSize: 40, fontWeight: 800, color: '#fff', lineHeight: 1.12, letterSpacing: '-0.02em', margin: '0 0 16px' }}>
             Book the right doctor<br />at the right time.
           </h2>

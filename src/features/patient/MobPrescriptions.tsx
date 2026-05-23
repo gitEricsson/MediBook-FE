@@ -50,7 +50,7 @@ export default memo(function MobPrescriptions() {
         {items.map((rx) => {
           const isActive = rx.status === 'ACTIVE'
           return (
-            <Card key={rx.id} padding={12} style={{ marginBottom: 10, borderLeft: `3px solid ${isActive ? MB.primary : MB.text4}` }}>
+            <Card key={rx.id} padding={12} style={{ marginBottom: 10, background: isActive ? MB.primary50 : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>{rx.drugName} <span style={{ color: MB.text3, fontWeight: 500 }}>· {rx.dosage}</span></div>

@@ -543,12 +543,11 @@ function RoleCardDesktop({ role, visible, index }: { role: typeof ROLES[0]; visi
       className="lp-reveal-scale"
       style={{
         opacity: visible ? 1 : 0, transform: visible ? 'none' : 'scale(.94)',
-        transition: `opacity .55s ${index * 0.1}s ease, transform .55s ${index * 0.1}s ease`,
         position: 'relative', borderRadius: 18, overflow: 'hidden',
         background: hov ? role.gradient : MB.bg,
         border: `1px solid ${hov ? 'transparent' : MB.line}`,
         boxShadow: hov ? `0 20px 50px ${role.accent}30` : '0 1px 3px rgba(16,24,40,.05)',
-        transition2: 'background .35s ease, box-shadow .35s ease, border-color .35s ease',
+        transition: `opacity .55s ${index * 0.1}s ease, transform .55s ${index * 0.1}s ease, background .35s ease, box-shadow .35s ease, border-color .35s ease`,
       } as React.CSSProperties}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -578,7 +577,7 @@ function RoleCardDesktop({ role, visible, index }: { role: typeof ROLES[0]; visi
             marginTop: 'auto', height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             background: hov ? 'rgba(255,255,255,.18)' : role.accent,
             border: hov ? '1px solid rgba(255,255,255,.3)' : '1px solid transparent',
-            color: '#fff', borderRadius: 9, textDecoration: 'none',
+            color: '#fff', borderRadius: 10, textDecoration: 'none',
             fontSize: 13, fontWeight: 700,
             transition: 'background .3s, border .3s',
           }}>
@@ -631,7 +630,7 @@ function RolesMobileCarousel() {
         </button>
         <div style={{ display: 'flex', gap: 6 }}>
           {ROLES.map((_, i) => (
-            <button key={i} onClick={() => goTo(i)} style={{ width: i === index ? 20 : 8, height: 8, borderRadius: 4, background: i === index ? MB.primary : MB.line, border: 'none', cursor: 'pointer', padding: 0, transition: 'width .2s ease, background .2s ease' }} />
+            <button key={i} onClick={() => goTo(i)} style={{ width: i === index ? 20 : 8, height: 8, borderRadius: 4, background: i === index ? MB.primary : MB.line, border: 'none', cursor: 'pointer', padding: 0, transition: 'background 0.2s ease' }} />
           ))}
         </div>
         <button onClick={next} style={{ width: 36, height: 36, borderRadius: '50%', border: `1px solid ${MB.line}`, background: MB.bg, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -785,7 +784,7 @@ function DoctorWorkflowSection() {
               <span style={{ fontSize: 11, fontWeight: 600, color: MB.primary, cursor: 'pointer' }}>View all</span>
             </div>
             {APPT_ITEMS.map((a, i) => (
-              <div key={a.name} style={{ padding: '12px 20px', borderBottom: i < APPT_ITEMS.length - 1 ? `1px solid ${MB.line2}` : 'none', display: 'flex', alignItems: 'center', gap: 12, background: a.status === 'NEXT' ? `${MB.primary50}66` : 'transparent', borderLeft: a.status === 'NEXT' ? `3px solid ${MB.primary}` : '3px solid transparent', transition: 'background .15s' }}>
+              <div key={a.name} style={{ padding: '12px 20px', borderBottom: i < APPT_ITEMS.length - 1 ? `1px solid ${MB.line2}` : 'none', display: 'flex', alignItems: 'center', gap: 12, background: a.status === 'NEXT' ? `${MB.primary50}66` : 'transparent', transition: 'background .15s' }}>
                 <div style={{ fontSize: 11, color: MB.text3, width: 60, flexShrink: 0, fontFamily: 'ui-monospace, monospace' }}>{a.time}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{a.name}</div>
@@ -807,8 +806,8 @@ function DoctorWorkflowSection() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {[
               { icon: 'video', text: 'Video/Audio and chat for seamless telemedicine consultations' },
-              { icon: 'edit', text: 'AI call note-taker saves summaries directly as consultation notes' },
-                            { icon: 'check', text: 'One tap to mark status with automatic patient notification' },
+              { icon: 'sparkle', text: 'AI call note-taker saves summaries directly as consultation notes' },
+              { icon: 'check', text: 'One tap to mark status with automatic patient notification' },
               { icon: 'edit', text: 'Add SOAP consultation notes tied to each appointment' },
             ].map((item) => (
               <div key={item.text} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -892,10 +891,12 @@ function AdminSection() {
                 <div style={{ height: 7, background: MB.line2, borderRadius: 999, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
-                    width: barsVisible ? `${dept.pct}%` : '0%',
+                    width: '100%',
                     background: `linear-gradient(90deg, ${MB.primary} 0%, ${MB.primary600} 100%)`,
                     borderRadius: 999,
-                    transition: `width .9s ${i * 0.12}s cubic-bezier(.22,1,.36,1)`,
+                    transform: barsVisible ? `scaleX(${dept.pct / 100})` : 'scaleX(0)',
+                    transformOrigin: 'left center',
+                    transition: `transform .9s ${i * 0.12}s cubic-bezier(0.16, 1, 0.3, 1)`,
                   }} />
                 </div>
               </div>
@@ -951,7 +952,7 @@ function TextFillReveal() {
           })}
         </h2>
         <p style={{ fontSize: 17, color: MB.text2, lineHeight: 1.65, maxWidth: 520, margin: '0 auto 36px' }}>
-          Join healthcare providers who trust MediBook to manage appointments, patients, and analytics in one place.
+          From the first booking to the final invoice, MediBook handles the full clinical workflow so care teams can focus on patients.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/register" className="lp-liquid-btn" style={{
@@ -977,7 +978,7 @@ function TextFillReveal() {
           }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = MB.bg3 }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
-            Sign in
+            See it in action
           </Link>
         </div>
       </div>
@@ -1125,7 +1126,9 @@ function Nav() {
               {links.map((l) => (
                 <a key={l.label} href={l.href} style={{ fontSize: 14, fontWeight: 500, color: MB.text2, textDecoration: 'none', transition: 'color .12s' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.primary }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.text2 }}>
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.text2 }}
+                  onFocus={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.primary }}
+                  onBlur={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = MB.text2 }}>
                   {l.label}
                 </a>
               ))}
@@ -1138,7 +1141,7 @@ function Nav() {
               </Link>
               <Link to="/register" style={{
                 height: 38, padding: '0 18px',
-                background: MB.primary, color: '#fff', border: 'none', borderRadius: 9,
+                background: MB.primary, color: '#fff', border: 'none', borderRadius: 10,
                 fontSize: 14, fontWeight: 600,
                 display: 'inline-flex', alignItems: 'center',
                 textDecoration: 'none',
@@ -1154,7 +1157,10 @@ function Nav() {
         )}
 
         {isMobile && (
-          <button 
+          <button
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-nav-menu"
             onClick={() => setMenuOpen(!menuOpen)}
             style={{ background: 'none', border: 'none', padding: 8, cursor: 'pointer', color: MB.ink, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
@@ -1165,8 +1171,8 @@ function Nav() {
 
       {/* Mobile Menu */}
       {isMobile && menuOpen && (
-        <div style={{ 
-          position: 'absolute', top: 64, left: 0, right: 0, 
+        <div id="mobile-nav-menu" style={{
+          position: 'absolute', top: 64, left: 0, right: 0,
           background: '#fff', borderBottom: `1px solid ${MB.line2}`, 
           padding: '12px 24px 32px', display: 'flex', flexDirection: 'column', gap: 8,
           boxShadow: '0 12px 24px rgba(0,0,0,0.05)',
@@ -1257,7 +1263,7 @@ function Footer() {
 // ─────────────────────────────────────────────────────────────────────────────
 export default memo(function LandingPage() {
   return (
-    <div style={{ background: MB.bg, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', overflowX: 'hidden' }}>
+    <div style={{ background: MB.bg, fontFamily: 'DM Sans, ui-sans-serif, system-ui, sans-serif', overflowX: 'hidden' }}>
       {/* Inject animation CSS once */}
       <style>{ANIM_CSS}</style>
 

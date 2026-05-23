@@ -2,6 +2,7 @@ import { apiClient } from '@/lib/api/client';
 import { Doctor, Specialization } from '@/types/domain';
 import { DoctorAvailability } from '@/types/api';
 import { PageResponse, toPageableParams, unwrapApiResponse } from '@/lib/api/contracts';
+import { todayLocalIsoDate } from '@/lib/date';
 
 export interface DoctorSearchParams {
   q?: string;
@@ -97,7 +98,7 @@ export const DoctorService = {
   },
 
   getAvailability: async (id: string, from?: string, to?: string) => {
-    const start = from ?? new Date().toISOString().split('T')[0];
+    const start = from ?? todayLocalIsoDate();
     const end = to ?? start;
     const response = await apiClient.get(`/api/v1/doctors/${id}/availability`, {
       params: { from: start, to: end },

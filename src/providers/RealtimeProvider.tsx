@@ -11,7 +11,8 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isAuthenticated = status === 'authenticated';
   const { addNotification, setUnreadCount } = useNotificationStore();
 
-  // Poll unread count every 30 s as a reliable badge fallback alongside STOMP
+  // Poll unread count every 30 s as a reliable badge fallback alongside STOMP.
+  // Disable retries: on a 5xx we'd otherwise hit the failing endpoint 4× per cycle.
   useQuery({
     queryKey: ['notifications', 'unread-count'],
     queryFn: async () => {
@@ -22,6 +23,7 @@ export const RealtimeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     enabled: isAuthenticated,
     refetchInterval: 30_000,
     staleTime: 20_000,
+    retry: false,
   });
 
   useStompNotifications(

@@ -14,6 +14,9 @@ export default memo(function MobResetPassword() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token') ?? ''
+  // Invite emails append &mode=setup so we swap in onboarding copy instead of
+  // the standard "reset" messaging. Same endpoint, same form — just nicer UX.
+  const isSetup = searchParams.get('mode') === 'setup'
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -62,8 +65,14 @@ export default memo(function MobResetPassword() {
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: MB.successBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
             <Icon name="check" size={32} color={MB.success} strokeWidth={2.5} />
           </div>
-          <h1 className="mb-h1" style={{ fontSize: 24 }}>Password updated</h1>
-          <p className="mb-small" style={{ margin: '8px 0 28px' }}>You can now sign in with your new password.</p>
+          <h1 className="mb-h1" style={{ fontSize: 24 }}>
+            {isSetup ? 'Account ready' : 'Password updated'}
+          </h1>
+          <p className="mb-small" style={{ margin: '8px 0 28px' }}>
+            {isSetup
+              ? 'Your password is set. Sign in to access your MediBook account.'
+              : 'You can now sign in with your new password.'}
+          </p>
           <Btn variant="primary" size="lg" full onClick={() => navigate('/login')}>Sign in</Btn>
         </div>
       </MobScreen>
@@ -77,11 +86,17 @@ export default memo(function MobResetPassword() {
         <div style={{ width: 48, height: 48, borderRadius: 14, background: MB.primary50, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <Icon name="lock" size={22} color={MB.primary} />
         </div>
-        <h1 className="mb-h1" style={{ fontSize: 26, marginBottom: 6 }}>Set new password</h1>
-        <p className="mb-small" style={{ marginBottom: 28 }}>Choose a strong password with at least 8 characters.</p>
+        <h1 className="mb-h1" style={{ fontSize: 26, marginBottom: 6 }}>
+          {isSetup ? 'Welcome to MediBook' : 'Set new password'}
+        </h1>
+        <p className="mb-small" style={{ marginBottom: 28 }}>
+          {isSetup
+            ? 'Finish setting up your account by choosing a strong password.'
+            : 'Choose a strong password with at least 8 characters.'}
+        </p>
 
         {error && (
-          <div role="alert" style={{ padding: '10px 12px', background: MB.dangerBg, border: `1px solid #FCA29B`, borderRadius: 8, marginBottom: 16, fontSize: 13, color: MB.danger, display: 'flex', gap: 8 }}>
+          <div role="alert" style={{ padding: '10px 12px', background: MB.dangerBg, border: `1px solid #FCA29B`, borderRadius: 8, marginBottom: 16, fontSize: 13, color: MB.danger, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <Icon name="alert" size={16} color={MB.danger} />
             <span>{error}</span>
           </div>
@@ -105,7 +120,7 @@ export default memo(function MobResetPassword() {
           disabled={!password || !confirm || mismatch}
           style={{ marginTop: 24 }}
         >
-          Update password
+          {isSetup ? 'Set my password' : 'Update password'}
         </Btn>
 
         <Link to="/login" style={{ display: 'block', marginTop: 16, fontSize: 13, color: MB.primary, fontWeight: 500, textAlign: 'center' }}>

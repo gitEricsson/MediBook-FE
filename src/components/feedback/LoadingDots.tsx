@@ -7,7 +7,7 @@ export const LoadingDots = memo(function LoadingDots() {
       {([0, 1, 2] as const).map((i) => (
         <span key={i} style={{
           width: 6, height: 6, borderRadius: '50%', background: MB.primary,
-          animation: `mb-bounce 1s ${i * 0.15}s infinite ease-in-out`,
+          animation: `mb-dot-pulse 1.2s ${i * 0.16}s infinite ease-in-out`,
         }} />
       ))}
     </div>

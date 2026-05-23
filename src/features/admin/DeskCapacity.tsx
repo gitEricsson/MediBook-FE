@@ -36,7 +36,7 @@ function CapacityBar({ rate }: { rate: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <div style={{ flex: 1, height: 8, background: MB.line, borderRadius: 999, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 999, transition: 'width 0.4s ease' }} />
+        <div style={{ height: '100%', width: '100%', background: color, borderRadius: 999, transform: `scaleX(${pct / 100})`, transformOrigin: 'left center', transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }} />
       </div>
       <span style={{ fontSize: 12, color: MB.text3, minWidth: 56, textAlign: 'right', fontFamily: 'monospace' }}>
         {Math.round(pct)}%

@@ -24,6 +24,23 @@ export interface CursorPage<T> {
   limit: number;
 }
 
+export type ConsultationType = 'FIRST_VISIT' | 'FOLLOW_UP' | 'EMERGENCY';
+export type ConsultationMedium = 'PHYSICAL' | 'AUDIO' | 'VIDEO';
+
+export interface FeeEstimate {
+  fee: number;
+  seniorSurchargeApplied: boolean;
+  mediumSurchargeApplied: boolean;
+  baseFee: number;
+  consultationTypeAdjustment: number;
+  seniorSurcharge: number;
+  mediumSurcharge: number;
+  consultationTypeLabel: string;
+  mediumLabel: string;
+  departmentName: string | null;
+  currency: string;
+}
+
 export const AppointmentsService = {
   getById: async (id: string) => {
     const response = await apiClient.get(`/api/v1/appointments/${id}`);
@@ -77,5 +94,16 @@ export const AppointmentsService = {
         scheduledAt,
       },
     });
+  },
+
+  estimateFee: async (
+    doctorId: number,
+    consultationType: ConsultationType = 'FIRST_VISIT',
+    medium: ConsultationMedium = 'PHYSICAL',
+  ) => {
+    const response = await apiClient.get('/api/v1/appointments/fee-estimate', {
+      params: { doctorId, consultationType, medium },
+    });
+    return unwrapApiResponse<FeeEstimate>(response.data);
   },
 };

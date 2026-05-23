@@ -158,7 +158,7 @@ function RxCard({ rx, onCancel }: { rx: Prescription; onCancel: (reason: string)
   const isActive = rx.status === 'ACTIVE'
 
   return (
-    <Card padding={12} style={{ marginBottom: 10, borderLeft: `3px solid ${isActive ? MB.primary : MB.text4}` }}>
+    <Card padding={12} style={{ marginBottom: 10, background: isActive ? MB.primary50 : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700 }}>{rx.drugName} <span style={{ color: MB.text3, fontWeight: 500 }}>· {rx.dosage}</span></div>

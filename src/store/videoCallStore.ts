@@ -123,7 +123,7 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
     set({ isConnecting: true, error: null, activeCall: session, isCameraOff: audioOnly });
     try {
       const [twilioVideo, tokenResponse] = await Promise.all([
-        import('twilio-video') as Promise<unknown>,
+        /* @vite-ignore */ import('twilio-video') as Promise<unknown>,
         session.token
           ? Promise.resolve({ token: session.token, roomName: session.roomName, identity: session.identity ?? '', expiresAt: session.tokenExpiresAt ?? '' })
           : TelemedicineService.getVideoToken(session.sessionId),
@@ -216,7 +216,7 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
 
     if (!nextCameraOff && existingVideoTracks.length === 0) {
       try {
-        const { createLocalVideoTrack } = await import('twilio-video') as unknown as {
+        const { createLocalVideoTrack } = await /* @vite-ignore */ import('twilio-video') as unknown as {
           createLocalVideoTrack: (options: { width: number; height: number }) => Promise<unknown>;
         };
         const videoTrack = await createLocalVideoTrack({ width: 960, height: 540 }) as TwilioTrack;

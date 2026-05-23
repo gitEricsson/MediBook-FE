@@ -94,6 +94,12 @@ export interface AppointmentConfirmRequest {
   type: AppointmentType;
   durationMins?: number;
   reason?: string;
+  /** PHYSICAL | AUDIO | VIDEO */
+  consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO';
+  /** FIRST_VISIT | FOLLOW_UP | EMERGENCY */
+  consultationType?: 'FIRST_VISIT' | 'FOLLOW_UP' | 'EMERGENCY';
+  /** Required true on the server when consultationType=FOLLOW_UP */
+  followUpConsentGiven?: boolean;
 }
 
 export interface Appointment {
@@ -107,10 +113,16 @@ export interface Appointment {
   durationMins: number;
   status: AppointmentStatus;
   type: AppointmentType;
+  consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO';
+  consultationType?: 'FIRST_VISIT' | 'FOLLOW_UP' | 'EMERGENCY';
+  followUpConsentGiven?: boolean;
   reason?: string;
   confirmationCode?: string;
   notes?: string;
   createdAt: string;
+  /** Outstanding amount the patient still owes (e.g. unpaid emergency invoice).
+   *  Null/undefined when no unpaid invoice exists. */
+  outstandingBalance?: number | null;
 }
 
 export interface DoctorAvailability {
@@ -178,13 +190,22 @@ export interface DoctorResponse {
   fullName: string;
   email: string;
   specialization?: string;
+  specializations?: string[];
   licenseNumber?: string;
   bio?: string;
   departmentId: number;
   departmentName: string;
+  departmentIds?: number[];
+  departmentNames?: string[];
   languages?: string;
   acceptingNew: boolean;
   slotDurationMins: number;
+  yearsOfExperience?: number;
+  consultationFee?: number;
+  seniorConsultant?: boolean;
+  gender?: string;
+  isActive?: boolean;
+  active?: boolean;
   createdAt?: string;
 }
 

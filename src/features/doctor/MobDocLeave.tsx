@@ -2,11 +2,9 @@ import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
-import { DeskShell } from '@/components/layout/DeskShell'
-import { DeskTopbar } from '@/components/layout/DeskTopbar'
+import { DoctorShell } from '@/components/layout/DoctorShell'
 import { Card } from '@/components/primitives/Card'
 import { Btn } from '@/components/primitives/Btn'
-import { Icon } from '@/components/primitives/Icon'
 import { Badge } from '@/components/primitives/Badge'
 import { Field } from '@/components/forms/Field'
 import { Input } from '@/components/forms/Input'
@@ -174,10 +172,11 @@ export default memo(function MobDocLeave() {
 
   if (isWide) {
     return (
-      <DeskShell active="leave">
-        <DeskTopbar title="Leave management" subtitle="Block out dates when you're unavailable" />
+      // DoctorShell so the sidebar stays consistent with the rest of the
+      // portal — the old DeskShell route only surfaced 4 of the 7 nav items.
+      <DoctorShell title="Leave management" subtitle="Block out dates when you're unavailable">
         <LeaveContent />
-      </DeskShell>
+      </DoctorShell>
     )
   }
 

@@ -22,6 +22,10 @@ export interface ScheduleAppt {
   next?: boolean;
   patientId?: string;
   scheduledAt?: string;
+  /** The medium the patient booked (PHYSICAL | AUDIO | VIDEO). Drives the consultation-type tag. */
+  consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO';
+  /** Appointment type — used as fallback when medium is absent (e.g. TELEMEDICINE). */
+  type?: string;
 }
 
 export interface PatientSummary {
@@ -78,11 +82,13 @@ export const DoctorPortalService = {
         status: appointment.status,
         tone: appointment.status === 'COMPLETED' ? 'teal'
               : appointment.status === 'NO_SHOW' ? 'rose'
-              : 'primary', // Default tone
+              : 'primary',
         patientId: String(appointment.patientId),
         scheduledAt: appointment.scheduledAt,
         dur: Math.max(1, Math.ceil((appointment.durationMins || 30) / 30)),
         next: index === 0 && appointment.status === 'CONFIRMED',
+        consultationMedium: appointment.consultationMedium,
+        type: appointment.type,
       };
     });
 

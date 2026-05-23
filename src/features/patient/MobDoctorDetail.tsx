@@ -1,10 +1,9 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useState } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
 import { PatientShell } from '@/components/layout/PatientShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
-import { Avatar } from '@/components/primitives/Avatar'
 import { Badge } from '@/components/primitives/Badge'
 import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
@@ -15,51 +14,11 @@ import { useDoctorDetail, useDoctorAvailability } from '@/hooks/useDoctorData'
 import { useBooking } from '@/hooks/useBooking'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ReviewsService, ReviewResponse } from '@/services/reviews.service'
+import { useMutation } from '@tanstack/react-query'
 import { WaitlistService } from '@/services/waitlist.service'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
-
-// ── Doctor reviews section ─────────────────────────────────────────────────────
-function DoctorReviews({ doctorId }: { doctorId: string }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['reviews', 'doctor', doctorId],
-    queryFn: () => ReviewsService.getDoctorReviews(doctorId, 0, 5),
-    enabled: !!doctorId,
-  })
-
-  if (isLoading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {[0, 1].map((i) => <Skel key={i} h={80} w="100%" r={10} />)}
-    </div>
-  )
-
-  const reviews = data?.content ?? []
-  if (reviews.length === 0) return (
-    <div style={{ fontSize: 13, color: MB.text3, textAlign: 'center', padding: '16px 0' }}>No reviews yet.</div>
-  )
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {reviews.map((r: ReviewResponse) => (
-        <div key={r.id} style={{ background: MB.bg2, borderRadius: 10, padding: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar name={r.patientName} size={28} tone="primary" />
-              <div style={{ fontSize: 13, fontWeight: 600, color: MB.text }}>{r.patientName}</div>
-            </div>
-            <div style={{ fontSize: 13, color: '#F59E0B' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
-          </div>
-          {r.comment && <p style={{ margin: 0, fontSize: 13, color: MB.text2, lineHeight: 1.5 }}>{r.comment}</p>}
-          <div style={{ fontSize: 11, color: MB.text3, marginTop: 6 }}>
-            {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
+import { toLocalIsoDate, todayLocalIsoDate } from '@/lib/date'
 
 // ── Waitlist join button ───────────────────────────────────────────────────────
 function WaitlistButton({ doctorId }: { doctorId: string }) {
@@ -109,32 +68,30 @@ function SlotBtn({ time, selected, disabled, isPast, onClick }: SlotBtnProps) {
   )
 }
 
-// ── Time helpers ───────────────────────────────────────────────────────────
-function minutesBetween(startHHmm: string, endHHmm: string): number {
-  const [sh, sm] = startHHmm.split(':').map(Number)
-  const [eh, em] = endHHmm.split(':').map(Number)
-  return eh * 60 + em - (sh * 60 + sm)
-}
-
 // ── Week day strip ─────────────────────────────────────────────────────────
 
 function buildWeek(offset = 0) {
   return [...Array(7)].map((_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i + offset)
+    // iso, label, and day all derived from the user's *local* timezone so the
+    // string sent to the backend matches what the user sees on the tile.
     return {
-      iso: d.toISOString().split('T')[0],
+      iso: toLocalIsoDate(d),
       label: d.toLocaleDateString('en-US', { weekday: 'short' }),
       day: d.getDate(),
     }
   })
 }
 
-// Unified selection — either an hourly grid slot or a custom start+end window.
-// One state field for both modes so the "Continue" button has a single source of truth.
-export type BookingSelection =
-  | { kind: 'grid';   slotId: string; start: string;                    label: string }
-  | { kind: 'custom'; start: string;  end: string; durationMins: number; label: string }
+// Fixed-grid slot selection. The backend returns availability slots already
+// bucketed by the department's average consultation time + buffer, within the
+// doctor's active working hours and around any midday break — the FE just renders.
+export interface BookingSelection {
+  slotId: string
+  start: string
+  label: string
+}
 
 // ── Shared slot-picker panel ──────────────────────────────────────────────────
 function SlotPicker({
@@ -149,29 +106,6 @@ function SlotPicker({
   isAvailLoading: boolean; isError: boolean; cols?: number
   workingHoursHint?: string
 }) {
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd]     = useState('')
-
-  // Keep custom inputs in sync with the unified selection so switching back to
-  // grid mode clears them visually.
-  useEffect(() => {
-    if (!selection || selection.kind !== 'custom') {
-      if (customStart || customEnd) { setCustomStart(''); setCustomEnd('') }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection?.kind])
-
-  // Build a custom selection only when both ends are valid. Patient still has to
-  // press "Continue" to actually submit — no auto-fire on blur.
-  function commitCustom(start: string, end: string) {
-    if (!start || !end || end <= start) return
-    const durationMins = minutesBetween(start, end)
-    if (durationMins < 15) return
-    const scheduledAt = `${selectedDate}T${start}:00`
-    setSelection({ kind: 'custom', start: scheduledAt, end: `${selectedDate}T${end}:00`,
-                   durationMins, label: `${start}–${end}` })
-  }
-
   return (
     <>
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, marginBottom: 14, flexWrap: 'nowrap' }}>
@@ -207,90 +141,50 @@ function SlotPicker({
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 8 }}>
           {availability[0].slots.map((slot) => (
               <SlotBtn key={slot.id} time={`${slot.startTime}–${slot.endTime}`}
-                selected={selection?.kind === 'grid' && selection.slotId === slot.id}
+                selected={selection?.slotId === slot.id}
                 disabled={!slot.isAvailable}
                 isPast={slot.isPast}
-                onClick={() => setSelection({ kind: 'grid', slotId: slot.id, start: slot.start,
+                onClick={() => setSelection({ slotId: slot.id, start: slot.start,
                                               label: `${slot.startTime}–${slot.endTime}` })} />
           ))}
         </div>
       )}
-
-      {/* Custom window — sets the unified selection only when both ends are valid.
-          Submission still requires the "Continue" button at the bottom. */}
-      <div style={{ marginTop: 14, padding: 12, background: MB.bg2, borderRadius: 10 }}>
-        <div style={{ fontSize: 12, color: MB.text3, marginBottom: 8, fontWeight: 600 }}>
-          Or pick a custom window (15-min minimum)
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="time"
-            value={customStart}
-            onChange={(e) => { setCustomStart(e.target.value); commitCustom(e.target.value, customEnd) }}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: `1px solid ${MB.line2}`, fontSize: 14, background: MB.bg }}
-            aria-label="Start time"
-          />
-          <span style={{ fontSize: 12, color: MB.text3 }}>to</span>
-          <input
-            type="time"
-            value={customEnd}
-            onChange={(e) => { setCustomEnd(e.target.value); commitCustom(customStart, e.target.value) }}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: `1px solid ${MB.line2}`, fontSize: 14, background: MB.bg }}
-            aria-label="End time"
-          />
-        </div>
-        {customStart && customEnd && customEnd <= customStart && (
-          <div style={{ fontSize: 11, color: MB.danger, marginTop: 6 }}>End time must be after start time.</div>
-        )}
-        {customStart && customEnd && customEnd > customStart && minutesBetween(customStart, customEnd) < 15 && (
-          <div style={{ fontSize: 11, color: MB.danger, marginTop: 6 }}>Consultation must be at least 15 minutes.</div>
-        )}
-      </div>
     </>
   )
+}
+
+function holdErrorToast(err: unknown) {
+  const code = (err as { errorCode?: string })?.errorCode
+  if (code === 'OUTSIDE_WORKING_HOURS')   toast.error("That window is outside this doctor's working hours.")
+  else if (code === 'SLOT_TAKEN')         toast.error('Doctor is not available for booking at this time.')
+  else if (code === 'DOCTOR_ON_LEAVE')    toast.error('Doctor is on leave that day.')
+  else if (code === 'SLOT_IN_PAST')       toast.error('That time has already passed today.')
+  else                                    toast.error('Could not hold that window. Please try another.')
 }
 
 // ── Desktop two-column ────────────────────────────────────────────────────────
 function DesktopDoctorDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayLocalIsoDate())
   const [selection, setSelection] = useState<BookingSelection | null>(null)
   const week = buildWeek()
   const { data: doctor, isLoading: isDocLoading } = useDoctorDetail(id || '')
   const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate)
   const { holdSlot, isHolding } = useBooking()
 
-  // Single submit path — branches on the unified selection.
   const handleContinue = async () => {
     if (!id || !selection) return
     try {
-      const hold = await holdSlot(
-        selection.kind === 'grid'
-          ? { doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON' }
-          : { doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON', durationMins: selection.durationMins }
-      )
+      const hold = await holdSlot({ doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON' })
       navigate('/patient/book/review', {
-        state: {
-          hold, doctor, selectedDate,
-          slotId: selection.kind === 'grid' ? selection.slotId : `custom-${selection.label}`,
-          scheduledAt: selection.start,
-          durationMins: selection.kind === 'custom' ? selection.durationMins : undefined,
-        },
+        state: { hold, doctor, selectedDate, slotId: selection.slotId, scheduledAt: selection.start },
       })
     } catch (err) {
-      const code = (err as { errorCode?: string })?.errorCode
-      if (code === 'OUTSIDE_WORKING_HOURS')   toast.error("That window is outside this doctor's working hours.")
-      else if (code === 'SLOT_TAKEN')         toast.error('Doctor is not available for booking at this time.')
-      else if (code === 'DOCTOR_ON_LEAVE')    toast.error('Doctor is on leave that day.')
-      else if (code === 'SLOT_IN_PAST')       toast.error('That time has already passed today.')
-      else if (code === 'INVALID_TIME_RANGE') toast.error('End time must be after start time.')
-      else                                    toast.error('Could not hold that window. Please try another.')
+      holdErrorToast(err)
     }
   }
 
-  const fee = doctor?.consultationFee
-  const rating = doctor?.averageRating
   const isSenior = doctor?.seniorConsultant
 
   return (
@@ -323,43 +217,20 @@ function DesktopDoctorDetail() {
                 {doctor.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
                 {doctor.telemedicineEnabled && <Badge tone="primary" size="sm">Telehealth</Badge>}
                 {isSenior && <Badge tone="primary" size="sm">Senior Consultant</Badge>}
-                {doctor.yearsOfExperience != null && <Badge tone="neutral" size="sm">{doctor.yearsOfExperience} yrs</Badge>}
               </div>
               {doctor.bio && <p style={{ fontSize: 13, color: MB.text2, lineHeight: 1.6, margin: 0 }}>{doctor.bio}</p>}
             </div>
 
-            {/* Stats */}
-            {(rating != null || fee != null || doctor.languages) && (
-              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {rating != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, color: MB.text2 }}>Rating</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 700, color: MB.ink }}>
-                      <span style={{ color: '#F59E0B' }}>★</span> {rating.toFixed(1)}
-                      <span style={{ fontSize: 12, fontWeight: 400, color: MB.text3 }}>({doctor.reviewCount ?? 0})</span>
-                    </div>
-                  </div>
-                )}
-                {fee != null && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, color: MB.text2 }}>Consultation fee</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
-                      {isSenior && <span style={{ fontSize: 10, color: MB.primary, fontWeight: 600, background: MB.primary50, padding: '2px 6px', borderRadius: 4 }}>Senior premium</span>}
-                    </div>
-                  </div>
-                )}
-                {doctor.languages && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 13, color: MB.text2 }}>Languages</div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: MB.text }}>{doctor.languages}</div>
-                  </div>
-                )}
+            {/* Languages — pricing is the department's and only shown at checkout */}
+            {doctor.languages && (
+              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 13, color: MB.text2 }}>Languages</div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: MB.text }}>{doctor.languages}</div>
               </div>
             )}
           </div>
 
-          {/* Right: slot picker + reviews */}
+          {/* Right: slot picker */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink, marginBottom: 18 }}>Available slots</div>
@@ -373,28 +244,17 @@ function DesktopDoctorDetail() {
             <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 {selection ? (
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>
-                      {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {selection.label}
-                    </div>
-                    {fee != null && <div style={{ fontSize: 12, color: MB.text3, marginTop: 2 }}>Consultation fee{isSenior ? ' (Senior)' : ''}: ₦{fee.toLocaleString()}</div>}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: MB.text }}>
+                    {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} · {selection.label}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: MB.text3 }}>Pick a slot or type a custom window to continue</div>
+                  <div style={{ fontSize: 13, color: MB.text3 }}>Pick an available slot to continue</div>
                 )}
               </div>
               <Btn variant="primary" size="lg" disabled={!selection || isHolding} loading={isHolding} onClick={handleContinue}>
                 {isHolding ? 'Securing slot…' : 'Continue to review →'}
               </Btn>
             </div>
-
-            {/* Reviews */}
-            {id && (
-              <div style={{ background: MB.bg, border: `1px solid ${MB.line}`, borderRadius: 14, padding: 24 }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: MB.ink, marginBottom: 16 }}>Patient reviews</div>
-                <DoctorReviews doctorId={id} />
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -402,11 +262,11 @@ function DesktopDoctorDetail() {
   )
 }
 
-// ── Mobile (original, unchanged) ──────────────────────────────────────────────
+// ── Mobile ────────────────────────────────────────────────────────────────────
 function MobileDoctorDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayLocalIsoDate())
   const [selection, setSelection] = useState<BookingSelection | null>(null)
   const week = buildWeek()
 
@@ -414,31 +274,15 @@ function MobileDoctorDetail() {
   const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate)
   const { holdSlot, isHolding } = useBooking()
 
-  // Single submit path — same as Desktop.
   const handleContinue = async () => {
     if (!id || !selection) return
     try {
-      const hold = await holdSlot(
-        selection.kind === 'grid'
-          ? { doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON' }
-          : { doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON', durationMins: selection.durationMins }
-      )
+      const hold = await holdSlot({ doctorId: Number(id), scheduledAt: selection.start, type: 'IN_PERSON' })
       navigate('/patient/book/review', {
-        state: {
-          hold, doctor, selectedDate,
-          slotId: selection.kind === 'grid' ? selection.slotId : `custom-${selection.label}`,
-          scheduledAt: selection.start,
-          durationMins: selection.kind === 'custom' ? selection.durationMins : undefined,
-        },
+        state: { hold, doctor, selectedDate, slotId: selection.slotId, scheduledAt: selection.start },
       })
     } catch (err) {
-      const code = (err as { errorCode?: string })?.errorCode
-      if (code === 'OUTSIDE_WORKING_HOURS')   toast.error("That window is outside this doctor's working hours.")
-      else if (code === 'SLOT_TAKEN')         toast.error('Doctor is not available for booking at this time.')
-      else if (code === 'DOCTOR_ON_LEAVE')    toast.error('Doctor is on leave that day.')
-      else if (code === 'SLOT_IN_PAST')       toast.error('That time has already passed today.')
-      else if (code === 'INVALID_TIME_RANGE') toast.error('End time must be after start time.')
-      else                                    toast.error('Could not hold that window. Please try another.')
+      holdErrorToast(err)
     }
   }
 
@@ -457,8 +301,6 @@ function MobileDoctorDetail() {
     return <MobScreen><MobTopBar title="Error" back /><EmptyState title="Doctor not found" /></MobScreen>
   }
 
-  const fee = doctor.consultationFee
-  const rating = doctor.averageRating
   const isSenior = doctor.seniorConsultant
 
   return (
@@ -482,44 +324,14 @@ function MobileDoctorDetail() {
                 {doctor.acceptingNew && <Badge tone="success" dot size="sm">Accepting new</Badge>}
                 {doctor.telemedicineEnabled && <Badge tone="primary" size="sm">Telemedicine</Badge>}
                 {isSenior && <Badge tone="primary" size="sm">Senior Consultant</Badge>}
-                {doctor.yearsOfExperience != null && <Badge tone="neutral" size="sm">{doctor.yearsOfExperience} yrs exp.</Badge>}
               </div>
             </div>
           </div>
 
-          {/* Rating + fee row */}
-          {(rating != null || fee != null) && (
-            <div style={{ display: 'flex', gap: 16, marginTop: 14, padding: '10px 12px', background: MB.bg2, borderRadius: 10 }}>
-              {rating != null && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>★</span>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>{rating.toFixed(1)}</div>
-                    <div style={{ fontSize: 11, color: MB.text3 }}>{doctor.reviewCount ?? 0} reviews</div>
-                  </div>
-                </div>
-              )}
-              {fee != null && (
-                <>
-                  {rating != null && <div style={{ width: 1, background: MB.line2 }} />}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>
-                      {isSenior && <span style={{ fontSize: 9, color: MB.primary, fontWeight: 600, background: MB.primary50, padding: '1px 4px', borderRadius: 3 }}>Senior</span>}
-                    </div>
-                    <div style={{ fontSize: 11, color: MB.text3 }}>Consultation fee</div>
-                  </div>
-                </>
-              )}
-              {doctor.languages && (
-                <>
-                  <div style={{ width: 1, background: MB.line2 }} />
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: MB.text }}>{doctor.languages}</div>
-                    <div style={{ fontSize: 11, color: MB.text3 }}>Languages</div>
-                  </div>
-                </>
-              )}
+          {doctor.languages && (
+            <div style={{ marginTop: 14, padding: '10px 12px', background: MB.bg2, borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: MB.text }}>{doctor.languages}</div>
+              <div style={{ fontSize: 11, color: MB.text3 }}>Languages</div>
             </div>
           )}
 
@@ -530,9 +342,7 @@ function MobileDoctorDetail() {
           )}
         </div>
 
-        {/* Slot picker — same shared component the desktop uses. Grid + manual entry
-            both feed a single `selection` so the "Continue" button at the bottom is
-            the only commit path. */}
+        {/* Slot picker */}
         <div style={{ padding: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div className="mb-h4">Available slots</div>
@@ -547,21 +357,12 @@ function MobileDoctorDetail() {
             </div>
           )}
         </div>
-
-        {/* Reviews section */}
-        {id && (
-          <div style={{ padding: '0 16px 24px' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: MB.ink, marginBottom: 12 }}>Patient reviews</div>
-            <DoctorReviews doctorId={id} />
-          </div>
-        )}
       </div>
 
       <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>
         {selection && (
-          <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', fontSize: 13, color: MB.text2 }}>
-            <span>{selection.label} · {selection.kind === 'custom' ? `${selection.durationMins} min` : '60 min'}</span>
-            {fee != null && <span style={{ fontWeight: 700, color: MB.ink }}>₦{fee.toLocaleString()}</span>}
+          <div style={{ marginBottom: 10, fontSize: 13, color: MB.text2 }}>
+            <span>{selection.label}</span>
           </div>
         )}
         <Btn variant="primary" size="lg" full disabled={!selection || isHolding} loading={isHolding} onClick={handleContinue}>
@@ -571,8 +372,6 @@ function MobileDoctorDetail() {
     </MobScreen>
   )
 }
-
-// CustomTimeRow has been folded into SlotPicker — mobile and desktop share the same UI now.
 
 // ── Export ────────────────────────────────────────────────────────────────────
 export default memo(function MobDoctorDetail() {

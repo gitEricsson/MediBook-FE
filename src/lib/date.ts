@@ -1,0 +1,20 @@
+/**
+ * Format a Date as YYYY-MM-DD in the user's *local* timezone.
+ *
+ * Avoid `d.toISOString().split('T')[0]` — that returns the UTC date, which
+ * silently disagrees with what the user sees in their tile label when their
+ * timezone is east of UTC and the wall clock is between local-midnight and
+ * the UTC offset. The off-by-one shifts the date sent to the backend, which
+ * then resolves to a different weekday and returns the wrong day's slots.
+ */
+export function toLocalIsoDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Today as YYYY-MM-DD in the user's local timezone. */
+export function todayLocalIsoDate(): string {
+  return toLocalIsoDate(new Date());
+}

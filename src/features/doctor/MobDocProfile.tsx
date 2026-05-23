@@ -2,9 +2,7 @@ import { memo, useState, useRef } from 'react'
 import { MB } from '@/constants/tokens'
 import { MobScreen } from '@/components/layout/MobScreen'
 import { MobTopBar } from '@/components/layout/MobTopBar'
-import { DeskShell } from '@/components/layout/DeskShell'
-import { DeskTopbar } from '@/components/layout/DeskTopbar'
-import { PatientShell } from '@/components/layout/PatientShell'
+import { DoctorShell } from '@/components/layout/DoctorShell'
 import { PhotoBlock } from '@/components/primitives/PhotoBlock'
 import { Card } from '@/components/primitives/Card'
 import { Btn } from '@/components/primitives/Btn'
@@ -12,9 +10,8 @@ import { Icon } from '@/components/primitives/Icon'
 import { Field } from '@/components/forms/Field'
 import { Input } from '@/components/forms/Input'
 import { Skel } from '@/components/feedback/Skel'
-import { useAuth } from '@/hooks/useAuth'
 import { UserService } from '@/services/user.service'
-import { DoctorService, DoctorApiResponse } from '@/services/doctor.service'
+import { type DoctorApiResponse } from '@/services/doctor.service'
 import { apiClient } from '@/lib/api/client'
 import { unwrapApiResponse } from '@/lib/api/contracts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -236,13 +233,18 @@ function MobileDocProfile() {
 
 // ── Desktop layout ──────────────────────────────────────────────────────────────
 function DesktopDocProfile() {
+  // Uses DoctorShell so the sidebar matches the rest of the doctor portal
+  // (Dashboard / My schedule / Working hours / Leave / Notifications / Profile /
+  // Settings). The legacy DeskShell sidebar only had four items, which made
+  // this page look like a different app.
   return (
-    <DeskShell active="profile">
-      <DeskTopbar title="My profile" subtitle="Professional information visible to patients" />
-      <div style={{ flex: 1, overflow: 'auto', maxWidth: 640, padding: 24 }}>
-        <ProfileContent />
+    <DoctorShell title="My profile" subtitle="Professional information visible to patients">
+      <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
+        <div style={{ maxWidth: 640 }}>
+          <ProfileContent />
+        </div>
       </div>
-    </DeskShell>
+    </DoctorShell>
   )
 }
 

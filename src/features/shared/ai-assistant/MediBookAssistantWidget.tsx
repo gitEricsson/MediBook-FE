@@ -51,7 +51,7 @@ const TypingIndicator = memo(function TypingIndicator() {
             height: 6,
             borderRadius: '50%',
             background: MB.text3,
-            animation: `mb-bounce 1s ${i * 0.18}s infinite ease-in-out`,
+            animation: `mb-dot-pulse 1.2s ${i * 0.18}s infinite ease-in-out`,
           }}
         />
       ))}
@@ -180,7 +180,13 @@ export const MediBookAssistantWidget = memo(function MediBookAssistantWidget() {
         requiresHumanSupport: response.requiresHumanSupport,
         sessionId: response.sessionId,
       })
-    } catch {
+    } catch (err) {
+      // Log the underlying cause for diagnostics — the generic "Something
+      // went wrong" UI message hides real signal (rate limit, BE 5xx, CORS,
+      // network failure). The BE service catches everything and returns a
+      // 200 OK with a `serviceUnavailable` reply, so reaching this branch
+      // means a true transport-layer failure rather than a model outage.
+      console.warn('AiChatService.sendMessage failed:', err)
       addErrorMessage()
     } finally {
       setLoading(false)
@@ -532,9 +538,9 @@ export const MediBookAssistantWidget = memo(function MediBookAssistantWidget() {
           from { opacity: 0; transform: translateY(12px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        @keyframes mb-bounce {
-          0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
-          40%            { transform: scale(1);   opacity: 1;   }
+        @keyframes mb-dot-pulse {
+          0%, 100% { transform: scale(0.65); opacity: 0.35; }
+          50%       { transform: scale(1);   opacity: 1; }
         }
       `}</style>
     </>

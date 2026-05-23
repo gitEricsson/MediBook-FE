@@ -56,7 +56,7 @@ export default memo(function DeskPatientSearch() {
   const displayState = isLoading ? 'loading' : patients.length === 0 ? 'empty' : 'results'
 
   return (
-    <DeskShell active="home">
+    <DeskShell active="patients">
       <DeskTopbar
         title="Patients"
         subtitle={`${patients.length} records`}

@@ -14,56 +14,15 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { useMyAppointments, useMyAppointmentsCursor } from '@/hooks/useAppointments'
 import { BookingService } from '@/services/booking.service'
 import { AppointmentsService } from '@/services/appointments.service'
-import { ReviewsService } from '@/services/reviews.service'
 import { ChatService } from '@/services/chat.service'
 import { TelemedicineService } from '@/services/telemedicine.service'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+
 import { toast } from 'sonner'
-import { parseApiError } from '@/lib/api/contracts'
 import { useNavigate } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
+import { parseApiError } from '@/lib/api/contracts'
 import type { Appointment } from '@/types/api'
-
-// ── Leave a review dialog ─────────────────────────────────────────────────────
-function ReviewDialog({ appt, onClose }: { appt: Appointment; onClose: () => void }) {
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState('')
-
-  const mutation = useMutation({
-    mutationFn: () => ReviewsService.submit({ appointmentId: Number(appt.id), rating, comment: comment || undefined }),
-    onSuccess: () => { toast.success('Review submitted — thank you!'); onClose() },
-    onError: (err) => toast.error(parseApiError(err).message || 'Failed to submit review'),
-  })
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ background: MB.bg, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400 }}>
-        <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: MB.ink }}>Rate your visit</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: MB.text3 }}>Dr. {appt.doctorName}</p>
-        {/* Star rating */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {[1, 2, 3, 4, 5].map((star) => (
-            <button key={star} onClick={() => setRating(star)}
-              style={{ fontSize: 32, background: 'none', border: 'none', cursor: 'pointer', color: star <= rating ? '#F59E0B' : MB.line, padding: 0 }}>
-              ★
-            </button>
-          ))}
-        </div>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Tell others about your experience (optional)"
-          rows={4}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: `1px solid ${MB.line}`, fontSize: 14, color: MB.text, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
-        />
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Btn variant="secondary" size="lg" style={{ flex: 1 }} onClick={onClose}>Skip</Btn>
-          <Btn variant="primary" size="lg" style={{ flex: 1.5 }} disabled={rating === 0} loading={mutation.isPending} onClick={() => mutation.mutate()}>Submit review</Btn>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function formatDate(iso: string) {
@@ -123,11 +82,16 @@ function ApptCard({ appt }: { appt: Appointment }) {
   const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const { month, day, time } = formatDate(appt.scheduledAt)
   const scheduled = new Date(appt.scheduledAt)
-  const [showReview, setShowReview] = useState(false)
-  const isCompleted = appt.status === 'COMPLETED'
+
+  // Click handler attached at the Card level so the entire surface opens the
+  // consultation detail. Action blocks below are wrapped in <div onClick=stop>
+  // so their buttons keep their inline semantics (cancel, pay, chat, rate,
+  // etc.) without bubbling up to trigger navigation.
+  const openDetail = () => navigate(`/patient/appt/${appt.id}`)
+  const stop = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
-    <Card padding={14}>
+    <Card padding={14} interactive onClick={openDetail}>
       <div style={{ display: 'flex', gap: 12 }}>
         <div style={{ width: 48, padding: '8px 0', textAlign: 'center', borderRadius: 8, background: MB.primary50, color: MB.primary600, flexShrink: 0 }}>
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em' }}>{month}</div>
@@ -144,11 +108,12 @@ function ApptCard({ appt }: { appt: Appointment }) {
             <div style={{ marginTop: 4 }}><span style={{ fontSize: 11, background: '#EEF2FF', color: '#6366F1', padding: '2px 8px', borderRadius: 999, fontWeight: 600 }}>Telemedicine</span></div>
           )}
         </div>
+        <Icon name="chevronRight" size={16} color={MB.text4} style={{ alignSelf: 'center' }} />
       </div>
       {/* PENDING (unpaid) — primary CTA is finish payment. We don't show Chat/Video
           buttons here because the backend rejects them with APPOINTMENT_NOT_CONFIRMED. */}
       {appt.status === 'PENDING' && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}` }}>
+        <div onClick={stop} style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}` }}>
           <Btn
             variant="primary"
             size="sm"
@@ -163,7 +128,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
           </div>
         </div>
       )}
-      {(isCancelable || appt.status === 'CONFIRMED' || isCompleted) && (
+      {(isCancelable || appt.status === 'CONFIRMED' || appt.status === 'COMPLETED') && (
         <>
           {/* TODO[REMOVE-BEFORE-PROD]: Chat + video row was restricted to CONFIRMED only;
               widened to CONFIRMED + PENDING for local testing so chat is discoverable
@@ -171,7 +136,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
               `appt.status === 'CONFIRMED'` and re-enable the matching backend gate in
               ChatService.createConversation. See also MobDocApptDetail. */}
           {(appt.status === 'CONFIRMED' || appt.status === 'PENDING') && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
+            <div onClick={stop} style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
               <Btn
                 variant="secondary"
                 size="sm"
@@ -215,11 +180,8 @@ function ApptCard({ appt }: { appt: Appointment }) {
               )}
             </div>
           )}
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
+          <div onClick={stop} style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${MB.line2}`, display: 'flex', gap: 8 }}>
             <Btn variant="secondary" size="sm" icon="download" style={{ flex: 1 }} onClick={downloadICS}>Calendar</Btn>
-            {isCompleted && (
-              <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => setShowReview(true)}>Rate visit</Btn>
-            )}
             {isCancelable && (
               <>
                 <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
@@ -229,9 +191,8 @@ function ApptCard({ appt }: { appt: Appointment }) {
           </div>
         </>
       )}
-      {showReview && <ReviewDialog appt={appt} onClose={() => setShowReview(false)} />}
       {confirmCancel && (
-        <div role="dialog" aria-modal="true" style={{ marginTop: 12, padding: 12, background: MB.dangerBg, borderRadius: 8 }}>
+        <div role="dialog" aria-modal="true" onClick={stop} style={{ marginTop: 12, padding: 12, background: MB.dangerBg, borderRadius: 8 }}>
           <div style={{ fontSize: 13, color: MB.danger, fontWeight: 600, marginBottom: 4 }}>Cancel this appointment?</div>
           <div style={{ fontSize: 12, color: MB.danger, opacity: 0.8, marginBottom: 10 }}>
             {appt.doctorName} · {time} · {scheduled.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -257,8 +218,12 @@ function ApptTableRow({ appt, last }: { appt: Appointment; last?: boolean }) {
 
   return (
     <>
-      <tr style={{ borderBottom: last && !confirmCancel ? 'none' : `1px solid ${MB.line2}` }}>
-        <td style={{ padding: '14px 20px', fontSize: 13, color: MB.text, fontWeight: 500, whiteSpace: 'nowrap' }}>
+      <tr
+        onClick={() => navigate(`/patient/appt/${appt.id}`)}
+        style={{ cursor: 'pointer', borderBottom: last && !confirmCancel ? 'none' : `1px solid ${MB.line2}` }}>
+        <td
+          style={{ padding: '14px 20px', fontSize: 13, color: MB.text, fontWeight: 500, whiteSpace: 'nowrap' }}
+        >
           <div>{full}</div>
           <div style={{ fontSize: 12, color: MB.text3, marginTop: 1 }}>{time}</div>
         </td>
@@ -402,7 +367,9 @@ function DesktopMyAppts() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.map((a, i) => <ApptTableRow key={a.id} appt={a} last={i === data.length - 1} />)}
+                  {data.map((a, i) => (
+                    <ApptTableRow key={a.id} appt={a} last={i === data.length - 1} />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -475,7 +442,9 @@ function MobileMyAppts() {
         )}
         {!isLoading && !isError && allItems.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {allItems.map((a) => <ApptCard key={a.id} appt={a} />)}
+            {allItems.map((a) => (
+              <ApptCard key={a.id} appt={a} />
+            ))}
             {/* Infinite scroll sentinel */}
             <div id="appts-sentinel" ref={setSentinelNode} style={{ height: 1 }} />
             {isFetchingNextPage && (
