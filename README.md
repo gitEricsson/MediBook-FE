@@ -6,7 +6,7 @@ Healthcare appointment booking, telemedicine, clinical workflow, and administrat
 
 MediBook is the frontend application for a multi-role healthcare platform. It gives patients a guided way to find doctors, reserve appointment slots, pay for consultations, join telemedicine sessions, review prescriptions, and manage their medical profile. Doctors use the platform to manage schedules, appointments, notes, prescriptions, leave, notifications, and live consultations. Administrators use the desktop portal to manage departments, doctors, users, analytics, capacity, deleted records, and super-admin workflows.
 
-This repository contains the browser client only. It communicates with a backend REST and WebSocket API, with all database, payment-webhook, identity, and clinical data persistence handled by backend services outside this repo.
+This repository contains the browser client only. It communicates with the MediBook backend REST and WebSocket API, with all database, payment-webhook, identity, and clinical data persistence handled by backend services outside this repo. The frontend is deployed as a separate Cloud Run service (`medibook-fe`); the GKE cluster handles all API, WebSocket, and webhook traffic.
 
 ## Key Features
 
@@ -15,51 +15,54 @@ This repository contains the browser client only. It communicates with a backend
 - Role-based portals for `patient`, `doctor`, `admin`, and `super_admin`.
 - Patient doctor discovery by search, departments, specialisations, availability, and doctor profile detail.
 - Appointment booking with temporary slot holds, hold expiry tracking, confirmation, cancellation, rescheduling, recurring appointments, waitlist, and calendar export support.
-- Payment initiation, provider discovery, verification, refunds, invoices, and post-payment verification flow.
+- Payment initiation, provider discovery (Monnify, Paystack, Stripe, Flutterwave), verification, refunds, invoices, and post-payment verification flow.
 - Patient profile, clinical profile, consents, consultation history, prescriptions, notifications, access grants, and emergency request workflows.
 - Doctor dashboard, schedule, working hours, appointment details, SOAP-style consultation notes, prescriptions, leave management, profile, settings, and notifications.
-- Telemedicine session management with chat, session status transitions, Twilio-powered video calls, call note drafts, and doctor copilot route.
-- Real-time notification support through STOMP over WebSocket with polling fallback for unread counts.
+- Telemedicine session management with chat, session status transitions, Twilio Video-powered calls, call note drafts, and doctor copilot route.
+- Real-time notification support through STOMP over WebSocket (connecting via the GCP load balancer) with polling fallback for unread counts.
 - Admin desktop portal for patients, departments, doctors, doctor performance, leaves, schedules, analytics, capacity, settings, soft-deleted records, and super-admin account management.
-- AI-assisted surfaces through backend endpoints for chat, clinical copilot, symptom triage, and no-show risk prediction. These are presented as assistive/stubbed outputs where the code marks them as requiring clinical review.
+- AI-assisted surfaces through backend endpoints for chat, clinical copilot, symptom triage, and no-show risk prediction. These are presented as assistive outputs where the code marks them as requiring clinical review. The AI provider (Gemini, Claude, Ollama) is backend-selected and transparent to the frontend.
 - Frontend security controls for role guards, session timeout, request sanitization helpers, safe HTML rendering, error boundaries, and PHI-aware logging utilities.
 
 ## Tech Stack
 
 | Area | Technologies |
 | --- | --- |
-| Frontend | React 19, TypeScript 6, Vite 8, React Router DOM 7 |
+| Frontend | React 18, TypeScript 5, Vite, React Router DOM 7 |
 | State and data fetching | TanStack Query 5, Zustand 5 |
 | API layer | Axios, typed service modules, Zod environment validation |
-| Realtime | `@stomp/stompjs` over WebSocket, unread notification polling fallback |
-| Video | Twilio Video, lazy-loaded only when a call starts |
+| Realtime | `@stomp/stompjs` over WebSocket via GCP load balancer, unread notification polling fallback |
+| Video | Twilio Video SDK, lazy-loaded only when a call starts |
 | Forms and validation | Local form primitives, custom validation helpers, Zod for runtime env parsing |
 | UI system | CSS design tokens, reusable primitives, responsive mobile and desktop shells |
 | Security helpers | DOMPurify, safe HTML component, PHI-redacting logger, protected routes, idle timeout |
 | Testing | Vitest, React Testing Library, MSW, Playwright |
-| DevOps | Docker multi-stage build, Nginx runtime, GitHub Actions CI, Trivy image scanning, Google Cloud Build, Artifact Registry, Cloud Run deployment |
+| DevOps | Docker multi-stage build (Node 22 build + Nginx runtime), GitHub Actions CI, Trivy image scanning, Google Cloud Build, Artifact Registry, Cloud Run deployment |
 | Backend | External MediBook API consumed over `/api/v1`, `/health`, `/version`, `/contact`, and `/ws` |
 | Database/cache/queue | Not present in this frontend repo; backend-owned |
 | Observability | Global error boundary, structured logger placeholder, Nginx health endpoint, CI security scan |
 
 ## Architecture
 
-MediBook is a single-page application organized by feature domain. The UI routes are lazy-loaded from `src/App.tsx`, wrapped by global providers in `src/main.tsx`, and protected by a role-aware route guard. Data access is centralized through a configured Axios client and feature-specific service modules. React Query owns server-state caching, mutation invalidation, retry behavior, and polling. Zustand owns client state such as auth, notifications, assistant state, and active video-call state.
+MediBook is a single-page application organized by feature domain. The UI routes are lazy-loaded from `src/App.tsx`, wrapped by global providers in `src/main.tsx`, and protected by a role-aware route guard. Data access is centralized through a configured Axios client and feature-specific service modules. React Query owns server-state caching, mutation invalidation, retry behaviour, and polling. Zustand owns client state such as auth, notifications, assistant state, and active video-call state.
+
+The frontend is deployed to Cloud Run (`medibook-fe`). Browsers load the SPA from Cloud Run, then open WebSocket STOMP connections and call REST APIs via the GCP load balancer, which routes those requests to the GKE-hosted backend.
 
 ```mermaid
 flowchart TD
-    User[Patient / Doctor / Admin / Super Admin] --> SPA[React SPA]
+    User[Patient / Doctor / Admin / Super Admin] --> SPA[React SPA\nCloud Run — medibook-fe]
     SPA --> Router[React Router + ProtectedRoute]
     Router --> Features[Feature Modules]
     Features --> Hooks[Domain Hooks]
     Hooks --> Query[TanStack Query]
     Query --> Services[Typed Service Layer]
     Services --> Client[Axios API Client]
-    Client --> API[MediBook Backend API]
-    API --> DB[(Backend-owned Database)]
-    API --> Payments[Backend Payment Providers]
-    API --> AI[Backend AI / Intelligence Services]
-    SPA --> STOMP[STOMP WebSocket Notifications]
+    Client --> LB[GCP Load Balancer]
+    LB --> API[MediBook Backend\nSpring Boot 3 / Java 21\nGKE Cluster]
+    API --> DB[(Backend-owned\nMySQL · Cassandra\nRedis · Kafka)]
+    API --> Payments[Monnify · Stripe\nPaystack · Flutterwave]
+    API --> AI[Gemini · Claude · Ollama]
+    SPA --> STOMP[STOMP WebSocket\nvia GCP Load Balancer]
     STOMP --> API
     SPA --> Twilio[Twilio Video SDK]
     Twilio --> Video[Twilio Rooms]
@@ -85,13 +88,15 @@ flowchart TD
 - The current implementation persists only `refreshToken` through Zustand `persist` under the `medibook-auth` key. The security docs describe an HTTP-only-cookie target architecture, so treat the current localStorage persistence as an implementation detail to review before handling production PHI.
 - A 15-minute inactivity timeout logs out authenticated users.
 
-### Realtime and Async Behavior
+### Realtime and Async Behaviour
 
-- Notifications connect to `/ws?token=...` using STOMP and subscribe to `/user/queue/notifications`.
+- Notifications connect to `/ws?token=...` using STOMP, routed through the GCP load balancer to the GKE backend, and subscribe to `/user/queue/notifications`.
 - WebSocket reconnects use exponential backoff and re-read the latest access token before reconnecting.
 - Unread notification counts are polled every 30 seconds as a fallback.
 - Booking uses backend slot holds through `POST /api/v1/appointments/holds`, tracks hold expiration client-side, releases holds when cancelled, and invalidates appointment and availability queries after confirmation.
-- Telemedicine video calls lazy-load `twilio-video`, request call tokens from the backend, and manage local/remote participant tracks in `src/store/videoCallStore.ts`.
+- Telemedicine video calls lazy-load the Twilio Video SDK, request call tokens from the backend, and manage local/remote participant tracks in `src/store/videoCallStore.ts`.
+
+---
 
 ## Project Structure
 
@@ -100,28 +105,26 @@ flowchart TD
 ├── .github/workflows/ci.yml        # lint, typecheck, tests, Docker build, Trivy scan, Cloud Run deploy
 ├── Dockerfile                      # Node 22 build stage + Nginx runtime
 ├── cloudbuild.yaml                 # Google Cloud Build image build
-├── nginx.conf                      # SPA runtime, security headers, gzip, health check
+├── nginx.conf                      # SPA routing, security headers, gzip, health check
 ├── e2e/                            # Playwright end-to-end tests
 ├── public/                         # favicons, manifest, static doctor avatars
-├── src/
-│   ├── api/                        # compatibility exports around service/http layers
-│   ├── components/                 # primitives, forms, layout, feedback, auth, table, canvas
-│   ├── config/                     # typed environment configuration
-│   ├── constants/                  # design tokens
-│   ├── features/                   # landing, auth, patient, doctor, admin, shared, legal, onboarding
-│   ├── hooks/                      # React Query and domain hooks
-│   ├── lib/                        # API client/contracts, validation, logging, sanitization, dates
-│   ├── providers/                  # auth and realtime providers
-│   ├── services/                   # backend API service modules
-│   ├── store/                      # Zustand stores
-│   ├── styles/                     # global design system CSS
-│   ├── test/                       # Vitest/MSW setup
-│   └── types/                      # API and domain types
-├── vite.config.ts
-├── vitest.config.ts
-├── playwright.config.ts
-└── package.json
+└── src/
+    ├── api/                        # compatibility exports around service/http layers
+    ├── components/                 # primitives, forms, layout, feedback, auth, table, canvas
+    ├── config/                     # typed environment configuration
+    ├── constants/                  # design tokens
+    ├── features/                   # landing, auth, patient, doctor, admin, shared, legal, onboarding
+    ├── hooks/                      # React Query and domain hooks
+    ├── lib/                        # API client/contracts, validation, logging, sanitization, dates
+    ├── providers/                  # auth and realtime providers
+    ├── services/                   # backend API service modules
+    ├── store/                      # Zustand stores
+    ├── styles/                     # global design system CSS
+    ├── test/                       # Vitest/MSW setup
+    └── types/                      # API and domain types
 ```
+
+---
 
 ## Application Routes
 
@@ -133,26 +136,30 @@ flowchart TD
 | Admin | `/admin/overview`, `/admin/patients`, `/admin/depts`, `/admin/docs`, `/admin/performance`, `/admin/leaves`, `/admin/schedule`, `/admin/analytics`, `/admin/capacity`, `/admin/settings`, `/admin/deleted-records` |
 | Super Admin | `/admin/admins` |
 
+---
+
 ## API Surface
 
-The frontend consumes a broad backend API through service modules in `src/services`.
+The frontend consumes the MediBook backend API through typed service modules in `src/services`.
 
 | Service | Responsibility |
 | --- | --- |
 | `auth.service.ts` | Login, register, 2FA, token refresh, logout, password reset, email verification, current user |
 | `booking.service.ts` / `appointments.service.ts` | Holds, appointment creation, recurring bookings, cancellation, rescheduling, cursor pagination, ICS export |
 | `doctor.service.ts` / `doctor-portal.service.ts` | Doctor search, details, availability, schedule, hours, leave, appointment transitions, note templates |
+| `payments.service.ts` | Payment initiation, verification, refunds, provider discovery (Monnify · Stripe · Paystack · Flutterwave), payment history |
 | `admin.service.ts` / `superadmin.service.ts` | Departments, users, doctors, analytics, capacity, pricing, admins, health/version |
 | `telemedicine.service.ts` / `chat.service.ts` | Telemedicine sessions, chat messages, AI chat assist, call notes, video-call lifecycle |
 | `consultation-notes.service.ts` / `prescriptions.service.ts` | Clinical notes, patient history, prescriptions |
-| `payments.service.ts` | Payment initiation, verification, refunds, provider discovery, payment history |
 | `notification.service.ts` | Notifications, unread counts, mark read/read-all |
 | `patient-profile.service.ts` / `consents.service.ts` / `access-grant.service.ts` | Patient profile, consents, access grants and requests |
 | `waitlist.service.ts` / `emergency.service.ts` / `reviews.service.ts` | Waitlist, emergency requests, reviews and moderation |
-| `intelligence.service.ts` / `copilot.service.ts` / `aiChat.service.ts` | Symptom triage, no-show risk, doctor copilot, AI chat |
+| `intelligence.service.ts` / `copilot.service.ts` / `aiChat.service.ts` | Symptom triage, no-show risk, doctor copilot, AI chat (backend-routed to Gemini / Claude / Ollama) |
 | `system.service.ts` / `contact.service.ts` / `lookups.service.ts` | Health, version, contact form, lookup metadata |
 
 See `API_COVERAGE_REPORT.md` for the repository's detailed endpoint coverage notes.
+
+---
 
 ## Environment Variables
 
@@ -160,7 +167,7 @@ Vite exposes only variables prefixed with `VITE_` to the browser bundle.
 
 | Variable | Default | Required | Description |
 | --- | --- | --- | --- |
-| `VITE_API_URL` | `""` in code, `http://localhost:8080` in `.env.example` | Yes | Backend API origin. In local dev, Vite also proxies `/api` to this target. |
+| `VITE_API_URL` | `http://localhost:8080` in `.env.example` | Yes | Backend API origin. In local dev, Vite also proxies `/api` to this target. |
 | `VITE_API_TIMEOUT_MS` | `15000` | No | Axios request timeout in milliseconds. Used by `src/config/env.ts`. |
 | `VITE_ENV` | `development` | No | Runtime environment: `development`, `production`, or `test`. |
 | `VITE_APP_NAME` | `MediBook` | No | Display name used by app configuration. |
@@ -182,6 +189,8 @@ VITE_APP_NAME=MediBook
 
 Note: the checked-in `.env` includes `VITE_API_BASE_URL`, but the current `src/config/env.ts` schema does not consume it.
 
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -202,13 +211,7 @@ npm ci
 npm run dev
 ```
 
-The Vite dev server runs on:
-
-```text
-http://localhost:3000
-```
-
-During local development, Vite proxies `/api` requests to `VITE_API_URL`.
+The Vite dev server runs on `http://localhost:3000`. During local development, Vite proxies `/api` requests to `VITE_API_URL`.
 
 ### Build
 
@@ -224,6 +227,8 @@ The production bundle is emitted to `dist/`.
 npm run preview
 ```
 
+---
+
 ## Scripts
 
 | Command | Description |
@@ -237,6 +242,8 @@ npm run preview
 | `npm run test:run` | Run Vitest once for CI. |
 | `npm run test:e2e` | Run Playwright tests. |
 | `npm run test:e2e:ui` | Run Playwright UI. |
+
+---
 
 ## Testing
 
@@ -253,6 +260,8 @@ npm run test:e2e
 ```
 
 The Playwright config starts `npm run dev` automatically and targets `http://localhost:3000`.
+
+---
 
 ## Docker
 
@@ -280,6 +289,8 @@ The runtime image:
 - Exposes `/health`.
 - Adds security headers, gzip, immutable asset caching, and SPA fallback routing.
 
+---
+
 ## CI/CD and Deployment
 
 GitHub Actions workflow: `.github/workflows/ci.yml`
@@ -297,30 +308,15 @@ Google Cloud Build config: `cloudbuild.yaml`
 - Builds the frontend image with `VITE_API_URL=https://api.dreammedibook.com`.
 - Publishes `us-central1-docker.pkg.dev/$PROJECT_ID/medibook-repo/medibook-fe:latest`.
 
+---
+
 ## Security and Compliance Notes
 
 - `ProtectedRoute` enforces role-based access at the routing layer.
-- Axios interceptors centralize Bearer-token attachment, refresh handling, access-denied events, and session-expired behavior.
+- Axios interceptors centralize Bearer-token attachment, refresh handling, access-denied events, and session-expired behaviour.
 - `useIdleTimeout` logs users out after 15 minutes of inactivity.
 - `SafeHtml` and `sanitize.ts` use DOMPurify to reduce XSS risk when rendering user-provided content.
 - `logger.ts` redacts common PHI fields before writing logs.
 - `GlobalErrorBoundary` prevents uncaught React errors from blanking the app and is prepared for Sentry/LogRocket-style reporting.
 - Nginx sets frame, content-type, referrer, permissions, and CSP headers in the container runtime.
-- The frontend does not include database, cache, queue, or backend authorization enforcement. Those must be enforced server-side.
-
-## Known Limitations and Assumptions
-
-- This repo is frontend-only. Backend services, database migrations, queues, cache, payment webhooks, FHIR endpoints, and clinical authorization enforcement are not included.
-- `SECURITY_GUIDELINES.md` describes refresh tokens as HTTP-only-cookie managed, but the current auth store persists `refreshToken` via Zustand localStorage persistence. Review this before production PHI handling.
-- `GlobalErrorBoundary` contains a TODO for sending production errors to an external monitoring provider.
-- `contact.service.ts` notes that the backend contact endpoint still needs implementation before that service is relied on.
-- `VITE_API_TIMEOUT_MS` is consumed by code but is not listed in `.env.example`; add it locally when overriding the default.
-- `VITE_API_BASE_URL` appears in the checked-in `.env` but is not used by the current environment schema.
-- The repository includes generated/build artifacts such as `dist/`, `playwright-report/`, and `test-results/`; normal development should treat them as disposable outputs.
-
-## Additional Documentation
-
-- `API_COVERAGE_REPORT.md` — endpoint coverage matrix and feature mapping.
-- `FRONTEND_BACKEND_GAPS.md` — integration gap history and resolved items.
-- `SECURITY_GUIDELINES.md` — security and PHI-handling guidance.
-- `Endpoints.md` — architecture and API planning notes.
+- The frontend does not include database, cache, queue, or backend authorization enforcement. Those are enforced server-side by the MediBook backend.
