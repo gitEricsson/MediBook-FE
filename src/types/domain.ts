@@ -5,6 +5,7 @@ export type AppointmentStatus =
   | 'COMPLETED'
   | 'CANCELLED'
   | 'NO_SHOW'
+  | 'EMERGENCY_PENDING_SETTLEMENT'
 
 export type BackendRole = 'ROLE_PATIENT' | 'ROLE_DOCTOR' | 'ROLE_ADMIN' | 'ROLE_SUPER_ADMIN'
 

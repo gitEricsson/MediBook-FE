@@ -20,6 +20,10 @@ export interface ScheduleAppt {
   dur?: number
   next?: boolean
   patientId?: string
+  /** The medium the patient booked (PHYSICAL | AUDIO | VIDEO). Drives the consultation-type tag. */
+  consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO'
+  /** Appointment type — used as fallback when medium is absent (e.g. TELEMEDICINE). */
+  type?: string
 }
 
 /**

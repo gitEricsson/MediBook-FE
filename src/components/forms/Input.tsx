@@ -19,6 +19,12 @@ interface InputProps {
   autoComplete?: string
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode']
   maxLength?: number
+  /** Native HTML min — used by number/date inputs */
+  min?: number | string
+  /** Native HTML max — used by number/date inputs */
+  max?: number | string
+  /** Native HTML step — used by number inputs */
+  step?: number | string
   style?: React.CSSProperties
   'aria-label'?: string
   'aria-describedby'?: string
@@ -26,7 +32,9 @@ interface InputProps {
 
 export const Input = memo(function Input({
   id, value, placeholder, icon, type = 'text', error, disabled, suffix,
-  onChange, onKeyDown, full = true, size = 'md', autoComplete, inputMode, maxLength, style, 'aria-label': ariaLabel,
+  onChange, onKeyDown, full = true, size = 'md', autoComplete, inputMode, maxLength,
+  min, max, step,
+  style, 'aria-label': ariaLabel,
   'aria-describedby': ariaDescribedby,
 }: InputProps) {
   const h = size === 'sm' ? 34 : size === 'lg' ? 48 : 40
@@ -53,6 +61,9 @@ export const Input = memo(function Input({
         autoComplete={autoComplete}
         inputMode={inputMode}
         maxLength={maxLength}
+        min={min}
+        max={max}
+        step={step}
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedby}
         aria-invalid={hasError || undefined}
