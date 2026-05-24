@@ -311,6 +311,9 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
     } catch { toast.error('Could not download calendar file.') }
   }
 
+  const isReschedulable = (appt.status === 'CONFIRMED' || appt.status === 'PENDING') &&
+    parseBackendDateTime(appt.scheduledAt).getTime() - Date.now() > 20 * 60 * 1000
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 720, margin: '0 auto', width: '100%' }}>
       {/* Header */}
@@ -477,9 +480,11 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
           <Btn variant="secondary" size="sm" icon="download" onClick={downloadIcs}>Calendar</Btn>
           {(appt.status === 'CONFIRMED' || appt.status === 'PENDING') && (
             <>
-              <Btn variant="secondary" size="sm" onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>
-                Reschedule
-              </Btn>
+              {isReschedulable && (
+                <Btn variant="secondary" size="sm" onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>
+                  Reschedule
+                </Btn>
+              )}
               <Btn variant="dangerOutline" size="sm" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate()}>
                 Cancel
               </Btn>

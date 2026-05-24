@@ -61,8 +61,10 @@ function useApptActions(appt: Appointment, onCancel?: () => void) {
   }
 
   const isCancelable = appt.status === 'CONFIRMED' || appt.status === 'PENDING'
+  const isReschedulable = isCancelable &&
+    parseBackendDateTime(appt.scheduledAt).getTime() - Date.now() > 20 * 60 * 1000
 
-  return { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate }
+  return { isCancelable, isReschedulable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate }
 }
 
 // ── Mobile card ───────────────────────────────────────────────────────────────
@@ -80,7 +82,7 @@ function ApptSkel() {
 }
 
 function ApptCard({ appt }: { appt: Appointment }) {
-  const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
+  const { isCancelable, isReschedulable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const videoStartCall = useVideoCallStore((s) => s.startCall)
   const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
   const { month, day, time } = formatDate(appt.scheduledAt)
@@ -181,7 +183,9 @@ function ApptCard({ appt }: { appt: Appointment }) {
             <Btn variant="secondary" size="sm" icon="download" style={{ flex: 1 }} onClick={downloadICS}>Calendar</Btn>
             {isCancelable && (
               <>
-                <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
+                {isReschedulable && (
+                  <Btn variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>Reschedule</Btn>
+                )}
                 <Btn variant="secondary" size="sm" style={{ flex: 1, color: MB.danger }} loading={cancelMutation.isPending} onClick={() => setConfirmCancel(true)}>Cancel</Btn>
               </>
             )}
@@ -209,7 +213,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
 
 // ── Desktop table row ─────────────────────────────────────────────────────────
 function ApptTableRow({ appt, last }: { appt: Appointment; last?: boolean }) {
-  const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
+  const { isCancelable, isReschedulable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const { full, time } = formatDate(appt.scheduledAt)
   const scheduled = parseBackendDateTime(appt.scheduledAt)
 
@@ -242,10 +246,12 @@ function ApptTableRow({ appt, last }: { appt: Appointment; last?: boolean }) {
             </button>
             {isCancelable && (
               <>
-                <Btn variant="secondary" size="sm"
-                  onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>
-                  Reschedule
-                </Btn>
+                {isReschedulable && (
+                  <Btn variant="secondary" size="sm"
+                    onClick={() => navigate(`/patient/doctor/${appt.doctorId}`, { state: { reschedule: true, appointmentId: appt.id } })}>
+                    Reschedule
+                  </Btn>
+                )}
                 <Btn variant="dangerOutline" size="sm" loading={cancelMutation.isPending} onClick={() => setConfirmCancel(true)}>
                   Cancel
                 </Btn>
