@@ -111,6 +111,8 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
   error: null,
 
   startCall: async (appointmentId, audioOnly = false) => {
+    // Guard: a call is already in flight — drop the duplicate invocation.
+    if (get().isConnecting || get().isInCall) return;
     set({ isConnecting: true, error: null, isCameraOff: audioOnly });
     try {
       const session = await TelemedicineService.startVideoCall(appointmentId);
@@ -122,6 +124,17 @@ export const useVideoCallStore = create<VideoCallState>((set, get) => ({
   },
 
   joinCall: async (session, audioOnly = false) => {
+    // Guard: a call is already in flight — drop the duplicate invocation.
+    if (get().isConnecting || get().isInCall) return;
+
+    // Stop any tracks that leaked from a previous failed attempt so the OS
+    // mic/camera indicator clears and enumerateDevices is not called in parallel.
+    const stale = get().localTracks;
+    if (stale.length > 0) {
+      stale.forEach((t) => { t.detach?.().forEach((el) => el.remove()); t.stop?.(); });
+      set({ localTracks: [] });
+    }
+
     // If the appointment medium is AUDIO, force audio-only regardless of what was requested.
     const mediumIsAudioOnly = Boolean(session.audioOnly);
     const effectiveAudioOnly = audioOnly || mediumIsAudioOnly;

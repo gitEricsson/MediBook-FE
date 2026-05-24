@@ -277,7 +277,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
               style={{ flex: 1 }}
               icon="phone"
               loading={isConnectingCall}
-              disabled={isInCall}
+              disabled={isInCall || isConnectingCall}
               onClick={() => activeCall ? joinCall(activeCall, true) : startCall(session.appointmentId, true)}
             >
               Audio only
@@ -288,7 +288,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
               style={{ flex: 1 }}
               icon="video"
               loading={isConnectingCall}
-              disabled={isInCall}
+              disabled={isInCall || isConnectingCall}
               onClick={() => activeCall ? joinCall(activeCall, false) : startCall(session.appointmentId, false)}
             >
               Join video call
