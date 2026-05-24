@@ -461,6 +461,7 @@ function ChatView({ conversationId }: { conversationId: number }) {
     scheduledAt: chatAppt?.scheduledAt,
     durationMins: chatAppt?.durationMins,
     status: chatAppt?.status,
+    consultationType: chatAppt?.consultationType,
     consultationMedium: chatAppt?.consultationMedium,
     type: chatAppt?.type,
   })

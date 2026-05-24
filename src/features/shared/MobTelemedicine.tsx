@@ -34,6 +34,8 @@ import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
 import { parseBackendDateTime } from '@/lib/date'
+import { useVideoCallStore } from '@/store/videoCallStore'
+import { VideoRoomModal } from '@/features/shared/video/VideoRoomModal'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -209,6 +211,11 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
   const isDoctor = user?.role === 'doctor'
+  const startCall = useVideoCallStore((s) => s.startCall)
+  const joinCall = useVideoCallStore((s) => s.joinCall)
+  const activeCall = useVideoCallStore((s) => s.activeCall)
+  const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
+  const isInCall = useVideoCallStore((s) => s.isInCall)
 
   const { data: session, isLoading, isError, refetch } = useQuery<TelemedicineSession>({
     queryKey: ['telemedicine', 'session', sessionId],
@@ -261,17 +268,32 @@ function SessionView({ sessionId }: { sessionId: string }) {
           </Badge>
         </div>
 
-        {/* Video join button */}
+        {/* Video join buttons — inline Twilio via VideoRoomModal */}
         {canJoin && (
-          <Btn
-            variant="primary"
-            size="lg"
-            full
-            icon="phone"
-            onClick={() => window.open(session.joinUrl!, '_blank', 'noopener,noreferrer')}
-          >
-            Join video call
-          </Btn>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn
+              variant="secondary"
+              size="lg"
+              style={{ flex: 1 }}
+              icon="phone"
+              loading={isConnectingCall}
+              disabled={isInCall}
+              onClick={() => activeCall ? joinCall(activeCall, true) : startCall(session.appointmentId, true)}
+            >
+              Audio only
+            </Btn>
+            <Btn
+              variant="primary"
+              size="lg"
+              style={{ flex: 1 }}
+              icon="video"
+              loading={isConnectingCall}
+              disabled={isInCall}
+              onClick={() => activeCall ? joinCall(activeCall, false) : startCall(session.appointmentId, false)}
+            >
+              Join video call
+            </Btn>
+          </div>
         )}
 
         {/* Doctor-only status controls */}
@@ -351,6 +373,7 @@ export default memo(function MobTelemedicine() {
           <div style={{ flex: 1, overflow: 'auto' }}>
             <SessionView sessionId={sessionId} />
           </div>
+          <VideoRoomModal />
         </DeskShell>
       )
     }
@@ -359,6 +382,7 @@ export default memo(function MobTelemedicine() {
         <div style={{ flex: 1, overflow: 'auto', maxWidth: 720 }}>
           <SessionView sessionId={sessionId} />
         </div>
+        <VideoRoomModal />
       </PatientShell>
     )
   }
@@ -369,6 +393,7 @@ export default memo(function MobTelemedicine() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <SessionView sessionId={sessionId} />
       </div>
+      <VideoRoomModal />
     </MobScreen>
   )
 })

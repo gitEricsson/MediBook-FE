@@ -25,16 +25,19 @@ const DATE_TIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 /**
  * Parse backend timestamps consistently.
  *
- * Spring often serializes Instant/UTC values as an offsetless LocalDateTime.
- * Browsers interpret those strings as local wall time, which makes a UTC
- * `20:53` render as `20:53` instead of `21:53` in Africa/Lagos. When the
- * backend includes an explicit offset we preserve it; only offsetless
- * date-times are treated as UTC.
+ * The MediBook backend stores appointment times as LocalDateTime in the
+ * Africa/Lagos timezone and serialises them without an offset suffix
+ * (e.g. "2025-06-01T13:00:00"). Browsers parse offsetless ISO strings as
+ * **local wall time**, which is correct here because the user's browser is
+ * also in Africa/Lagos. Previously this function appended "Z" (treating the
+ * value as UTC), which added a spurious +1 h offset when displayed.
+ *
+ * When the backend *does* include an explicit offset (e.g. from an Instant
+ * field) we honour it as-is.
  */
 export function parseBackendDateTime(value: string | Date): Date {
   if (value instanceof Date) return value;
-  if (DATE_TIME_RE.test(value) && !TIMEZONE_OFFSET_RE.test(value)) {
-    return new Date(`${value}Z`);
-  }
+  // Offsetless date-times are local wall time — parse as-is (no "Z" suffix).
+  // Strings that already carry an offset (Z, +01:00, etc.) are also fine as-is.
   return new Date(value);
 }

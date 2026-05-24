@@ -18,7 +18,6 @@ if (!_env.success) {
   if (import.meta.env.MODE === 'production') {
     throw new Error('Invalid environment configuration: ' + JSON.stringify(_env.error));
   }
-  // Dev fallback only
   console.warn('Using dev defaults because env validation failed');
 }
 
