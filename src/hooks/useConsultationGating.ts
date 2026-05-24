@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { parseBackendDateTime } from '@/lib/date'
 
 /**
  * Time-window policy for an appointment's collaboration affordances:
@@ -44,6 +45,7 @@ interface GatingInput {
   durationMins?: number | null
   endTime?: string | Date | undefined | null
   status?: ConsultationStatus
+  consultationType?: 'FIRST_VISIT' | 'FOLLOW_UP' | 'EMERGENCY' | string | null | undefined
   consultationMedium?: 'PHYSICAL' | 'AUDIO' | 'VIDEO' | string | null | undefined
   /** Appointment type — TELEMEDICINE/TELEHEALTH still trigger video even on PHYSICAL medium DTOs. */
   type?: string | null | undefined
@@ -73,14 +75,14 @@ export function useConsultationGating(input: GatingInput): ConsultationGating {
   // Stable derived timestamps — keyed on the raw inputs so the effect deps
   // below are primitives, not freshly-allocated Date objects each render.
   const opensAtMs = useMemo(() => {
-    const start = input.scheduledAt ? new Date(input.scheduledAt).getTime() : 0
+    const start = input.scheduledAt ? parseBackendDateTime(input.scheduledAt).getTime() : 0
     return start - WINDOW_MS_BEFORE
   }, [input.scheduledAt])
 
   const closesAtMs = useMemo(() => {
-    const start = input.scheduledAt ? new Date(input.scheduledAt).getTime() : 0
+    const start = input.scheduledAt ? parseBackendDateTime(input.scheduledAt).getTime() : 0
     const endRaw = input.endTime
-      ? new Date(input.endTime).getTime()
+      ? parseBackendDateTime(input.endTime).getTime()
       : start + (input.durationMins ?? 30) * 60_000
     return endRaw + WINDOW_MS_AFTER
   }, [input.scheduledAt, input.endTime, input.durationMins])
@@ -100,9 +102,13 @@ export function useConsultationGating(input: GatingInput): ConsultationGating {
   }, [closesAtMs, opensAtMs])
   const isCompleted = input.status === 'COMPLETED'
   const isCancelled = input.status === 'CANCELLED' || input.status === 'NO_SHOW'
-  const isActionable = input.status === 'CONFIRMED' || input.status === 'COMPLETED' || input.status === 'IN_CONSULTATION'
+  const isEmergency = input.consultationType === 'EMERGENCY' || input.status === 'EMERGENCY_PENDING_SETTLEMENT'
+  const isActionable = input.status === 'CONFIRMED'
+    || input.status === 'COMPLETED'
+    || input.status === 'IN_CONSULTATION'
+    || isEmergency
 
-  const windowOpen = !isCancelled && now >= opensAt.getTime() && now <= closesAt.getTime()
+  const windowOpen = !isCancelled && (isEmergency || (now >= opensAt.getTime() && now <= closesAt.getTime()))
   const chatWritable = windowOpen && !isCompleted && isActionable
   const chatReadable = isActionable
   const isTelemedium = input.consultationMedium === 'AUDIO' || input.consultationMedium === 'VIDEO'
@@ -114,6 +120,8 @@ export function useConsultationGating(input: GatingInput): ConsultationGating {
     label = 'Cancelled'
   } else if (isCompleted) {
     label = 'Consultation completed · chat is read-only'
+  } else if (isEmergency) {
+    label = 'Active now'
   } else if (now < opensAt.getTime()) {
     label = `Opens ${formatRelative(opensAt.getTime() - now)}`
   } else if (now <= closesAt.getTime()) {

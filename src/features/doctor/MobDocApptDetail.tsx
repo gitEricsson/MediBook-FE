@@ -271,6 +271,7 @@ function MobileDocApptDetail() {
     scheduledAt: fullAppt?.scheduledAt ?? appt?.scheduledAt,
     durationMins: fullAppt?.durationMins,
     status: fullAppt?.status ?? appt?.status,
+    consultationType: fullAppt?.consultationType,
     consultationMedium: fullAppt?.consultationMedium,
     type: fullAppt?.type,
   })
@@ -401,8 +402,8 @@ function MobileDocApptDetail() {
                         enabled={gating.telemedicineAvailable}
                         onClick={async () => {
                           try {
-                            const session = await TelemedicineService.createSession(Number(id))
-                            navigate(`/doctor/telemedicine/${session.id}`)
+                            const session = await TelemedicineService.startVideoCall(Number(id))
+                            navigate(`/doctor/telemedicine/${session.sessionId}`)
                           } catch { toast.error('Could not start audio call.') }
                         }}
                       />
@@ -414,8 +415,8 @@ function MobileDocApptDetail() {
                         enabled={gating.telemedicineAvailable}
                         onClick={async () => {
                           try {
-                            const session = await TelemedicineService.createSession(Number(id))
-                            navigate(`/doctor/telemedicine/${session.id}`)
+                            const session = await TelemedicineService.startVideoCall(Number(id))
+                            navigate(`/doctor/telemedicine/${session.sessionId}`)
                           } catch { toast.error('Could not start video call.') }
                         }}
                       />
@@ -518,6 +519,7 @@ function DesktopDocApptDetail() {
     scheduledAt: fullAppt?.scheduledAt ?? appt?.scheduledAt,
     durationMins: fullAppt?.durationMins,
     status: fullAppt?.status ?? appt?.status,
+    consultationType: fullAppt?.consultationType,
     consultationMedium: fullAppt?.consultationMedium,
     type: fullAppt?.type,
   })
@@ -625,8 +627,8 @@ function DesktopDocApptDetail() {
                       enabled={gating.telemedicineAvailable}
                       onClick={async () => {
                         try {
-                          const session = await TelemedicineService.createSession(Number(id))
-                          navigate(`/doctor/telemedicine/${session.id}`)
+                          const session = await TelemedicineService.startVideoCall(Number(id))
+                          navigate(`/doctor/telemedicine/${session.sessionId}`)
                         } catch { toast.error('Could not start audio call.') }
                       }}
                     />
@@ -638,8 +640,8 @@ function DesktopDocApptDetail() {
                       enabled={gating.telemedicineAvailable}
                       onClick={async () => {
                         try {
-                          const session = await TelemedicineService.createSession(Number(id))
-                          navigate(`/doctor/telemedicine/${session.id}`)
+                          const session = await TelemedicineService.startVideoCall(Number(id))
+                          navigate(`/doctor/telemedicine/${session.sessionId}`)
                         } catch { toast.error('Could not start video call.') }
                       }}
                     />

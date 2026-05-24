@@ -32,7 +32,9 @@ export const useDoctorAvailability = (id: string, date?: string) => {
     queryKey: ['doctors', 'availability', id, date],
     queryFn: () => DoctorService.getAvailability(id, date),
     enabled: !!id && authStatus === 'authenticated',
-    staleTime: 1000 * 30, // 30 seconds (high turnover)
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     retry: 1,
   });
 };

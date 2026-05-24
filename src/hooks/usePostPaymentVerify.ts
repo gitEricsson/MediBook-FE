@@ -34,6 +34,8 @@ export function usePostPaymentVerify() {
                 || p.status === 'CANCELLED')  toast.error('Payment did not go through. You can retry from My Visits.')
           else                                toast.info('Payment is being processed. Refresh in a moment to see the latest status.')
           queryClient.invalidateQueries({ queryKey: ['appointments', 'my'] })
+          queryClient.invalidateQueries({ queryKey: ['appointments', 'detail'] })
+          queryClient.invalidateQueries({ queryKey: ['appointment'] })
         })
         .catch(() => {
           toast.warning('Could not confirm payment status. Please open My Visits to refresh.')

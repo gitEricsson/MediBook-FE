@@ -33,6 +33,7 @@ import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
+import { parseBackendDateTime } from '@/lib/date'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ const STATUS_LABEL: Record<SessionStatus, string> = {
 }
 
 const POLL_INTERVAL_MS = 5_000
-const LIVE_STATUSES: SessionStatus[] = ['SCHEDULED', 'WAITING', 'ACTIVE']
+const LIVE_STATUSES: SessionStatus[] = ['CREATED', 'RINGING', 'SCHEDULED', 'WAITING', 'ACTIVE']
 
 // ── Chat panel ────────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ function ChatPanel({ sessionId, disabled }: { sessionId: string; disabled: boole
                 {!isSelf && <div style={{ fontSize: 10, fontWeight: 700, marginBottom: 4, opacity: 0.7 }}>{m.senderName}</div>}
                 {m.message}
                 <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4, textAlign: 'right' }}>
-                  {new Date(m.sentAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  {parseBackendDateTime(m.sentAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>
@@ -242,7 +243,7 @@ function SessionView({ sessionId }: { sessionId: string }) {
 
   const isLive = LIVE_STATUSES.includes(session.status)
   const isChatEnabled = session.status === 'ACTIVE'
-  const canJoin = session.status === 'ACTIVE' && !!session.joinUrl
+  const canJoin = (session.status === 'ACTIVE' || session.status === 'RINGING') && !!session.joinUrl
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
@@ -276,6 +277,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
         {/* Doctor-only status controls */}
         {isDoctor && isLive && (
           <div style={{ display: 'flex', gap: 8, marginTop: canJoin ? 10 : 0 }}>
+            {(session.status === 'CREATED' || session.status === 'RINGING') && (
+              <Btn variant="primary" size="sm" style={{ flex: 1 }} loading={transitionMutation.isPending}
+                onClick={() => transitionMutation.mutate('ACTIVE')}>
+                Answer call
+              </Btn>
+            )}
             {session.status === 'SCHEDULED' && (
               <Btn variant="primary" size="sm" style={{ flex: 1 }} loading={transitionMutation.isPending}
                 onClick={() => transitionMutation.mutate('WAITING')}>
@@ -300,8 +307,8 @@ function SessionView({ sessionId }: { sessionId: string }) {
         {/* Session duration */}
         {session.startedAt && (
           <div style={{ marginTop: 12, fontSize: 12, color: MB.text3, display: 'flex', gap: 16 }}>
-            {session.startedAt && <span>Started {new Date(session.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
-            {session.endedAt && <span>Ended {new Date(session.endedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
+            {session.startedAt && <span>Started {parseBackendDateTime(session.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
+            {session.endedAt && <span>Ended {parseBackendDateTime(session.endedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
             {session.durationSeconds && <span>Duration: {Math.floor(session.durationSeconds / 60)}m {session.durationSeconds % 60}s</span>}
           </div>
         )}

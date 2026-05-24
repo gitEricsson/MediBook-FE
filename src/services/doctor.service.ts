@@ -100,8 +100,10 @@ export const DoctorService = {
   getAvailability: async (id: string, from?: string, to?: string) => {
     const start = from ?? todayLocalIsoDate();
     const end = to ?? start;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const response = await apiClient.get(`/api/v1/doctors/${id}/availability`, {
-      params: { from: start, to: end },
+      timeout: 10_000,
+      params: { from: start, to: end, ...(tz && { tz }) },
     });
     const availabilityGrid = unwrapApiResponse<AvailabilityGridResponse>(response.data);
     return availabilityGrid.days.map<DoctorAvailability>((day) => ({

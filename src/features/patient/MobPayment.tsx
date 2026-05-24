@@ -9,11 +9,12 @@ import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { PaymentLogo, PaymentProvider } from '@/components/primitives/PaymentLogo'
 import { useViewport } from '@/hooks/useViewport'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { PaymentsService } from '@/services/payments.service'
 import { AppointmentsService, type FeeEstimate } from '@/services/appointments.service'
 import { parseApiError } from '@/lib/api/contracts'
+import { parseBackendDateTime } from '@/lib/date'
 import { FeeBreakdown } from './FeeBreakdown'
 import type { Appointment } from '@/types/api'
 
@@ -23,6 +24,7 @@ import type { Appointment } from '@/types/api'
  */
 export default memo(function MobPayment() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const params = useParams()
   const location = useLocation()
   const { isWide } = useViewport()
@@ -53,18 +55,34 @@ export default memo(function MobPayment() {
   // a misleading "first visit / in-person" total on a follow-up video booking.
   const fallbackType   = (appt?.consultationType   ?? 'FIRST_VISIT') as 'FIRST_VISIT' | 'FOLLOW_UP' | 'EMERGENCY'
   const fallbackMedium = (appt?.consultationMedium ?? 'PHYSICAL')    as 'PHYSICAL' | 'AUDIO' | 'VIDEO'
+  const outstandingBalance = Number(appt?.outstandingBalance ?? 0)
+  const hasOutstandingBalance = Number.isFinite(outstandingBalance) && outstandingBalance > 0
+  const isPendingPayment = appt?.status === 'PENDING'
+  const isEmergencySettlement = appt?.status === 'EMERGENCY_PENDING_SETTLEMENT'
+  const owesPayment = !!appt && (isPendingPayment || hasOutstandingBalance || (isEmergencySettlement && appt.outstandingBalance == null))
   const { data: fetchedEstimate, isLoading: isEstimateLoading } = useQuery({
     queryKey: ['fee-estimate', appt?.doctorId, fallbackType, fallbackMedium],
     queryFn: () =>
       AppointmentsService.estimateFee(Number(appt!.doctorId), fallbackType, fallbackMedium),
-    enabled: !state.estimate && !!appt?.doctorId,
+    enabled: owesPayment && !state.estimate && !!appt?.doctorId,
     staleTime: 60_000,
   })
   const estimate = state.estimate ?? fetchedEstimate ?? null
 
-  const fee = Number(estimate?.fee ?? state.fee ?? 0)
+  const fee = Number(hasOutstandingBalance ? outstandingBalance : estimate?.fee ?? state.fee ?? 0)
   const doctorName = state.doctorName ?? appt?.doctorName ?? 'your doctor'
   const departmentName = estimate?.departmentName ?? state.departmentName ?? appt?.departmentName ?? '—'
+
+  // ── Stripe currency conversion ──────────────────────────────────────────
+  // The appointment fee is denominated in NGN. Stripe-NG (test mode) bills in
+  // USD, so we convert before sending. Without this, passing `5000` with
+  // currency=USD made Stripe charge $5,000 instead of the ~$3 NGN equivalent.
+  // Hardcoded rate is fine for demo; for prod, swap with a daily FX feed
+  // (openexchangerates.org, frankfurter.app, etc.) or proxy via the backend.
+  // Updated 2026-05-24; refresh when the rate drifts >5%.
+  const NGN_PER_USD = 1650
+  // Ceil to the cent so the patient never *underpays* due to rounding.
+  const stripeUsdAmount = Math.ceil((fee / NGN_PER_USD) * 100) / 100
 
   // Ask the backend which gateways are actually wired up in this deployment so
   // we don't render a button that immediately 503s with PROVIDER_NOT_CONFIGURED.
@@ -87,14 +105,23 @@ export default memo(function MobPayment() {
 
   const handlePay = async (provider: PaymentProvider) => {
     if (!appt) return
+    if (!owesPayment) {
+      toast.info('This appointment has already been settled.')
+      navigate(`/patient/appt/${appt.id}`)
+      return
+    }
     setPaying(true)
     try {
       const tmpCallback = `${window.location.origin}/patient/appts`
+      // For Stripe, send the USD-converted amount; everyone else gets the
+      // raw NGN fee. Previously we sent `fee` with currency=USD which made
+      // Stripe charge ₦5,000 as $5,000 (~3,000% overcharge).
+      const isStripe = provider === 'STRIPE'
       const payment = await PaymentsService.initiate({
         appointmentId: Number(appt.id),
         provider,
-        amount: fee,
-        currency: provider === 'STRIPE' ? 'USD' : 'NGN',
+        amount: isStripe ? stripeUsdAmount : fee,
+        currency: isStripe ? 'USD' : 'NGN',
         callbackUrl: tmpCallback,
       })
       if (payment.authorizationUrl) {
@@ -109,10 +136,17 @@ export default memo(function MobPayment() {
     } catch (err) {
       // Surface the backend's specific error so the user knows *why* it failed.
       const code = (err as { errorCode?: string })?.errorCode
+      const message = parseApiError(err).message
       if (code === 'PROVIDER_NOT_CONFIGURED') {
         toast.error(`${provider.charAt(0) + provider.slice(1).toLowerCase()} isn't enabled in this environment. Try another gateway.`)
+      } else if (code === 'PAYMENT_ALREADY_COMPLETED' || code === 'APPOINTMENT_ALREADY_PAID' || /already (been )?paid/i.test(message)) {
+        await queryClient.invalidateQueries({ queryKey: ['appointments', 'my'] })
+        await queryClient.invalidateQueries({ queryKey: ['appointments', 'detail'] })
+        await queryClient.invalidateQueries({ queryKey: ['appointment'] })
+        toast.success('Payment is already confirmed.')
+        navigate(`/patient/appt/${appt.id}`)
       } else {
-        toast.error(parseApiError(err).message || 'Payment could not be started. Please retry.')
+        toast.error(message || 'Payment could not be started. Please retry.')
       }
       setPaying(false)
     }
@@ -153,16 +187,33 @@ export default memo(function MobPayment() {
         ₦{fee.toLocaleString()}
       </div>
       <div style={{ fontSize: 12, color: MB.text3, marginTop: 4 }}>
-        Booking is held but not confirmed until payment lands.
+        {hasOutstandingBalance
+          ? 'Outstanding emergency balance.'
+          : 'Booking is held but not confirmed until payment lands.'}
       </div>
+    </Card>
+  )
+
+  const settledCard = (
+    <Card padding={18} style={{ textAlign: 'center', marginBottom: 14, background: MB.successBg, border: `1px solid ${MB.success}` }}>
+      <Icon name="check" size={24} color={MB.success} />
+      <div style={{ fontSize: 15, fontWeight: 700, color: MB.success, marginTop: 8 }}>
+        No outstanding balance
+      </div>
+      <div style={{ fontSize: 12, color: MB.text2, marginTop: 4, lineHeight: 1.5 }}>
+        This appointment is already settled. You can return to the consultation card for the latest status.
+      </div>
+      <Btn variant="primary" size="sm" style={{ marginTop: 12 }} onClick={() => navigate(`/patient/appt/${appt.id}`)}>
+        Back to consultation
+      </Btn>
     </Card>
   )
 
   const summaryCard = (
     <Card padding={0} style={{ marginBottom: 14 }}>
       <Row label="Doctor"         value={`Dr. ${doctorName}`} />
-      <Row label="Date"           value={appt.scheduledAt ? new Date(appt.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—'} />
-      <Row label="Time"           value={appt.scheduledAt ? new Date(appt.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'} />
+      <Row label="Date"           value={appt.scheduledAt ? parseBackendDateTime(appt.scheduledAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '—'} />
+      <Row label="Time"           value={appt.scheduledAt ? parseBackendDateTime(appt.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'} />
       <Row label="Department"     value={departmentName} />
       <Row label="Reference"      value={appt.confirmationCode || `#${appt.id}`} mono last />
     </Card>
@@ -208,9 +259,16 @@ export default memo(function MobPayment() {
     <>
       <div className="mb-eyebrow" style={{ marginBottom: 8 }}>Pay with</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {providerEnabled('PAYSTACK') && providerButton('PAYSTACK')}
+        {/*
+          Paystack is temporarily disabled for the Monnify demo. The backend
+          provider bean is still wired (PAYSTACK_ENABLED=true on the server),
+          /payments/providers will still list it, and the rest of the code
+          path is intact — we just hide the button so demo attendees route
+          to Monnify. Re-enable by uncommenting the line below.
+        */}
+        {/* {providerEnabled('PAYSTACK') && providerButton('PAYSTACK')} */}
         {providerEnabled('MONNIFY')  && providerButton('MONNIFY')}
-        {providerEnabled('STRIPE')   && providerButton('STRIPE', '(USD)')}
+        {providerEnabled('STRIPE')   && providerButton('STRIPE', `(≈ $${stripeUsdAmount.toFixed(2)} USD)`)}
       </div>
       {enabledProviders && enabledProviders.length === 0 && (
         <div role="alert" style={{ marginTop: 10, padding: '10px 12px', background: MB.dangerBg, borderRadius: 8, fontSize: 12, color: MB.danger }}>
@@ -237,19 +295,23 @@ export default memo(function MobPayment() {
           <div style={{ width: '100%', maxWidth: 960, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'flex-start' }}>
             {/* Left column — summary + breakdown */}
             <div>
-              {amountCard}
+              {owesPayment ? amountCard : settledCard}
               {summaryCard}
-              {breakdownCard}
+              {owesPayment && breakdownCard}
             </div>
             {/* Right column — payment options */}
             <div>
-              {providerList}
-              {warningBanner}
-              <div style={{ marginTop: 16 }}>
-                <Btn variant="secondary" size="lg" full disabled={paying} onClick={() => navigate('/patient/appts')}>
-                  Pay later · slot released after 30 min
-                </Btn>
-              </div>
+              {owesPayment && (
+                <>
+                  {providerList}
+                  {warningBanner}
+                  <div style={{ marginTop: 16 }}>
+                    <Btn variant="secondary" size="lg" full disabled={paying} onClick={() => navigate('/patient/appts')}>
+                      Pay later · slot released after 30 min
+                    </Btn>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -262,17 +324,19 @@ export default memo(function MobPayment() {
     <MobScreen>
       <MobTopBar title="Pay to confirm" back />
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {amountCard}
+        {owesPayment ? amountCard : settledCard}
         {summaryCard}
-        {breakdownCard}
-        {providerList}
-        {warningBanner}
+        {owesPayment && breakdownCard}
+        {owesPayment && providerList}
+        {owesPayment && warningBanner}
       </div>
-      <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>
-        <Btn variant="secondary" size="lg" full disabled={paying} onClick={() => navigate('/patient/appts')}>
-          Pay later · slot released after 30 min
-        </Btn>
-      </div>
+      {owesPayment && (
+        <div style={{ padding: 16, background: MB.bg, borderTop: `1px solid ${MB.line2}`, flexShrink: 0 }}>
+          <Btn variant="secondary" size="lg" full disabled={paying} onClick={() => navigate('/patient/appts')}>
+            Pay later · slot released after 30 min
+          </Btn>
+        </div>
+      )}
     </MobScreen>
   )
 })

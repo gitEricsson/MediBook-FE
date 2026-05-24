@@ -24,6 +24,7 @@ import { BookingService } from '@/services/booking.service'
 import { ConsultationNotesService, type ConsultationNoteResponse } from '@/services/consultation-notes.service'
 import { Textarea } from '@/components/forms/Textarea'
 import { parseApiError } from '@/lib/api/contracts'
+import { parseBackendDateTime } from '@/lib/date'
 import type { Appointment } from '@/types/api'
 import type { IconName } from '@/types/ui'
 
@@ -171,11 +172,11 @@ function RateVisitCard({ appt, existingReview, onSubmitted }: {
 
 function fmtFullDate(iso: string | undefined) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  return parseBackendDateTime(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function fmtTimeRange(start: string, durationMins: number) {
-  const s = new Date(start)
+  const s = parseBackendDateTime(start)
   const e = new Date(s.getTime() + durationMins * 60_000)
   const fmt = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   return `${fmt(s)} – ${fmt(e)}`
@@ -221,6 +222,7 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
     scheduledAt: appt.scheduledAt,
     durationMins: appt.durationMins,
     status: appt.status,
+    consultationType: appt.consultationType,
     consultationMedium: appt.consultationMedium,
     type: appt.type,
   })
@@ -233,10 +235,15 @@ function ConsultationBody({ appt }: { appt: Appointment }) {
   // We also key off `outstandingBalance` so post-consult emergency settlements
   // (status already flipped to COMPLETED, invoice still UNPAID) still surface
   // the CTA on the consultation card.
+  const outstandingBalance = Number(appt.outstandingBalance ?? 0)
+  const hasOutstandingBalance = Number.isFinite(outstandingBalance) && outstandingBalance > 0
+  const balanceKnownSettled = appt.outstandingBalance != null && !hasOutstandingBalance
   const isPending = appt.status === 'PENDING'
-  const isEmergencyDue = appt.status === 'EMERGENCY_PENDING_SETTLEMENT'
-    || (appt.consultationType === 'EMERGENCY' && (appt.outstandingBalance ?? 0) > 0)
-  const owesPayment = isPending || isEmergencyDue || (appt.outstandingBalance ?? 0) > 0
+  const isEmergencyDue = !balanceKnownSettled && (
+    appt.status === 'EMERGENCY_PENDING_SETTLEMENT'
+    || (appt.consultationType === 'EMERGENCY' && hasOutstandingBalance)
+  )
+  const owesPayment = isPending || isEmergencyDue || hasOutstandingBalance
 
   const medium = appt.consultationMedium
   const isPhysical = medium === 'PHYSICAL' || (!medium && appt.type === 'IN_PERSON')

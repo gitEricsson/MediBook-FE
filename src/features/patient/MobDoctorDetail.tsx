@@ -14,8 +14,10 @@ import { useDoctorDetail, useDoctorAvailability } from '@/hooks/useDoctorData'
 import { useBooking } from '@/hooks/useBooking'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { WaitlistService } from '@/services/waitlist.service'
+import { DoctorPortalService, type LegacyWorkingHours, type WorkingHours } from '@/services/doctor-portal.service'
+import { useAuthStore } from '@/store/authStore'
 import { toast } from 'sonner'
 import { parseApiError } from '@/lib/api/contracts'
 import { toLocalIsoDate, todayLocalIsoDate } from '@/lib/date'
@@ -82,6 +84,80 @@ function buildWeek(offset = 0) {
       day: d.getDate(),
     }
   })
+}
+
+const SHORT_DAYS = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const LEGACY_DAY_TO_INDEX: Record<string, number> = {
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+  sunday: 7,
+}
+
+function normalizeTime(value: unknown) {
+  if (!value) return ''
+  if (typeof value === 'string') return value.slice(0, 5)
+  if (typeof value === 'object' && value !== null && 'hour' in value && 'minute' in value) {
+    const time = value as { hour: number; minute: number }
+    return `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`
+  }
+  return ''
+}
+
+function compactDayRange(days: number[]) {
+  const sorted = [...new Set(days)].sort((a, b) => a - b)
+  const ranges: string[] = []
+  for (let i = 0; i < sorted.length; i += 1) {
+    const start = sorted[i]
+    let end = start
+    while (sorted[i + 1] === end + 1) {
+      end = sorted[i + 1]
+      i += 1
+    }
+    ranges.push(start === end ? SHORT_DAYS[start] : `${SHORT_DAYS[start]}–${SHORT_DAYS[end]}`)
+  }
+  return ranges.join(', ')
+}
+
+function formatWorkingHoursHint(hours: WorkingHours[] | LegacyWorkingHours | undefined) {
+  if (!hours) return undefined
+
+  const rows = Array.isArray(hours)
+    ? hours
+        .filter((h) => h.isAvailable !== false)
+        .map((h) => ({ day: h.dayOfWeek, start: normalizeTime(h.startTime), end: normalizeTime(h.endTime) }))
+    : Object.entries(hours)
+        .filter(([, h]) => h?.isWorking !== false && h?.startTime && h?.endTime)
+        .map(([name, h]) => ({ day: LEGACY_DAY_TO_INDEX[name.toLowerCase()], start: normalizeTime(h.startTime), end: normalizeTime(h.endTime) }))
+
+  const validRows = rows.filter((h) => h.day && h.start && h.end)
+  if (validRows.length === 0) return undefined
+
+  const byWindow = new Map<string, number[]>()
+  for (const row of validRows) {
+    const key = `${row.start}–${row.end}`
+    byWindow.set(key, [...(byWindow.get(key) ?? []), row.day])
+  }
+
+  return [...byWindow.entries()]
+    .map(([window, days]) => `${window}, ${compactDayRange(days)}`)
+    .join(' · ')
+}
+
+function useWorkingHoursHint(doctorId: string | undefined) {
+  const authStatus = useAuthStore((s) => s.status)
+  const { data } = useQuery({
+    queryKey: ['doctors', 'hours', doctorId],
+    queryFn: () => DoctorPortalService.getWorkingHours(doctorId!),
+    enabled: !!doctorId && authStatus === 'authenticated',
+    staleTime: 30_000,
+    retry: false,
+  })
+
+  return formatWorkingHoursHint(data as WorkingHours[] | LegacyWorkingHours | undefined)
 }
 
 // Fixed-grid slot selection. The backend returns availability slots already
@@ -171,6 +247,7 @@ function DesktopDoctorDetail() {
   const week = buildWeek()
   const { data: doctor, isLoading: isDocLoading } = useDoctorDetail(id || '')
   const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate)
+  const workingHoursHint = useWorkingHoursHint(id)
   const { holdSlot, isHolding } = useBooking()
 
   const handleContinue = async () => {
@@ -237,7 +314,7 @@ function DesktopDoctorDetail() {
               <SlotPicker week={week} selectedDate={selectedDate} setSelectedDate={setSelectedDate}
                 selection={selection} setSelection={setSelection}
                 availability={availability} isAvailLoading={isAvailLoading} isError={isError} cols={4}
-                workingHoursHint="08:00–22:00, Mon–Sat" />
+                workingHoursHint={workingHoursHint} />
             </div>
 
             {/* CTA bar */}
@@ -272,6 +349,7 @@ function MobileDoctorDetail() {
 
   const { data: doctor, isLoading: isDocLoading } = useDoctorDetail(id || '')
   const { data: availability, isLoading: isAvailLoading, isError } = useDoctorAvailability(id || '', selectedDate)
+  const workingHoursHint = useWorkingHoursHint(id)
   const { holdSlot, isHolding } = useBooking()
 
   const handleContinue = async () => {
@@ -350,7 +428,7 @@ function MobileDoctorDetail() {
           <SlotPicker week={week} selectedDate={selectedDate} setSelectedDate={setSelectedDate}
             selection={selection} setSelection={setSelection}
             availability={availability} isAvailLoading={isAvailLoading} isError={isError} cols={3}
-            workingHoursHint="08:00–22:00, Mon–Sat" />
+            workingHoursHint={workingHoursHint} />
           {!isAvailLoading && !isError && (!availability || availability.length === 0 || availability[0].slots.length === 0) && id && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
               <WaitlistButton doctorId={id} />

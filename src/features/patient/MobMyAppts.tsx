@@ -22,11 +22,12 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { useViewport } from '@/hooks/useViewport'
 import { parseApiError } from '@/lib/api/contracts'
+import { parseBackendDateTime } from '@/lib/date'
 import type { Appointment } from '@/types/api'
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function formatDate(iso: string) {
-  const d = new Date(iso)
+  const d = parseBackendDateTime(iso)
   return {
     month: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
     day: d.getDate(),
@@ -81,7 +82,7 @@ function ApptSkel() {
 function ApptCard({ appt }: { appt: Appointment }) {
   const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const { month, day, time } = formatDate(appt.scheduledAt)
-  const scheduled = new Date(appt.scheduledAt)
+  const scheduled = parseBackendDateTime(appt.scheduledAt)
 
   // Click handler attached at the Card level so the entire surface opens the
   // consultation detail. Action blocks below are wrapped in <div onClick=stop>
@@ -214,7 +215,7 @@ function ApptCard({ appt }: { appt: Appointment }) {
 function ApptTableRow({ appt, last }: { appt: Appointment; last?: boolean }) {
   const { isCancelable, confirmCancel, setConfirmCancel, cancelMutation, downloadICS, navigate } = useApptActions(appt)
   const { full, time } = formatDate(appt.scheduledAt)
-  const scheduled = new Date(appt.scheduledAt)
+  const scheduled = parseBackendDateTime(appt.scheduledAt)
 
   return (
     <>
