@@ -14,6 +14,7 @@ import { useViewport } from '@/hooks/useViewport'
 import { parseApiError } from '@/lib/api/contracts'
 import { validatePassword, validateEmail, validateRequired } from '@/lib/validation'
 import { sanitizeInput } from '@/lib/sanitize'
+import { PasswordChecklist } from '@/components/forms/PasswordChecklist'
 
 function useRegisterLogic() {
   const navigate = useNavigate()
@@ -103,13 +104,14 @@ function RegisterForm(props: ReturnType<typeof useRegisterLogic>) {
       <Field label="Phone" htmlFor="reg-phone" error={fieldErrors.phone}>
         <Input id="reg-phone" value={phone} onChange={(e) => setPhone(e.target.value)} icon="phone" autoComplete="tel" />
       </Field>
-      <Field label="Password" required htmlFor="reg-pw" hint="At least 8 characters with upper/lowercase, number, and symbol" error={fieldErrors.password}>
+      <Field label="Password" required htmlFor="reg-pw" error={fieldErrors.password}>
         <div style={{ position: 'relative' }}>
           <Input id="reg-pw" value={password} onChange={(e) => setPassword(e.target.value)} icon="lock" type={showPassword ? 'text' : 'password'} autoComplete="new-password" />
           <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             <Icon name={showPassword ? 'eye-off' : 'eye'} size={16} color={MB.text3} />
           </button>
         </div>
+        <PasswordChecklist password={password} />
       </Field>
       <Checkbox checked={agreeTerms} onChange={() => setAgreeTerms((v) => !v)} label={
         <span>I agree to the <Link to="/terms" style={{ color: MB.primary }}>Terms</Link> and <Link to="/privacy" style={{ color: MB.primary }}>Privacy Policy</Link></span>

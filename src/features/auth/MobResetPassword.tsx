@@ -8,6 +8,8 @@ import { Input } from '@/components/forms/Input'
 import { Btn } from '@/components/primitives/Btn'
 import { Icon } from '@/components/primitives/Icon'
 import { AuthService } from '@/services/auth.service'
+import { PasswordChecklist } from '@/components/forms/PasswordChecklist'
+import { validatePassword } from '@/lib/validation'
 import { parseApiError } from '@/lib/api/contracts'
 
 export default memo(function MobResetPassword() {
@@ -28,7 +30,7 @@ export default memo(function MobResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (mismatch) return
+    if (mismatch || validatePassword(password).length > 0) return
     setError(null)
     setLoading(true)
     try {
@@ -103,8 +105,9 @@ export default memo(function MobResetPassword() {
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="New password" htmlFor="rp-pw" hint="Min 8 chars, upper/lowercase, number and symbol">
+          <Field label="New password" htmlFor="rp-pw">
             <Input id="rp-pw" value={password} onChange={(e) => setPassword(e.target.value)} type="password" icon="lock" autoComplete="new-password" />
+            <PasswordChecklist password={password} />
           </Field>
           <Field label="Confirm password" htmlFor="rp-pw2" error={mismatch ? 'Passwords do not match' : undefined}>
             <Input id="rp-pw2" value={confirm} onChange={(e) => setConfirm(e.target.value)} type="password" icon="lock" error={mismatch} autoComplete="new-password" />
@@ -117,7 +120,7 @@ export default memo(function MobResetPassword() {
           full
           type="submit"
           loading={loading}
-          disabled={!password || !confirm || mismatch}
+          disabled={!password || !confirm || mismatch || validatePassword(password).length > 0}
           style={{ marginTop: 24 }}
         >
           {isSetup ? 'Set my password' : 'Update password'}
