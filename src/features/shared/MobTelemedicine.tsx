@@ -35,7 +35,7 @@ import { parseApiError } from '@/lib/api/contracts'
 import { useViewport } from '@/hooks/useViewport'
 import { parseBackendDateTime } from '@/lib/date'
 import { useVideoCallStore } from '@/store/videoCallStore'
-import { VideoRoomModal } from '@/features/shared/video/VideoRoomModal'
+// VideoRoomModal is mounted globally in App.tsx — do not import or render here.
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -253,7 +253,9 @@ function SessionView({ sessionId }: { sessionId: string }) {
 
   const isLive = LIVE_STATUSES.includes(session.status)
   const isChatEnabled = session.status === 'ACTIVE'
-  const canJoin = (session.status === 'ACTIVE' || session.status === 'RINGING') && !!session.joinUrl
+  // joinUrl is only set by the legacy VideoRoomPort path; Twilio sessions never
+  // populate it. Gate solely on status — the Twilio SDK connects directly via token.
+  const canJoin = session.status === 'ACTIVE' || session.status === 'RINGING'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%' }}>
@@ -392,7 +394,6 @@ export default memo(function MobTelemedicine() {
           <div style={{ flex: 1, overflow: 'auto' }}>
             <SessionView sessionId={sessionId} />
           </div>
-          <VideoRoomModal />
         </DeskShell>
       )
     }
@@ -401,7 +402,6 @@ export default memo(function MobTelemedicine() {
         <div style={{ flex: 1, overflow: 'auto', maxWidth: 720 }}>
           <SessionView sessionId={sessionId} />
         </div>
-        <VideoRoomModal />
       </PatientShell>
     )
   }
@@ -412,7 +412,6 @@ export default memo(function MobTelemedicine() {
       <div style={{ flex: 1, overflow: 'auto' }}>
         <SessionView sessionId={sessionId} />
       </div>
-      <VideoRoomModal />
     </MobScreen>
   )
 })
