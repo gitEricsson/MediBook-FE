@@ -123,8 +123,11 @@ function CallToolbar({ appointmentId, activeCall, medium }: { appointmentId?: nu
   const queryClient = useQueryClient()
   const startCall = useVideoCallStore((s) => s.startCall)
   const joinCall = useVideoCallStore((s) => s.joinCall)
+  const clearError = useVideoCallStore((s) => s.clearError)
   const isConnecting = useVideoCallStore((s) => s.isConnecting)
   const isInCall = useVideoCallStore((s) => s.isInCall)
+  const callError = useVideoCallStore((s) => s.error)
+  const isPermissionError = useVideoCallStore((s) => s.isPermissionError)
   const hasActiveCall = Boolean(activeCall && ['CREATED', 'RINGING', 'WAITING', 'ACTIVE'].includes(activeCall.status))
   const isAudioMedium = medium === 'AUDIO'
 
@@ -156,25 +159,26 @@ function CallToolbar({ appointmentId, activeCall, medium }: { appointmentId?: nu
   }
 
   return (
-    <div style={{ padding: '10px 16px', borderBottom: `1px solid ${MB.line2}`, background: MB.bg, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 160 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: MB.ink }}>Consultation chat</div>
-        <div style={{ fontSize: 12, color: MB.text3 }}>
-          {isAudioMedium ? 'Audio consultation — voice only.' : 'Video and audio stay inside this conversation.'}
+    <div style={{ borderBottom: `1px solid ${MB.line2}`, background: MB.bg }}>
+      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: MB.ink }}>Consultation chat</div>
+          <div style={{ fontSize: 12, color: MB.text3 }}>
+            {isAudioMedium ? 'Audio consultation — voice only.' : 'Video and audio stay inside this conversation.'}
+          </div>
         </div>
-      </div>
       {hasActiveCall ? (
         <>
           {isAudioMedium ? (
-            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
+            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall || isConnecting} onClick={() => handleJoin(true)}>
               Join call
             </Btn>
           ) : (
             <>
-              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(true)}>
+              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={isInCall || isConnecting} onClick={() => handleJoin(true)}>
                 Audio only
               </Btn>
-              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={isInCall} onClick={() => handleJoin(false)}>
+              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={isInCall || isConnecting} onClick={() => handleJoin(false)}>
                 Join call
               </Btn>
             </>
@@ -183,20 +187,41 @@ function CallToolbar({ appointmentId, activeCall, medium }: { appointmentId?: nu
       ) : (
         <>
           {isAudioMedium ? (
-            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
+            <Btn variant="primary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall || isConnecting} onClick={() => handleStart(true)}>
               Start call
             </Btn>
           ) : (
             <>
-              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(true)}>
+              <Btn variant="secondary" size="sm" icon="phone" loading={isConnecting} disabled={!appointmentId || isInCall || isConnecting} onClick={() => handleStart(true)}>
                 Audio only
               </Btn>
-              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={!appointmentId || isInCall} onClick={() => handleStart(false)}>
+              <Btn variant="primary" size="sm" icon="camera" loading={isConnecting} disabled={!appointmentId || isInCall || isConnecting} onClick={() => handleStart(false)}>
                 Video call
               </Btn>
             </>
           )}
         </>
+      )}
+      </div>
+
+      {/* Sticky error banner — shown below the toolbar, never a transient toast */}
+      {callError && (
+        <div style={{
+          padding: '10px 16px',
+          background: isPermissionError ? '#FFF7ED' : '#FEF2F2',
+          borderTop: `1px solid ${isPermissionError ? '#FED7AA' : '#FECACA'}`,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>{isPermissionError ? '🔒' : '⚠️'}</span>
+          <div style={{ flex: 1, fontSize: 12, color: isPermissionError ? '#92400E' : '#991B1B', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+            {callError}
+          </div>
+          <button
+            onClick={clearError}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: MB.text3, fontSize: 16, flexShrink: 0, padding: 0 }}
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
       )}
     </div>
   )

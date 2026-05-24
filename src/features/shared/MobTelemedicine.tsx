@@ -213,9 +213,12 @@ function SessionView({ sessionId }: { sessionId: string }) {
   const isDoctor = user?.role === 'doctor'
   const startCall = useVideoCallStore((s) => s.startCall)
   const joinCall = useVideoCallStore((s) => s.joinCall)
+  const clearError = useVideoCallStore((s) => s.clearError)
   const activeCall = useVideoCallStore((s) => s.activeCall)
   const isConnectingCall = useVideoCallStore((s) => s.isConnecting)
   const isInCall = useVideoCallStore((s) => s.isInCall)
+  const callError = useVideoCallStore((s) => s.error)
+  const isPermissionError = useVideoCallStore((s) => s.isPermissionError)
 
   const { data: session, isLoading, isError, refetch } = useQuery<TelemedicineSession>({
     queryKey: ['telemedicine', 'session', sessionId],
@@ -267,6 +270,22 @@ function SessionView({ sessionId }: { sessionId: string }) {
             {STATUS_LABEL[session.status]}
           </Badge>
         </div>
+
+        {/* Permission / call error banner */}
+        {callError && (
+          <div style={{
+            marginBottom: 10, padding: '10px 12px', borderRadius: 8,
+            background: isPermissionError ? '#FFF7ED' : '#FEF2F2',
+            border: `1px solid ${isPermissionError ? '#FED7AA' : '#FECACA'}`,
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{isPermissionError ? '🔒' : '⚠️'}</span>
+            <div style={{ flex: 1, fontSize: 12, color: isPermissionError ? '#92400E' : '#991B1B', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+              {callError}
+            </div>
+            <button onClick={clearError} style={{ background: 'none', border: 'none', cursor: 'pointer', color: MB.text3, fontSize: 16, flexShrink: 0, padding: 0 }} aria-label="Dismiss">✕</button>
+          </div>
+        )}
 
         {/* Video join buttons — inline Twilio via VideoRoomModal */}
         {canJoin && (
